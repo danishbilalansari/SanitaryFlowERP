@@ -10,17 +10,28 @@ import db, { initDb, isPostgres } from './src/lib/db.ts';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-async function startServer() {
-  await initDb();
+const app = express();
 
-  const app = express();
-  const PORT = Number(process.env.PORT) || 3000;
+let dbInitialized = false;
+app.use(async (req, res, next) => {
+  if (!dbInitialized) {
+    try {
+      await initDb();
+      dbInitialized = true;
+    } catch (error) {
+      console.error('DB init failed', error);
+    }
+  }
+  next();
+});
 
-  app.use(express.json());
-  app.use(cookieParser());
-  app.set('trust proxy', 1);
+const PORT = Number(process.env.PORT) || 3000;
 
-  // --- Phase 4: RBAC Enforcement ---
+app.use(express.json());
+app.use(cookieParser());
+app.set('trust proxy', 1);
+
+// --- Phase 4: RBAC Enforcement ---
   // Simple middleware to inject user context. In production, this would be from a JWT/session.
   const userContext = async (req: any, res: any, next: any) => {
     try {
@@ -1744,24 +1755,25 @@ async function startServer() {
     }
   });
 
-  // Vite middleware for development
-  if (process.env.NODE_ENV !== 'production') {
-    const vite = await createViteServer({
-      server: { middlewareMode: true },
-      appType: 'spa',
-    });
-    app.use(vite.middlewares);
-  } else {
-    const distPath = path.join(process.cwd(), 'dist');
-    app.use(express.static(distPath));
-    app.get('*', (req, res) => {
-      res.sendFile(path.join(distPath, 'index.html'));
-    });
-  }
+// Vite middleware for development
+if (process.env.NODE_ENV !== 'production' && !process.env.VERCEL) {
+  const vite = await createViteServer({
+    server: { middlewareMode: true },
+    appType: 'spa',
+  });
+  app.use(vite.middlewares);
+} else {
+  const distPath = path.join(process.cwd(), 'dist');
+  app.use(express.static(distPath));
+  app.get('*', (req, res) => {
+    res.sendFile(path.join(distPath, 'index.html'));
+  });
+}
 
+if (!process.env.VERCEL) {
   app.listen(PORT, '0.0.0.0', () => {
     console.log(`Server running on http://localhost:${PORT}`);
   });
 }
 
-startServer();
+export default app;
