@@ -3,7 +3,7 @@ import express from 'express';
 import path from 'path';
 import { Parser } from 'json2csv';
 import cookieParser from 'cookie-parser';
-import db, { initDb, isPostgres } from './src/lib/db.ts';
+import db, { initDb, isPostgres } from './src/lib/db.js';
 
 const app = express();
 
