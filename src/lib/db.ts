@@ -1,9 +1,5 @@
 import knex from 'knex';
 import path from 'path';
-import { fileURLToPath } from 'url';
-
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
 
 export const isPostgres = !!(process.env.DATABASE_URL || process.env.POSTGRES_URL || process.env.PGHOST);
 
@@ -26,6 +22,21 @@ const db = knex({
 });
 
 export async function initDb() {
+  try {
+    // Basic connection test
+    await db.raw('SELECT 1');
+  } catch (error: any) {
+    if (error?.code === 'ENOTFOUND' && error?.hostname && error.hostname.includes('supabase.co')) {
+      console.error('\n🔴 SUPABASE CONNECTION ERROR:');
+      console.error('Supabase has phased out IPv4 support for direct database connections.');
+      console.error('Vercel serverless environments often fail to resolve the IPv6 hostname.');
+      console.error('\n👉 FIX: Go to your Supabase Dashboard -> Project Settings -> Database');
+      console.error('👉 Turn ON "Use connection pooling" and use the Transaction Pooler URL (Port 6543) instead of direct connection.');
+      console.error(`👉 Current failing host: ${error.hostname}\n`);
+    }
+    throw error;
+  }
+
   // Roles Table
   if (!(await db.schema.hasTable('roles'))) {
     await db.schema.createTable('roles', (table) => {
