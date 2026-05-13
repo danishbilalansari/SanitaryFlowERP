@@ -1,14 +1,9 @@
 import 'dotenv/config';
 import express from 'express';
-import { createServer as createViteServer } from 'vite';
 import path from 'path';
-import { fileURLToPath } from 'url';
 import { Parser } from 'json2csv';
 import cookieParser from 'cookie-parser';
 import db, { initDb, isPostgres } from './src/lib/db.ts';
-
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
 
 const app = express();
 
@@ -1757,11 +1752,13 @@ app.set('trust proxy', 1);
 
 // Vite middleware for development
 if (process.env.NODE_ENV !== 'production' && !process.env.VERCEL) {
-  const vite = await createViteServer({
-    server: { middlewareMode: true },
-    appType: 'spa',
-  });
-  app.use(vite.middlewares);
+  import('vite').then(async ({ createServer: createViteServer }) => {
+    const vite = await createViteServer({
+      server: { middlewareMode: true },
+      appType: 'spa',
+    });
+    app.use(vite.middlewares);
+  }).catch(err => console.error('Vite init failed', err));
 } else {
   const distPath = path.join(process.cwd(), 'dist');
   app.use(express.static(distPath));
