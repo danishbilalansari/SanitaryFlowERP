@@ -231,7 +231,7 @@ export async function initDb() {
     await db.schema.createTable('production_batches', (table) => {
       table.increments('id').primary();
       table.string('batch_number').unique().notNullable();
-      table.string('product_id').references('id').inTable('inventory');
+      table.integer('product_id').unsigned().references('id').inTable('inventory');
       table.integer('target_qty').notNullable();
       table.integer('actual_qty').defaultTo(0);
       table.string('line').notNullable();
@@ -249,6 +249,19 @@ export async function initDb() {
       { batch_number: 'BTC-2309', product_id: 3, target_qty: 4000, actual_qty: 4012, line: 'Line A-01', status: 'Completed', completed_at: now.toISOString() },
       { batch_number: 'BTC-FK-01', product_id: 7, target_qty: 1205, actual_qty: 1205, line: 'Line B-02', status: 'Completed', completed_at: now.toISOString() },
     ]);
+  }
+
+  if (isPostgres && (await db.schema.hasTable('production_batches'))) {
+    try {
+      // Check column type for product_id
+      const colInfo = await db('production_batches').columnInfo('product_id');
+      if (colInfo.type === 'character varying' || colInfo.type === 'varchar' || colInfo.type === 'string') {
+        console.log('Migrating production_batches.product_id from string to integer...');
+        await db.raw('ALTER TABLE production_batches ALTER COLUMN product_id TYPE integer USING product_id::integer');
+      }
+    } catch (e) {
+      console.warn('Migration failed for production_batches.product_id:', e);
+    }
   }
 
   // Damage Reports Table
