@@ -177,7 +177,9 @@ app.set('trust proxy', 1);
 
   app.post('/api/users', checkPermission('Settings'), async (req, res) => {
     try {
-      const [id] = await db('users').insert(req.body);
+      const insertResult = await db('users').insert(req.body).returning('id');
+      const idObj = insertResult[0];
+      const id = typeof idObj === 'object' ? idObj.id : idObj;
       const user = await db('users').where({ id }).first();
       await auditLog(req, 'CREATE_USER', 'Settings', { user });
       res.status(201).json(user);
@@ -199,8 +201,8 @@ app.set('trust proxy', 1);
   app.post('/api/roles', checkPermission('Settings'), async (req, res) => {
     try {
       const dbInstance = db;
-      const [id] = await dbInstance('roles').insert(req.body);
-      await auditLog(req, 'CREATE_ROLE', 'Settings', { id, ...req.body });
+      await dbInstance('roles').insert(req.body);
+      await auditLog(req, 'CREATE_ROLE', 'Settings', { ...req.body });
       res.status(201).json({ message: 'Role created' });
     } catch (error) {
       res.status(500).json({ error: 'Failed to create role' });
@@ -292,8 +294,9 @@ app.set('trust proxy', 1);
         warehouse_stock: parseInt(warehouse_stock as any) || 0
       };
 
-      const insertResult = await db('inventory').insert(inventoryData);
-      const id = Array.isArray(insertResult) ? insertResult[0] : insertResult;
+      const insertResult = await db('inventory').insert(inventoryData).returning('id');
+      const idObj = insertResult[0];
+      const id = typeof idObj === 'object' ? idObj.id : idObj;
       
       if (!id) throw new Error('ID not returned after insertion');
 
@@ -477,8 +480,10 @@ app.set('trust proxy', 1);
         customer_id,
         total_amount: total,
         status: 'Completed'
-      });
-      const orderId = Array.isArray(insertResult) ? insertResult[0] : insertResult;
+      }).returning('id');
+      
+      const idObj = insertResult[0];
+      const orderId = typeof idObj === 'object' ? idObj.id : idObj;
 
       const orderItems = items.map((item: any) => ({
         order_id: orderId,
@@ -553,12 +558,15 @@ app.set('trust proxy', 1);
       }
 
       const po_number = `PO-${Date.now()}`;
-      const [poId] = await trx('purchase_orders').insert({
+      const insertResult = await trx('purchase_orders').insert({
         po_number,
         supplier_id,
         total_cost: total,
         status: 'Received' 
-      });
+      }).returning('id');
+
+      const idObj = insertResult[0];
+      const poId = typeof idObj === 'object' ? idObj.id : idObj;
 
       const purchaseItems = items.map((item: any) => ({
         po_id: poId,
@@ -633,7 +641,9 @@ app.set('trust proxy', 1);
   app.post('/api/customers', checkPermission('Customers'), async (req: any, res) => {
     try {
       const { sameAsBilling, ...customerData } = req.body;
-      const [id] = await db('customers').insert(customerData);
+      const insertResult = await db('customers').insert(customerData).returning('id');
+      const idObj = insertResult[0];
+      const id = typeof idObj === 'object' ? idObj.id : idObj;
       const customer = await db('customers').where({ id }).first();
       
       // Handle opening balance in ledger
@@ -717,7 +727,9 @@ app.set('trust proxy', 1);
   app.post('/api/suppliers', checkPermission('Inventory'), async (req: any, res) => {
     try {
       const { opening_balance, ...supplierData } = req.body;
-      const [id] = await db('suppliers').insert(supplierData);
+      const insertResult = await db('suppliers').insert(supplierData).returning('id');
+      const idObj = insertResult[0];
+      const id = typeof idObj === 'object' ? idObj.id : idObj;
       const supplier = await db('suppliers').where({ id }).first();
 
       if (opening_balance && opening_balance !== 0) {
@@ -776,7 +788,9 @@ app.set('trust proxy', 1);
       const twentyFourHoursAgo = new Date(now.getTime() - 24 * 60 * 60 * 1000);
       
       const recentBatches = await db('production_batches')
-        .leftJoin('inventory', 'production_batches.product_id', 'inventory.id')
+        .leftJoin('inventory', function() {
+          this.on('production_batches.product_id', '=', 'inventory.id');
+        })
         .where('production_batches.status', 'Completed')
         .andWhere('production_batches.completed_at', '>', twentyFourHoursAgo)
         .select('production_batches.actual_qty', 'production_batches.completed_at', 'inventory.category as product_category');
@@ -859,7 +873,9 @@ app.set('trust proxy', 1);
   app.get('/api/production', checkPermission('Production'), async (req, res) => {
     try {
       const batches = await db('production_batches')
-        .leftJoin('inventory', 'production_batches.product_id', 'inventory.id')
+        .leftJoin('inventory', function() {
+          this.on('production_batches.product_id', '=', 'inventory.id');
+        })
         .select('production_batches.*', 'inventory.name as product_name');
       
       const sanitizedBatches = batches.map(b => ({
@@ -879,7 +895,11 @@ app.set('trust proxy', 1);
       const { materials, ...batchData } = req.body;
       
       const result = await db.transaction(async (trx) => {
-        const [id] = await trx('production_batches').insert(batchData);
+        const product_id = parseInt(batchData.product_id as any);
+        const insertData = { ...batchData, product_id };
+        const insertResult = await trx('production_batches').insert(insertData).returning('id');
+        const idObj = insertResult[0];
+        const id = typeof idObj === 'object' ? idObj.id : idObj;
         
         if (materials && Array.isArray(materials)) {
           for (const m of materials) {
@@ -1087,7 +1107,7 @@ app.set('trust proxy', 1);
         }
 
         // Create Tracking Record
-        const [transferId] = await trx('stock_transfers').insert({
+        const insertResult = await trx('stock_transfers').insert({
           transfer_number: `TRF-${Date.now().toString().slice(-6)}`,
           source: 'Main Factory (A-1)',
           destination: toWarehouse,
@@ -1097,7 +1117,10 @@ app.set('trust proxy', 1);
           items_preview: JSON.stringify([{ id, qty: quantity }]),
           created_at: db.fn.now(),
           updated_at: db.fn.now()
-        });
+        }).returning('id');
+
+        const idObj = insertResult[0];
+        const transferId = typeof idObj === 'object' ? idObj.id : idObj;
 
         await trx('stock_transfer_items').insert({
           transfer_id: transferId,
@@ -1187,14 +1210,15 @@ app.set('trust proxy', 1);
     try {
       const name = `SF_UPLOADED_${Date.now()}.sql.gz`;
       const size = '1.45 GB';
-      const [id] = await db('backups').insert({
+      const insertResult = await db('backups').insert({
         name,
         size,
         status: 'Successful',
         date: new Date()
       }).returning('id');
-      const backupObj = typeof id === 'object' ? id : { id };
-      res.json({ success: true, id: backupObj.id });
+      const idObj = insertResult[0];
+      const id = typeof idObj === 'object' ? idObj.id : idObj;
+      res.json({ success: true, id });
     } catch (error) {
       res.status(500).json({ error: 'Upload failed' });
     }
@@ -1206,12 +1230,13 @@ app.set('trust proxy', 1);
       const dateString = d.toISOString().replace(/[:\-T]/g, '').slice(0, 14); // 20231024040000
       const name = `SF_MANUAL_${dateString}.sql.gz`;
       const size = (Math.random() * 0.5 + 1).toFixed(2) + ' GB';
-      const [newBackup] = await db('backups').insert({
+      const insertResult = await db('backups').insert({
         name,
         size,
         status: 'Successful',
         date: new Date()
       }).returning('*');
+      const newBackup = insertResult[0];
       res.json(newBackup);
     } catch (error) {
       res.status(500).json({ error: 'Failed to create backup' });
@@ -1419,7 +1444,7 @@ app.set('trust proxy', 1);
     try {
       await db.transaction(async (trx) => {
         // Create Transfer Record
-        const [transferId] = await trx('stock_transfers').insert({
+        const insertResult = await trx('stock_transfers').insert({
           transfer_number: `TRF-${Date.now().toString().slice(-6)}`,
           source,
           destination,
@@ -1431,7 +1456,10 @@ app.set('trust proxy', 1);
           items_preview: JSON.stringify(items.slice(0, 2)),
           created_at: db.fn.now(),
           updated_at: db.fn.now()
-        });
+        }).returning('id');
+
+        const idObj = insertResult[0];
+        const transferId = typeof idObj === 'object' ? idObj.id : idObj;
 
         for (const itemPlan of items) {
           const { id, qty } = itemPlan;
@@ -1452,11 +1480,13 @@ app.set('trust proxy', 1);
 
             // FIX: If missing, create it with 0 stock
             if (!sourceWh) {
-              const [newWhId] = await trx('warehouse_stocks').insert({
+              const insertResult = await trx('warehouse_stocks').insert({
                 inventory_id: id,
                 warehouse_name: source,
                 stock: 0
-              });
+              }).returning('id');
+              const newWhIdObj = insertResult[0];
+              const newWhId = typeof newWhIdObj === 'object' ? newWhIdObj.id : newWhIdObj;
               sourceWh = await trx('warehouse_stocks').where({ id: newWhId }).first();
             }
 
