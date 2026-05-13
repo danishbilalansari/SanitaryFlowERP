@@ -1759,11 +1759,17 @@ if (process.env.NODE_ENV !== 'production' && !process.env.VERCEL) {
     });
     app.use(vite.middlewares);
   }).catch(err => console.error('Vite init failed', err));
-} else {
+} else if (!process.env.VERCEL) {
   const distPath = path.join(process.cwd(), 'dist');
   app.use(express.static(distPath));
   app.get('*', (req, res) => {
     res.sendFile(path.join(distPath, 'index.html'));
+  });
+} else {
+  // If we're on Vercel, Vercel routes non-API traffic to the static assets natively. 
+  // Any traffic reaching Express that isn't handled should return a 404 API response.
+  app.use((req, res) => {
+    res.status(404).json({ error: 'Endpoint not found' });
   });
 }
 
