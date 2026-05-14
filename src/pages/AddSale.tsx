@@ -18,6 +18,7 @@ import {
   Wallet, 
   Receipt,
   ChevronRight,
+  ChevronLeft,
   ShoppingCart,
   Package
 } from 'lucide-react';
@@ -36,6 +37,7 @@ export default function AddSale() {
   const [searchQuery, setSearchQuery] = useState('');
   const [showDropdown, setShowDropdown] = useState(false);
   const [paymentMethod, setPaymentMethod] = useState('CASH');
+  const [paidAmount, setPaidAmount] = useState<number | ''>('');
 
   useEffect(() => {
     const fetchData = async () => {
@@ -127,6 +129,9 @@ export default function AddSale() {
     }
     
     try {
+      const finalPaid = paymentMethod === 'CASH' ? grandTotal : (Number(paidAmount) || 0);
+      const status = paymentMethod === 'CASH' ? 'Completed' : 'Processing';
+
       const response = await fetch('/api/sales', {
         method: 'POST',
         headers: { 
@@ -135,7 +140,11 @@ export default function AddSale() {
         },
         body: JSON.stringify({
           customer_id: selectedCustomerId,
-          items: selectedItems.map(({ product_id, qty, price }) => ({ product_id, qty, price }))
+          items: selectedItems.map(({ product_id, qty, price }) => ({ product_id, qty, price })),
+          discount,
+          payment_method: paymentMethod,
+          paid_amount: finalPaid,
+          status: status
         })
       });
 
@@ -167,6 +176,10 @@ export default function AddSale() {
           <p className="text-[16px] text-neutral-500 mt-1">Create a new invoice and process customer payment</p>
         </div>
         <div className="flex gap-3">
+          <button onClick={() => navigate(-1)} className="flex items-center gap-2 px-5 py-2 bg-white border border-[#edeeef] text-neutral-600 text-[13px] font-bold rounded-lg hover:bg-neutral-50 transition-colors">
+            <ChevronLeft className="w-4 h-4" />
+            Back
+          </button>
           <Link to="/sales" className="flex items-center gap-2 px-5 py-2 bg-[#162839] text-white text-[13px] font-bold rounded-lg hover:opacity-90 transition-opacity">
             <History className="w-4 h-4" />
             Recent Sales
@@ -250,13 +263,50 @@ export default function AddSale() {
                 {customers.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
              </select>
 
-             <h3 className="font-bold mt-4">Discount ($)</h3>
-             <input
-               type="number"
-               value={discount}
-               onChange={e => setDiscount(Number(e.target.value))}
-               className="w-full bg-[#f3f4f5] rounded-lg px-4 py-3 outline-none"
-             />
+              <h3 className="font-bold mt-4">Discount ($)</h3>
+              <input
+                type="number"
+                min="0"
+                step="0.01"
+                value={discount}
+                onChange={e => setDiscount(Math.max(0, Number(e.target.value)))}
+                className="w-full bg-[#f3f4f5] rounded-lg px-4 py-3 outline-none"
+              />
+
+             <h3 className="font-bold mt-4 mb-2">Payment Method</h3>
+             <select 
+               value={paymentMethod}
+               onChange={e => {
+                  setPaymentMethod(e.target.value);
+                  if (e.target.value === 'CREDIT') {
+                     // Default to 0 paid for credit, or keep tracking
+                  }
+               }}
+               className="w-full bg-[#f3f4f5] rounded-lg px-4 py-3 outline-none mb-4"
+             >
+                <option value="CASH">Cash / Full Payment</option>
+                <option value="CREDIT">Credit (Partial or Zero Payment)</option>
+             </select>
+
+              {paymentMethod === 'CREDIT' && (
+                <div className="mb-4">
+                  <h3 className="font-bold mb-2">Paid Amount ($)</h3>
+                  <input
+                     type="number"
+                     min="0"
+                     step="0.01"
+                     placeholder="Enter amount paid upfront"
+                     value={paidAmount}
+                     onChange={e => {
+                        const val = e.target.value === '' ? '' : Math.max(0, Number(e.target.value));
+                        setPaidAmount(val);
+                     }}
+                     className="w-full bg-[#f3f4f5] rounded-lg px-4 py-3 outline-none"
+                     id="paid-amount-input"
+                  />
+                  <p className="text-xs text-neutral-500 mt-2">Remaining balance will be added to customer's account.</p>
+                </div>
+              )}
           </div>
           <div className="bg-[#162839] p-8 rounded-2xl shadow-xl text-white">
              <p className="text-white/40 text-[10px] font-bold uppercase tracking-widest mb-2">Total Amount</p>
