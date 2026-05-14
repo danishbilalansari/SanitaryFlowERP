@@ -26,12 +26,47 @@ import { motion } from 'motion/react';
 import { useAppContext } from '../store';
 
 export default function Sales() {
-  const { sales, showToast } = useAppContext();
-  const [loading, setLoading] = useState(false); // Set loading to false initially
+  const { showToast, currentUser } = useAppContext();
+  const [sales, setSales] = useState<any[]>([]);
+  const [stats, setStats] = useState({
+    totalRevenue: 0,
+    ordersToday: 0,
+    todayRevenue: 0,
+    topProduct: 'N/A',
+    topProductQty: 0
+  });
+
+  const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('All Sales');
   const [searchQuery, setSearchQuery] = useState('');
+  const [dateRange, setDateRange] = useState('Last 30 Days');
+  const [showStatusMenu, setShowStatusMenu] = useState(false);
+  const [showDateMenu, setShowDateMenu] = useState(false);
   
-  // Removed fetchSales entirely
+  useEffect(() => {
+    Promise.all([
+      fetch(`/api/sales?_t=${Date.now()}`, { credentials: 'include' }).then(async res => {
+        if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
+        const contentType = res.headers.get('content-type');
+        if (!contentType || !contentType.includes('application/json')) throw new Error('Not JSON response');
+        return res.json();
+      }),
+      fetch(`/api/sales/stats?_t=${Date.now()}`, { credentials: 'include' }).then(async res => {
+        if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
+        const contentType = res.headers.get('content-type');
+        if (!contentType || !contentType.includes('application/json')) throw new Error('Not JSON response');
+        return res.json();
+      })
+    ]).then(([salesData, statsData]) => {
+      setSales(salesData || []);
+      setStats(statsData);
+      setLoading(false);
+    }).catch(err => {
+      console.error('Failed to fetch sales data:', err);
+      showToast('Failed to load sales data', 'error');
+      setLoading(false);
+    });
+  }, []);
   
   const handlePrintStatement = () => {
     window.print();
@@ -43,15 +78,14 @@ export default function Sales() {
       return;
     }
 
-    const headers = ['Order ID', 'Date', 'Customer', 'Items', 'Total', 'Payment Status', 'Logistics'];
+    const headers = ['Order Number', 'Date', 'Customer', 'Items', 'Total', 'Status'];
     const rows = filteredSales.map(sale => [
-      sale.id,
-      sale.date,
+      sale.order_number || sale.id,
+      sale.created_at,
       sale.customer_name,
-      sale.items_count,
-      sale.total,
-      sale.status,
-      sale.logistics_status || 'N/A'
+      sale.items_count || 0,
+      sale.total_amount,
+      sale.status
     ]);
 
     const csvContent = [
@@ -71,45 +105,36 @@ export default function Sales() {
     showToast('Sales report exported successfully', 'success');
   };
 
-  const totalRevenue = sales.reduce((acc, sale) => acc + sale.total, 0);
-
-  const kpis = [
+  const kpis: any[] = [
     { 
-      label: 'TOTAL REVENUE (MTD)', 
-      value: `$${totalRevenue.toLocaleString()}`, 
-      trend: '+12.5%', 
+      label: 'TOTAL REVENUE (ALL)', 
+      value: `$${(stats.totalRevenueOverall || stats.totalRevenue || 0).toLocaleString()}`, 
+      trend: '', 
       trendColor: 'text-green-600', 
       trendBg: 'bg-green-50',
       icon: DollarSign,
       id: 'kpi-revenue'
     },
     { 
-      label: 'TOP PRODUCT', 
-      value: 'Industrial Basin T-800', 
-      subValue: '142 units sold',
+      label: 'TOP PRODUCT (MTD)', 
+      value: stats.topProduct, 
+      subValue: `${stats.topProductQty} units sold`,
       icon: Star,
       id: 'kpi-product'
     },
     { 
       label: 'ORDERS TODAY', 
-      value: sales.length.toString(), 
-      subValue: `Avg. $${(totalRevenue / (sales.length || 1)).toFixed(0)} / order`,
+      value: (stats.ordersToday || 0).toString(), 
+      subValue: `Revenue: $${(stats.todayRevenue || 0).toLocaleString()}`,
       icon: ShoppingBag,
       id: 'kpi-orders'
-    },
-    { 
-      label: 'PENDING RETURNS', 
-      value: '12', 
-      subValue: 'Action required',
-      valueColor: 'text-[#ba1a1a]', 
-      subValueColor: 'text-[#ba1a1a]',
-      icon: RotateCcw,
-      id: 'kpi-returns'
-    },
+    }
   ];
 
   const filteredSales = sales.filter(sale => {
     if (!sale) return false;
+    
+    // Status filter
     let matchesTab = activeTab === 'All Sales';
     if (!matchesTab) {
       if (activeTab === 'Pending') {
@@ -119,10 +144,34 @@ export default function Sales() {
       }
     }
     
+    // Search filter
+    const searchLower = searchQuery.toLowerCase();
     const matchesSearch = 
-      (sale.id?.toLowerCase() || '').includes(searchQuery.toLowerCase()) ||
-      (sale.customer_name && sale.customer_name.toLowerCase().includes(searchQuery.toLowerCase()));
-    return matchesTab && matchesSearch;
+      (String(sale.id).toLowerCase() || '').includes(searchLower) ||
+      (sale.order_number && sale.order_number.toLowerCase().includes(searchLower)) ||
+      (sale.customer_name && sale.customer_name.toLowerCase().includes(searchLower));
+
+    // Date filter
+    let matchesDate = true;
+    if (dateRange !== 'All Time') {
+      const saleDate = new Date(sale.created_at);
+      const now = new Date();
+      if (dateRange === 'Today') {
+        matchesDate = saleDate.toDateString() === now.toDateString();
+      } else if (dateRange === 'Last 7 Days') {
+        const threshold = new Date();
+        threshold.setDate(now.getDate() - 7);
+        matchesDate = saleDate >= threshold;
+      } else if (dateRange === 'Last 30 Days') {
+        const threshold = new Date();
+        threshold.setDate(now.getDate() - 30);
+        matchesDate = saleDate >= threshold;
+      } else if (dateRange === 'This Month') {
+        matchesDate = saleDate.getMonth() === now.getMonth() && saleDate.getFullYear() === now.getFullYear();
+      }
+    }
+    
+    return matchesTab && matchesSearch && matchesDate;
   });
 
   return (
@@ -163,7 +212,7 @@ export default function Sales() {
       </div>
 
       {/* KPI Bento Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {kpis.map((kpi) => (
           <div key={kpi.id} className="bg-white p-6 rounded-2xl border border-[#edeeef] shadow-sm flex flex-col justify-between relative overflow-hidden h-38">
             <div className="flex justify-between items-start z-10">
@@ -203,17 +252,58 @@ export default function Sales() {
             className="w-full pl-12 pr-4 py-3 bg-white border border-[#edeeef] rounded-lg text-[14px] focus:ring-2 focus:ring-[#5cb8fd]/20 focus:border-[#5cb8fd] outline-none transition-all"
           />
         </div>
-        <div className="flex gap-2 w-full md:w-auto">
+        <div className="flex gap-2 w-full md:w-auto relative">
           <div className="relative flex-1 md:flex-none">
-            <button className="w-full justify-center flex items-center gap-2 px-4 py-3 bg-white border border-[#edeeef] rounded-lg text-[13px] font-bold text-neutral-600 hover:bg-neutral-50 transition-colors whitespace-nowrap">
+            <button 
+              onClick={() => setShowStatusMenu(!showStatusMenu)}
+              className="w-full justify-center flex items-center gap-2 px-4 py-3 bg-white border border-[#edeeef] rounded-lg text-[13px] font-bold text-neutral-600 hover:bg-neutral-50 transition-colors whitespace-nowrap"
+            >
               <Filter className="w-4 h-4 text-neutral-400" />
               Status: {activeTab === 'All Sales' ? 'All' : activeTab}
             </button>
+            {showStatusMenu && (
+              <div className="absolute top-full right-0 mt-2 w-48 bg-white border border-[#edeeef] rounded-xl shadow-xl z-50 overflow-hidden">
+                {['All Sales', 'Pending', 'Completed'].map(tab => (
+                  <button
+                    key={tab}
+                    onClick={() => {
+                      setActiveTab(tab);
+                      setShowStatusMenu(false);
+                    }}
+                    className={`w-full text-left px-4 py-3 text-[13px] font-bold transition-colors hover:bg-neutral-50 ${activeTab === tab ? 'text-[#006397] bg-blue-50/50' : 'text-neutral-600'}`}
+                  >
+                    {tab === 'All Sales' ? 'All Statuses' : tab}
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
-          <button className="flex-1 md:flex-none justify-center flex items-center gap-2 px-4 py-3 bg-white border border-[#edeeef] rounded-lg text-[13px] font-bold text-neutral-600 hover:bg-neutral-50 transition-colors whitespace-nowrap">
-            <Calendar className="w-4 h-4 text-neutral-400" />
-            Last 30 Days
-          </button>
+
+          <div className="relative flex-1 md:flex-none">
+            <button 
+              onClick={() => setShowDateMenu(!showDateMenu)}
+              className="w-full justify-center flex items-center gap-2 px-4 py-3 bg-white border border-[#edeeef] rounded-lg text-[13px] font-bold text-neutral-600 hover:bg-neutral-50 transition-colors whitespace-nowrap"
+            >
+              <Calendar className="w-4 h-4 text-neutral-400" />
+              {dateRange}
+            </button>
+            {showDateMenu && (
+              <div className="absolute top-full right-0 mt-2 w-48 bg-white border border-[#edeeef] rounded-xl shadow-xl z-50 overflow-hidden">
+                {['Today', 'Last 7 Days', 'Last 30 Days', 'This Month', 'All Time'].map(range => (
+                  <button
+                    key={range}
+                    onClick={() => {
+                      setDateRange(range);
+                      setShowDateMenu(false);
+                    }}
+                    className={`w-full text-left px-4 py-3 text-[13px] font-bold transition-colors hover:bg-neutral-50 ${dateRange === range ? 'text-[#006397] bg-blue-50/50' : 'text-neutral-600'}`}
+                  >
+                    {range}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
         </div>
       </div>
 
@@ -222,7 +312,7 @@ export default function Sales() {
         {/* Table Controls (Tabs) */}
         <div className="px-6 py-4 border-b border-[#edeeef]">
           <div className="flex gap-4">
-            {['All Sales', 'Pending', 'Completed', 'Returned'].map((tab) => (
+            {['All Sales', 'Pending', 'Completed'].map((tab) => (
               <button
                 key={tab}
                 onClick={() => setActiveTab(tab)}
@@ -252,7 +342,9 @@ export default function Sales() {
                 <th className="px-8 py-4 text-[12px] font-bold text-neutral-500 uppercase tracking-widest">Sale ID</th>
                 <th className="px-8 py-4 text-[12px] font-bold text-neutral-500 uppercase tracking-widest">Customer</th>
                 <th className="px-8 py-4 text-[12px] font-bold text-neutral-500 uppercase tracking-widest">Date</th>
-                <th className="px-8 py-4 text-[12px] font-bold text-neutral-500 uppercase tracking-widest">Amount</th>
+                <th className="px-8 py-4 text-[12px] font-bold text-neutral-500 uppercase tracking-widest">Total</th>
+                <th className="px-8 py-4 text-[12px] font-bold text-neutral-500 uppercase tracking-widest">Paid</th>
+                <th className="px-8 py-4 text-[12px] font-bold text-neutral-500 uppercase tracking-widest">Balance</th>
                 <th className="px-8 py-4 text-[12px] font-bold text-neutral-500 uppercase tracking-widest">Status</th>
                 <th className="px-8 py-4 text-right"></th>
               </tr>
@@ -260,15 +352,19 @@ export default function Sales() {
             <tbody className="divide-y divide-[#edeeef]">
               {loading ? (
                 <tr>
-                  <td colSpan={6} className="px-8 py-12 text-center text-neutral-400 font-medium">Loading sales...</td>
+                  <td colSpan={8} className="px-8 py-12 text-center text-neutral-400 font-medium">Loading sales...</td>
                 </tr>
               ) : filteredSales.length === 0 ? (
                 <tr>
-                  <td colSpan={6} className="px-8 py-12 text-center text-neutral-400 font-medium">No sales found matching your criteria.</td>
+                  <td colSpan={8} className="px-8 py-12 text-center text-neutral-400 font-medium">No sales found matching your criteria.</td>
                 </tr>
-              ) : filteredSales.map((sale) => (
+              ) : filteredSales.map((sale) => {
+                const total = sale.total_amount || 0;
+                const paid = sale.paid_amount || 0;
+                const balance = total - paid;
+                return (
                 <tr key={sale.id} className="group hover:bg-[#f8f9fa]/50 transition-colors">
-                  <td className="px-8 py-6 text-[14px] font-black text-[#162839]">{sale.id}</td>
+                  <td className="px-8 py-6 text-[14px] font-black text-[#162839]">{sale.order_number || sale.id}</td>
                   <td className="px-8 py-6">
                     <div className="flex items-center gap-3">
                       <div className={`w-8 h-8 rounded-lg flex items-center justify-center font-bold text-[11px] shadow-sm bg-neutral-100 text-neutral-500`}>
@@ -278,9 +374,11 @@ export default function Sales() {
                     </div>
                   </td>
                   <td className="px-8 py-6 text-[14px] text-neutral-500 font-medium">
-                    {new Date(sale.date).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}
+                    {new Date(sale.created_at).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}
                   </td>
-                  <td className="px-8 py-6 text-[14px] font-black text-[#162839]">${sale.total.toLocaleString(undefined, { minimumFractionDigits: 2 })}</td>
+                  <td className="px-8 py-6 text-[14px] font-black text-[#162839]">${total.toLocaleString(undefined, { minimumFractionDigits: 2 })}</td>
+                  <td className="px-8 py-6 text-[14px] font-black text-emerald-600">${paid.toLocaleString(undefined, { minimumFractionDigits: 2 })}</td>
+                  <td className={`px-8 py-6 text-[14px] font-black ${balance > 0 ? 'text-red-500' : 'text-neutral-500'}`}>${Math.abs(balance).toLocaleString(undefined, { minimumFractionDigits: 2 })} {balance > 0 && '(Dr)'}</td>
                   <td className="px-8 py-6">
                     <span className={`px-3 py-1 text-[11px] font-black rounded-full uppercase tracking-widest ${
                       sale.status?.toLowerCase() === 'completed' ? 'bg-green-50 text-green-700 border border-green-200' :
@@ -292,15 +390,55 @@ export default function Sales() {
                   </td>
                   <td className="px-8 py-6 text-right">
                     <div className="flex justify-end gap-2">
-                      {sale.status?.toLowerCase() === 'completed' && (
-                        <Link to={`/invoice/${sale.id}`} className="p-2 text-neutral-900 font-bold hover:text-[#006397] hover:bg-[#d1e4fb]/20 rounded-lg transition-all" title="View Invoice">
-                          <Printer className="w-4 h-4" />
-                        </Link>
+                      {sale.status?.toLowerCase() !== 'completed' && (
+                        <button 
+                         onClick={() => {
+                           if (window.confirm(`Complete this sale by recording full remaining payment of $${balance.toFixed(2)}?`)) {
+                             fetch(`/api/sales/${sale.id}`, {
+                               method: 'PATCH',
+                               headers: { 
+                                 'Content-Type': 'application/json',
+                                 'x-user-id': currentUser?.id?.toString() || '1'
+                               },
+                               body: JSON.stringify({
+                                 additional_payment: balance,
+                                 status: 'Completed'
+                               }),
+                               credentials: 'include'
+                             }).then(async res => {
+                               const contentType = res.headers.get('content-type');
+                               if (res.ok) { 
+                                 showToast('Sale completed successfully!', 'success');
+                                 setTimeout(() => window.location.reload(), 500);
+                               } else {
+                                 const text = await res.text();
+                                 let errorMsg = 'Failed to complete sale';
+                                 if (contentType && contentType.includes('application/json')) {
+                                   try {
+                                     const err = JSON.parse(text);
+                                     errorMsg = err.error || errorMsg;
+                                   } catch (e) {}
+                                 }
+                                 showToast(errorMsg, 'error');
+                               }
+                             }).catch(err => {
+                               console.error(err);
+                               showToast('Network error', 'error');
+                             });
+                           }
+                         }}
+                         className="p-2 text-[#006397] font-bold hover:bg-blue-50 rounded-lg transition-all" title="Complete Sale & Record Full Payment">
+                            <DollarSign className="w-4 h-4" />
+                        </button>
                       )}
+                      
+                      <Link to={`/invoice/${sale.id}`} className="p-2 text-neutral-900 font-bold hover:text-[#006397] hover:bg-[#d1e4fb]/20 rounded-lg transition-all" title="View Invoice">
+                        <Printer className="w-4 h-4" />
+                      </Link>
                     </div>
                   </td>
                 </tr>
-              ))}
+              )})}
             </tbody>
           </table>
         </div>
