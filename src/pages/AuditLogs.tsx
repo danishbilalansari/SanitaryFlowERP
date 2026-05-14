@@ -90,7 +90,7 @@ export default function AuditLogs() {
   };
 
   const totalPages = Math.max(1, Math.ceil(totalLogs / logsPerPage));
-  const availableModules = ['All', 'Inventory', 'Production', 'Security', 'Sales']; // Simplified list for now based on screenshot
+  const availableModules = ['All', 'Inventory', 'Production', 'Security', 'Sales', 'Customers', 'Suppliers']; // Simplified list for now based on screenshot
 
   return (
     <div className="space-y-8 animate-in fade-in duration-500 pb-12">
@@ -110,7 +110,7 @@ export default function AuditLogs() {
             className="flex items-center gap-2 px-6 py-2.5 bg-white border border-[#edeeef] text-[#162839] font-bold rounded-lg hover:bg-neutral-50 transition-all text-[14px] shadow-sm uppercase tracking-widest text-[11px]"
           >
             <Download className="w-4 h-4" />
-            Export Logs
+            Export CSV
           </button>
         </div>
       </div>
