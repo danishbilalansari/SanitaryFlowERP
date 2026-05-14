@@ -4,7 +4,7 @@ import {
   Trash2, ArrowRight, Truck, HardHat, Calendar,
   ChevronRight, Map, Route, Filter, Plus, Search, X
 } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { motion, AnimatePresence } from 'motion/react';
 import { useAppContext } from '../store';
 
@@ -17,12 +17,16 @@ const steps = [
 
 export default function StockTransfer() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const mode = searchParams.get('mode');
+  const isStockOut = mode === 'stock-out';
+
   const { showToast } = useAppContext();
   const [items, setItems] = useState<any[]>([]);
   const [priority, setPriority] = useState<'NORMAL' | 'URGENT'>('NORMAL');
   const [transport, setTransport] = useState<'in-house' | 'third-party'>('in-house');
-  const [sourceWarehouse, setSourceWarehouse] = useState('Main Factory (A-1)');
-  const [destinationShop, setDestinationShop] = useState('Central WH');
+  const [sourceWarehouse, setSourceWarehouse] = useState(isStockOut ? 'Main Factory (A-1)' : 'Main Factory (A-1)');
+  const [destinationShop, setDestinationShop] = useState(isStockOut ? 'Shop Display' : 'Central WH');
   const [expectedArrival, setExpectedArrival] = useState('');
   const [internalNotes, setInternalNotes] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -35,7 +39,7 @@ export default function StockTransfer() {
   useEffect(() => {
     if (showProductSelector) {
       setLoadingInventory(true);
-      fetch('/api/inventory')
+      fetch(`/api/inventory?warehouse=${encodeURIComponent(sourceWarehouse)}`)
         .then(async res => {
           if (!res.ok) throw new Error('Failed to fetch');
           const text = await res.text();
@@ -70,6 +74,18 @@ export default function StockTransfer() {
   };
 
   const updateQty = (id: string, qty: number) => {
+    if (qty < 1) {
+      showToast('Quantity must be at least 1', 'info');
+      return;
+    }
+    const item = items.find(i => i.id === id);
+    if (item) {
+      const avail = parseInt(item.avail);
+      if (qty > avail) {
+        showToast(`Only ${avail} units available in ${sourceWarehouse}`, 'error');
+        return;
+      }
+    }
     setItems(items.map(item => item.id === id ? { ...item, qty } : item));
   };
 
@@ -133,8 +149,8 @@ export default function StockTransfer() {
         </nav>
         <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 mt-2">
           <div>
-            <h2 className="text-[30px] leading-tight font-bold text-[#162839] tracking-tight">New Transfer Request</h2>
-            <p className="text-[16px] text-neutral-500 mt-1">Manage inter-warehouse stock movements from factory production lines to retail outlets.</p>
+            <h2 className="text-[30px] leading-tight font-bold text-[#162839] tracking-tight">{isStockOut ? 'Stock Out' : 'New Transfer Request'}</h2>
+            <p className="text-[16px] text-neutral-500 mt-1">{isStockOut ? 'Record products leaving the factory for retail outlets or distribution.' : 'Manage inter-warehouse stock movements from factory production lines to retail outlets.'}</p>
           </div>
           <div className="flex gap-3">
             <button 
@@ -193,8 +209,30 @@ export default function StockTransfer() {
                 <label className="text-[11px] font-bold text-neutral-500 uppercase tracking-widest">SOURCE WAREHOUSE</label>
                 <select 
                   value={sourceWarehouse}
-                  onChange={e => setSourceWarehouse(e.target.value)}
-                  className="w-full border-[#c4c6cd] rounded-lg text-[14px] py-2.5 focus:ring-2 focus:ring-[#5cb8fd] focus:border-[#5cb8fd] cursor-pointer"
+                  onChange={e => {
+                    const newSource = e.target.value;
+                    if (newSource === destinationShop) {
+                      showToast('Source and destination cannot be the same', 'error');
+                      return;
+                    }
+                    setSourceWarehouse(newSource);
+                    setItems([]); // Clear selected items as availability might change
+                    if (showProductSelector) {
+                       setLoadingInventory(true);
+                       fetch(`/api/inventory?warehouse=${encodeURIComponent(newSource)}`)
+                        .then(async res => {
+                          if (!res.ok) throw new Error('Failed to fetch');
+                          const text = await res.text();
+                          return text ? JSON.parse(text) : [];
+                        })
+                        .then(data => {
+                          setInventory(data);
+                          setLoadingInventory(false);
+                        })
+                        .catch(() => setLoadingInventory(false));
+                    }
+                  }}
+                  className="w-full border-[#c4c6cd] rounded-lg text-[14px] py-2.5 focus:ring-2 focus:ring-[#5cb8fd] focus:border-[#5cb8fd] cursor-pointer disabled:bg-neutral-50 disabled:cursor-not-allowed"
                 >
                   <option>Main Factory (A-1)</option>
                   <option>Secondary Storage (B-4)</option>
@@ -217,8 +255,14 @@ export default function StockTransfer() {
                 <label className="text-[11px] font-bold text-neutral-500 uppercase tracking-widest">DESTINATION SHOP</label>
                 <select 
                   value={destinationShop}
-                  onChange={e => setDestinationShop(e.target.value)}
-                  className="w-full border-[#c4c6cd] rounded-lg text-[14px] py-2.5 focus:ring-2 focus:ring-[#5cb8fd] focus:border-[#5cb8fd] cursor-pointer"
+                  onChange={e => {
+                    if (e.target.value === sourceWarehouse) {
+                      showToast('Source and destination cannot be the same', 'error');
+                      return;
+                    }
+                    setDestinationShop(e.target.value);
+                  }}
+                  className="w-full border-[#c4c6cd] rounded-lg text-[14px] py-2.5 focus:ring-2 focus:ring-[#5cb8fd] focus:border-[#5cb8fd] cursor-pointer disabled:bg-neutral-50 disabled:cursor-not-allowed"
                 >
                   <option>Central WH</option>
                   <option>Secondary Storage (B-4)</option>
