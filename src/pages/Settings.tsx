@@ -159,6 +159,7 @@ export default function Settings() {
   const [logSearchQuery, setLogSearchQuery] = useState('');
   const [logModuleFilter, setLogModuleFilter] = useState('All');
   const [logCurrentPage, setLogCurrentPage] = useState(1);
+  const [selectedLog, setSelectedLog] = useState<any>(null);
   const logsPerPage = 10;
 
   useEffect(() => {
@@ -189,7 +190,7 @@ export default function Settings() {
   }, [activeTab, logCurrentPage, logSearchQuery, logModuleFilter]);
 
   const totalLogPages = Math.max(1, Math.ceil(totalLogs / logsPerPage));
-  const availableLogModules = ['All', 'Inventory', 'Production', 'Security', 'Sales', 'Core', 'Settings'];
+  const availableLogModules = ['All', 'Inventory', 'Production', 'Security', 'Sales', 'Core', 'Settings', 'Customers', 'Suppliers'];
 
   // Backups State
   const [backups, setBackups] = useState<any[]>([]);
@@ -474,6 +475,13 @@ export default function Settings() {
               <p className="text-[15px] text-neutral-500 mt-2 font-medium">Real-time monitoring of all administrative actions and system modifications.</p>
             </div>
             <div className="flex gap-4">
+              <Link 
+                to="/customers/logs"
+                className="flex items-center gap-2 px-6 py-3 bg-white border border-[#edeeef] text-[#162839] font-bold rounded-xl hover:bg-neutral-50 transition-all shadow-sm uppercase tracking-widest text-[11px]"
+              >
+                <History className="w-4 h-4 text-neutral-400" />
+                Audit Logs
+              </Link>
               <button 
                 onClick={handleExportAuditLogs}
                 className="px-6 py-3 bg-white border border-[#edeeef] text-[#162839] font-bold text-[13px] rounded-xl hover:bg-neutral-50 transition-all flex items-center gap-2 shadow-sm whitespace-nowrap uppercase tracking-widest"
@@ -961,8 +969,12 @@ export default function Settings() {
                       const severity = log.action === 'DELETE' ? 'Critical' : log.action.includes('error') ? 'Warning' : 'Info';
                       
                       return (
-                      <tr key={i} className="hover:bg-neutral-50 transition-colors group">
-                        <td className="px-8 py-6">
+                        <tr 
+                          key={i} 
+                          className="hover:bg-neutral-50 transition-colors group cursor-pointer"
+                          onClick={() => setSelectedLog(log)}
+                        >
+                          <td className="px-8 py-6">
                           <div className="text-[14px] font-black text-[#162839]">{d.toISOString().split('T')[0]}</div>
                           <div className="text-[11px] text-neutral-400 font-bold uppercase mt-0.5">{d.toTimeString().split(' ')[0]}</div>
                         </td>
@@ -1416,6 +1428,78 @@ export default function Settings() {
         >
           {renderContent()}
         </motion.div>
+      </AnimatePresence>
+
+      {/* Log Detail Modal */}
+      <AnimatePresence>
+        {selectedLog && (
+          <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4">
+            <motion.div 
+              initial={{ opacity: 0 }} 
+              animate={{ opacity: 1 }} 
+              exit={{ opacity: 0 }}
+              onClick={() => setSelectedLog(null)}
+              className="absolute inset-0 bg-[#001d31]/60 backdrop-blur-sm" 
+            />
+            <motion.div 
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              className="relative bg-white rounded-2xl shadow-2xl w-full max-w-2xl overflow-hidden"
+            >
+              <div className="p-6 border-b border-[#edeeef] flex justify-between items-center bg-[#f8f9fa]">
+                <h3 className="text-[18px] font-bold text-[#162839]">Security Event Details</h3>
+                <button onClick={() => setSelectedLog(null)} className="p-2 hover:bg-neutral-200 rounded-lg">
+                  <X className="w-5 h-5 text-neutral-400" />
+                </button>
+              </div>
+              <div className="p-8 space-y-6">
+                <div className="grid grid-cols-2 gap-8">
+                  <div className="space-y-1">
+                    <p className="text-[11px] font-black text-neutral-400 uppercase tracking-widest">Event ID</p>
+                    <p className="text-[14px] font-bold text-[#162839]">#{selectedLog.id}</p>
+                  </div>
+                  <div className="space-y-1">
+                    <p className="text-[11px] font-black text-neutral-400 uppercase tracking-widest">Timestamp</p>
+                    <p className="text-[14px] font-bold text-[#162839]">{new Date(selectedLog.timestamp).toLocaleString()}</p>
+                  </div>
+                  <div className="space-y-1">
+                    <p className="text-[11px] font-black text-neutral-400 uppercase tracking-widest">Acting User</p>
+                    <p className="text-[14px] font-bold text-[#162839]">{selectedLog.user || 'System'}</p>
+                  </div>
+                  <div className="space-y-1">
+                    <p className="text-[11px] font-black text-neutral-400 uppercase tracking-widest">Module</p>
+                    <p className="text-[14px] font-bold text-[#006397]">{selectedLog.module}</p>
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <p className="text-[11px] font-black text-neutral-400 uppercase tracking-widest">Action Performed</p>
+                  <div className="p-3 bg-[#f3f4f5] border border-[#edeeef] rounded-lg">
+                    <code className="text-[#162839] font-black text-[14px]">{selectedLog.action}</code>
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <p className="text-[11px] font-black text-neutral-400 uppercase tracking-widest">Log Data (JSON)</p>
+                  <div className="bg-[#162839] p-4 rounded-xl overflow-x-auto">
+                    <pre className="text-[12px] text-[#5cb8fd] font-mono whitespace-pre-wrap leading-relaxed">
+                      {JSON.stringify(typeof selectedLog.details === 'string' ? JSON.parse(selectedLog.details || '{}') : selectedLog.details, null, 2)}
+                    </pre>
+                  </div>
+                </div>
+              </div>
+              <div className="p-6 bg-neutral-50 border-t border-[#edeeef] flex justify-end">
+                <button 
+                  onClick={() => setSelectedLog(null)}
+                  className="px-6 py-2.5 bg-[#162839] text-white font-bold text-[13px] rounded-xl hover:opacity-90"
+                >
+                  Close Explorer
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
       </AnimatePresence>
     </div>
   );
