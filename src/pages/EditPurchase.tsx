@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { 
   ChevronRight, 
@@ -25,16 +25,74 @@ export default function EditPurchase() {
   const { showToast } = useAppContext();
   const navigate = useNavigate();
 
-  const [items, setItems] = useState([
-    { id: 1, name: 'Premium Porcelain Tile - Matte', sku: 'CR-2099-WH', qty: 450, price: 12.50 },
-    { id: 2, name: 'Industrial Grade Adhesive', sku: 'AD-500-MAX', qty: 25, price: 84.00 },
-    { id: 3, name: 'Steel Reinforcement Rods (10mm)', sku: 'ST-10-REBAR', qty: 100, price: 15.20 }
-  ]);
+  const [order, setOrder] = useState<any>(null);
+  const [items, setItems] = useState<any[]>([]);
 
-  const subtotal = items.reduce((sum, item) => sum + (item.qty * item.price), 0);
+  useEffect(() => {
+    fetch(`/api/purchases/${id}`)
+      .then(res => res.json())
+      .then(data => {
+        setOrder(data);
+        setItems(data.items);
+      })
+      .catch(err => console.error('Error fetching order', err));
+  }, [id]);
+
+  const subtotal = items.reduce((sum, item) => sum + (item.qty * item.cost), 0);
   const tax = subtotal * 0.08;
   const total = subtotal + tax;
 
+  const handleUpdate = async () => {
+    console.log('Update button clicked');
+    try {
+      const response = await fetch(`/api/purchases/${id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+          status: order.status,
+          items
+        })
+      });
+
+      if (response.ok) {
+        showToast('Purchase order updated successfully');
+        navigate('/purchases');
+      } else {
+        console.error('Failed to update purchase order');
+        showToast('Failed to update purchase order');
+      }
+    } catch (error) {
+      console.error('Update error:', error);
+      showToast('An error occurred');
+    }
+  };
+
+  const handleCancel = async () => {
+    console.log('Cancel button clicked');
+    if (!confirm('Are you sure you want to cancel this purchase order?')) return;
+    try {
+      const response = await fetch(`/api/purchases/${id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+          status: 'Cancelled'
+        })
+      });
+
+      if (response.ok) {
+        showToast('Purchase order cancelled successfully');
+        navigate('/purchases');
+      } else {
+        console.error('Failed to cancel purchase order');
+        showToast('Failed to cancel purchase order');
+      }
+    } catch (error) {
+      console.error('Cancel error:', error);
+      showToast('An error occurred');
+    }
+  };
+
+  if (!order) return <div>Loading...</div>;
   return (
     <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500 pb-12">
       {/* Breadcrumbs & Status Header */}
@@ -157,7 +215,7 @@ export default function EditPurchase() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-[#edeeef]">
-                  {items.map((item) => (
+                  {items.map((item, itemIndex) => (
                     <tr key={item.id} className="group hover:bg-[#f8f9fa]/50 transition-colors">
                       <td className="px-8 py-6">
                         <p className="text-[15px] font-bold text-[#162839]">{item.name}</p>
@@ -166,7 +224,12 @@ export default function EditPurchase() {
                       <td className="px-8 py-6">
                         <input 
                           type="number" 
-                          defaultValue={item.qty}
+                          value={item.qty}
+                          onChange={(e) => {
+                            const newItems = [...items];
+                            newItems[itemIndex].qty = parseInt(e.target.value) || 0;
+                            setItems(newItems);
+                          }}
                           className="w-24 bg-white border border-[#c4c6cd] rounded-lg px-3 py-2 text-[14px] font-bold focus:ring-2 focus:ring-[#5cb8fd] outline-none"
                         />
                       </td>
@@ -176,13 +239,18 @@ export default function EditPurchase() {
                           <input 
                             type="number" 
                             step="0.01"
-                            defaultValue={(item.price ?? 0).toFixed(2)}
+                            value={item.cost || item.price}
+                            onChange={(e) => {
+                              const newItems = [...items];
+                              newItems[itemIndex].cost = parseFloat(e.target.value) || 0;
+                              setItems(newItems);
+                            }}
                             className="w-28 bg-white border border-[#c4c6cd] rounded-lg px-3 py-2 text-[14px] font-bold focus:ring-2 focus:ring-[#5cb8fd] outline-none"
                           />
                         </div>
                       </td>
                       <td className="px-8 py-6 text-right font-bold text-[#162839] text-[15px]">
-                        ${(item.qty * item.price).toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                        ${((+item.qty) * (+item.cost || +item.price || 0)).toLocaleString(undefined, { minimumFractionDigits: 2 })}
                       </td>
                       <td className="px-8 py-6 text-right">
                         <button className="p-2 text-neutral-400 hover:text-[#ba1a1a] transition-all opacity-0 group-hover:opacity-100">
@@ -231,22 +299,21 @@ export default function EditPurchase() {
       {/* Footer Actions */}
       <div className="mt-8 flex flex-col md:flex-row items-center justify-between gap-6 border-t border-[#edeeef] pt-10">
         <button 
-          onClick={() => navigate('/purchases')}
+          onClick={handleCancel}
           className="flex items-center gap-2 text-[#ba1a1a] font-bold text-[14px] px-6 py-3 rounded-lg hover:bg-red-50 transition-all uppercase tracking-widest"
         >
           <Trash className="w-5 h-5" />
           Cancel Purchase Order
         </button>
         <div className="flex items-center gap-4 w-full md:w-auto">
-          <button className="flex-1 md:flex-none px-8 py-3 bg-[#e1e3e4] text-[#43474c] font-bold text-[14px] rounded-lg hover:bg-[#d9dadb] transition-all flex items-center justify-center gap-2 uppercase tracking-widest">
+          <button 
+            onClick={() => window.location.reload()}
+            className="flex-1 md:flex-none px-8 py-3 bg-[#e1e3e4] text-[#43474c] font-bold text-[14px] rounded-lg hover:bg-[#d9dadb] transition-all flex items-center justify-center gap-2 uppercase tracking-widest">
             <RotateCcw className="w-5 h-5" />
             Revert Changes
           </button>
           <button 
-            onClick={() => {
-              showToast('Purchase order updated successfully');
-              navigate('/purchases');
-            }}
+            onClick={handleUpdate}
             className="flex-1 md:flex-none px-10 py-3 bg-[#006397] text-white font-bold text-[14px] rounded-lg hover:opacity-90 transition-all shadow-lg flex items-center justify-center gap-2 uppercase tracking-widest"
           >
             <CheckCircle className="w-5 h-5" />
@@ -258,9 +325,9 @@ export default function EditPurchase() {
       {/* Audit Trail Grid */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-8 opacity-60 pt-8">
         {[
-          { icon: User, label: 'Created By', value: 'Alex Rivera • Oct 24, 2023' },
-          { icon: History, label: 'Last Modified', value: 'Today • 10:42 AM' },
-          { icon: Key, label: 'PO Reference', value: '9928-SF-2023' },
+          { icon: User, label: 'Created By', value: 'Admin' }, // Assuming default for now
+          { icon: History, label: 'Last Modified', value: order.updated_at ? new Date(order.updated_at).toLocaleString() : 'N/A' },
+          { icon: Key, label: 'PO Reference', value: order.po_number },
         ].map((info, i) => (
           <div key={i} className="flex items-center gap-4">
             <div className="p-3 bg-white rounded-xl text-[#162839] border border-[#edeeef]">
