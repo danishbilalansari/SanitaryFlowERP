@@ -108,7 +108,7 @@ export default function Inventory() {
             Stock In
           </Link>
           <Link 
-            to="/inventory/transfer"
+            to="/inventory/transfer?mode=stock-out"
             className="flex-1 sm:flex-none flex items-center justify-center gap-2 px-4 sm:px-6 py-2.5 bg-[#006397] text-white font-bold rounded-lg hover:opacity-90 transition-opacity shadow-sm text-[13px] sm:text-[14px]"
           >
             <ArrowUpRight className="w-4 h-4" />
