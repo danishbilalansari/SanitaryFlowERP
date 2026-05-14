@@ -27,7 +27,16 @@ export default function Suppliers() {
 
   useEffect(() => {
     fetch('/api/suppliers/balances')
-      .then(res => res.json())
+      .then(async res => {
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const contentType = res.headers.get('content-type');
+        if (!contentType || !contentType.includes('application/json')) {
+          const text = await res.text();
+          console.error('Non-JSON response from /api/suppliers/balances:', text.substring(0, 500));
+          throw new Error('Server returned non-JSON response');
+        }
+        return res.json();
+      })
       .then(data => {
         setSuppliers(data);
         setLoading(false);
