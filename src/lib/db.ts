@@ -22,10 +22,14 @@ const db = knex({
 });
 
 export async function initDb() {
+  console.log('--- Database: Starting initialization ---');
   try {
     // Basic connection test
-    await db.raw('SELECT 1');
+    console.log(`--- Database: Testing connection (Postgres: ${isPostgres}) ---`);
+    await db.raw('SELECT 1').timeout(5000);
+    console.log('--- Database: Connection successful ---');
   } catch (error: any) {
+    console.error('--- Database: Connection FAILED ---', error);
     if (error?.code === 'ENOTFOUND' && error?.hostname && error.hostname.includes('supabase.co')) {
       console.error('\n🔴 SUPABASE CONNECTION ERROR:');
       console.error('Supabase has phased out IPv4 support for direct database connections.');
@@ -395,9 +399,22 @@ export async function initDb() {
       table.string('order_number').unique().notNullable();
       table.integer('customer_id').references('id').inTable('customers');
       table.float('total_amount').defaultTo(0);
+      table.float('paid_amount').defaultTo(0);
+      table.float('discount').defaultTo(0);
       table.string('status').defaultTo('Draft');
       table.timestamp('created_at').defaultTo(db.fn.now());
     });
+  } else {
+    if (!(await db.schema.hasColumn('sales_orders', 'paid_amount'))) {
+      await db.schema.alterTable('sales_orders', (table) => {
+        table.float('paid_amount').defaultTo(0);
+      });
+    }
+    if (!(await db.schema.hasColumn('sales_orders', 'discount'))) {
+      await db.schema.alterTable('sales_orders', (table) => {
+        table.float('discount').defaultTo(0);
+      });
+    }
   }
 
   // Sales Order Items
@@ -500,9 +517,16 @@ export async function initDb() {
       table.string('po_number').unique().notNullable();
       table.integer('supplier_id').references('id').inTable('suppliers');
       table.float('total_cost').defaultTo(0);
+      table.float('paid_amount').defaultTo(0);
       table.string('status').defaultTo('Pending');
       table.timestamp('created_at').defaultTo(db.fn.now());
     });
+  } else {
+    if (!(await db.schema.hasColumn('purchase_orders', 'paid_amount'))) {
+      await db.schema.alterTable('purchase_orders', (table) => {
+        table.float('paid_amount').defaultTo(0);
+      });
+    }
   }
 
   // Purchase Items
