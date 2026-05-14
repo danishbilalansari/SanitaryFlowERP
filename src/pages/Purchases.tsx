@@ -13,20 +13,29 @@ import {
   ChevronLeft, 
   ChevronRight,
   TrendingUp,
-  Calendar
+  Calendar,
+  DollarSign
 } from 'lucide-react';
 import { useAppContext } from '../store';
 
 export default function Purchases() {
-  const { showToast } = useAppContext();
+  const { showToast, currentUser } = useAppContext();
   const [purchaseOrders, setPurchaseOrders] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [statusFilter, setStatusFilter] = useState('All Statuses');
   const [searchQuery, setSearchQuery] = useState('');
+  const [dateRange, setDateRange] = useState('Last 30 Days');
+  const [showStatusMenu, setShowStatusMenu] = useState(false);
+  const [showDateMenu, setShowDateMenu] = useState(false);
 
   useEffect(() => {
-    fetch('/api/purchases')
-      .then(res => res.json())
+    fetch('/api/purchases', { credentials: 'include' })
+      .then(async res => {
+        if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
+        const contentType = res.headers.get('content-type');
+        if (!contentType || !contentType.includes('application/json')) throw new Error('Not JSON response');
+        return res.json();
+      })
       .then(data => {
         setPurchaseOrders(data);
         setLoading(false);
@@ -49,10 +58,37 @@ export default function Purchases() {
   };
 
   const filteredOrders = purchaseOrders.filter(po => {
+    // Status filter
     const matchesStatus = statusFilter === 'All Statuses' || po.status?.toUpperCase() === statusFilter.toUpperCase();
-    const matchesSearch = po.po_number?.toLowerCase().includes(searchQuery.toLowerCase()) || 
-                         po.supplier_name?.toLowerCase().includes(searchQuery.toLowerCase());
-    return matchesStatus && matchesSearch;
+    
+    // Search filter
+    const searchLower = searchQuery.toLowerCase();
+    const matchesSearch = 
+      (String(po.id).toLowerCase() || '').includes(searchLower) ||
+      (po.po_number && po.po_number.toLowerCase().includes(searchLower)) || 
+      (po.supplier_name && po.supplier_name.toLowerCase().includes(searchLower));
+
+    // Date filter
+    let matchesDate = true;
+    if (dateRange !== 'All Time') {
+      const poDate = new Date(po.created_at);
+      const now = new Date();
+      if (dateRange === 'Today') {
+        matchesDate = poDate.toDateString() === now.toDateString();
+      } else if (dateRange === 'Last 7 Days') {
+        const threshold = new Date();
+        threshold.setDate(now.getDate() - 7);
+        matchesDate = poDate >= threshold;
+      } else if (dateRange === 'Last 30 Days') {
+        const threshold = new Date();
+        threshold.setDate(now.getDate() - 30);
+        matchesDate = poDate >= threshold;
+      } else if (dateRange === 'This Month') {
+        matchesDate = poDate.getMonth() === now.getMonth() && poDate.getFullYear() === now.getFullYear();
+      }
+    }
+
+    return matchesStatus && matchesSearch && matchesDate;
   });
 
   const totalSpend = purchaseOrders.reduce((acc, po) => acc + (po.total_cost || 0), 0);
@@ -167,27 +203,58 @@ export default function Purchases() {
               className="w-full pl-12 pr-4 py-3 bg-white border border-[#edeeef] rounded-lg text-[14px] focus:ring-2 focus:ring-[#5cb8fd]/20 focus:border-[#5cb8fd] outline-none transition-all"
             />
           </div>
-          <div className="flex gap-2 w-full md:w-auto">
-            <div className="relative">
-              <select 
-                value={statusFilter}
-                onChange={(e) => setStatusFilter(e.target.value)}
-                className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+          <div className="flex gap-2 w-full md:w-auto relative">
+            <div className="relative flex-1 md:flex-none">
+              <button 
+                onClick={() => setShowStatusMenu(!showStatusMenu)}
+                className="w-full justify-center flex items-center gap-2 px-4 py-3 bg-white border border-[#edeeef] rounded-lg text-[13px] font-bold text-neutral-600 hover:bg-neutral-50 transition-colors whitespace-nowrap"
               >
-                <option>All Statuses</option>
-                <option>Ordered</option>
-                <option>Received</option>
-                <option>Paid</option>
-              </select>
-              <button className="flex-1 md:flex-none justify-center items-center gap-2 px-4 py-3 bg-white border border-[#edeeef] rounded-lg text-[13px] font-bold text-neutral-600 hover:bg-neutral-50 transition-colors whitespace-nowrap flex pointer-events-none">
                 <Filter className="w-4 h-4 text-neutral-400" />
                 Status: {statusFilter === 'All Statuses' ? 'All' : statusFilter}
               </button>
+              {showStatusMenu && (
+                <div className="absolute top-full right-0 mt-2 w-48 bg-white border border-[#edeeef] rounded-xl shadow-xl z-50 overflow-hidden">
+                  {['All Statuses', 'Ordered', 'Received', 'Paid'].map(status => (
+                    <button
+                      key={status}
+                      onClick={() => {
+                        setStatusFilter(status);
+                        setShowStatusMenu(false);
+                      }}
+                      className={`w-full text-left px-4 py-3 text-[13px] font-bold transition-colors hover:bg-neutral-50 ${statusFilter === status ? 'text-[#006397] bg-blue-50/50' : 'text-neutral-600'}`}
+                    >
+                      {status}
+                    </button>
+                  ))}
+                </div>
+              )}
             </div>
-            <button className="flex-1 md:flex-none justify-center items-center gap-2 px-4 py-3 bg-white border border-[#edeeef] rounded-lg text-[13px] font-bold text-neutral-600 hover:bg-neutral-50 transition-colors whitespace-nowrap flex">
-              <Calendar className="w-4 h-4 text-neutral-400" />
-              May 2026
-            </button>
+
+            <div className="relative flex-1 md:flex-none">
+              <button 
+                onClick={() => setShowDateMenu(!showDateMenu)}
+                className="w-full justify-center flex items-center gap-2 px-4 py-3 bg-white border border-[#edeeef] rounded-lg text-[13px] font-bold text-neutral-600 hover:bg-neutral-50 transition-colors whitespace-nowrap"
+              >
+                <Calendar className="w-4 h-4 text-neutral-400" />
+                {dateRange}
+              </button>
+              {showDateMenu && (
+                <div className="absolute top-full right-0 mt-2 w-48 bg-white border border-[#edeeef] rounded-xl shadow-xl z-50 overflow-hidden">
+                  {['Today', 'Last 7 Days', 'Last 30 Days', 'This Month', 'All Time'].map(range => (
+                    <button
+                      key={range}
+                      onClick={() => {
+                        setDateRange(range);
+                        setShowDateMenu(false);
+                      }}
+                      className={`w-full text-left px-4 py-3 text-[13px] font-bold transition-colors hover:bg-neutral-50 ${dateRange === range ? 'text-[#006397] bg-blue-50/50' : 'text-neutral-600'}`}
+                    >
+                      {range}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
           </div>
         </div>
       </div>
@@ -202,16 +269,22 @@ export default function Purchases() {
                 <th className="px-8 py-5">Supplier</th>
                 <th className="px-8 py-5">Date</th>
                 <th className="px-8 py-5 text-right">Total Cost</th>
+                <th className="px-8 py-5 text-right">Paid</th>
+                <th className="px-8 py-5 text-right">Balance</th>
                 <th className="px-8 py-5">Status</th>
                 <th className="px-8 py-5 text-right">Actions</th>
               </tr>
             </thead>
             <tbody className="text-[14px] divide-y divide-[#edeeef]">
               {loading ? (
-                <tr><td colSpan={6} className="px-8 py-20 text-center text-neutral-400 italic">Loading purchase history...</td></tr>
+                <tr><td colSpan={8} className="px-8 py-20 text-center text-neutral-400 italic">Loading purchase history...</td></tr>
               ) : filteredOrders.length === 0 ? (
-                <tr><td colSpan={6} className="px-8 py-20 text-center text-neutral-400 italic">No purchase orders found.</td></tr>
-              ) : filteredOrders.map((po, i) => (
+                <tr><td colSpan={8} className="px-8 py-20 text-center text-neutral-400 italic">No purchase orders found.</td></tr>
+              ) : filteredOrders.map((po, i) => {
+                const total = po.total_cost || 0;
+                const paid = po.paid_amount || 0;
+                const balance = total - paid;
+                return (
                 <tr key={i} className="hover:bg-[#f8f9fa] transition-colors group">
                   <td className="px-8 py-5 font-bold text-[#006397] group-hover:underline cursor-pointer">
                     <Link to={`/purchases/${po.id}`}>{po.po_number}</Link>
@@ -221,7 +294,13 @@ export default function Purchases() {
                     {new Date(po.created_at).toLocaleDateString()}
                   </td>
                   <td className="px-8 py-5 text-right font-black text-[#162839] tracking-tight">
-                    ${(po.total_cost || 0).toLocaleString()}
+                    ${total.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                  </td>
+                  <td className="px-8 py-5 text-right font-black text-emerald-600 tracking-tight">
+                    ${paid.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                  </td>
+                  <td className={`px-8 py-5 text-right font-black tracking-tight ${balance > 0 ? 'text-red-500' : 'text-neutral-500'}`}>
+                    ${Math.abs(balance).toLocaleString(undefined, { minimumFractionDigits: 2 })} {balance > 0 && '(Cr)'}
                   </td>
                   <td className="px-8 py-5">
                     <span className={`px-3 py-1 text-[10px] font-black rounded-full border uppercase tracking-wider ${getStatusStyles(po.status)}`}>
@@ -229,12 +308,47 @@ export default function Purchases() {
                     </span>
                   </td>
                   <td className="px-8 py-5 text-right">
-                    <Link to={`/purchases/${po.id}`} className="p-1.5 text-neutral-300 hover:text-[#006397] hover:bg-neutral-100 rounded-lg transition-all inline-block">
-                      <MoreVertical className="w-4 h-4" />
-                    </Link>
+                    <div className="flex justify-end gap-2">
+                       {po.status !== 'Received' && ( // assuming 'Received' means fully paid or just status
+                         <button 
+                         onClick={() => {
+                           if (window.confirm(`Mark this PO as Received and record full payment of $${balance.toFixed(2)}?`)) {
+                             fetch(`/api/purchases/${po.id}`, {
+                               method: 'PATCH',
+                               headers: { 
+                                 'Content-Type': 'application/json',
+                                 'x-user-id': currentUser?.id?.toString() || '1'
+                               },
+                               body: JSON.stringify({
+                                 additional_payment: balance,
+                                 status: 'Received'
+                                }),
+                                credentials: 'include'
+                              }).then(async res => {
+                                if (res.ok) { 
+                                  showToast('Purchase settled successfully!', 'success');
+                                  setTimeout(() => window.location.reload(), 500);
+                                } else {
+                                  const err = await res.json();
+                                  showToast(err.error || 'Failed to record payment', 'error');
+                                }
+                              }).catch(err => {
+                                console.error(err);
+                                showToast('Network error', 'error');
+                              });
+                            }
+                         }}
+                         className="p-1.5 text-neutral-900 font-bold hover:text-emerald-600 hover:bg-emerald-50 rounded-lg transition-all" title="Record Payment">
+                           <DollarSign className="w-4 h-4" />
+                        </button>
+                       )}
+                      <Link to={`/purchases/${po.id}`} className="p-1.5 text-neutral-300 hover:text-[#006397] hover:bg-neutral-100 rounded-lg transition-all inline-block">
+                        <MoreVertical className="w-4 h-4" />
+                      </Link>
+                    </div>
                   </td>
                 </tr>
-              ))}
+              )})}
             </tbody>
           </table>
         </div>
