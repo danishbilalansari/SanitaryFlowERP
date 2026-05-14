@@ -1,5 +1,6 @@
 import 'dotenv/config';
 import express from 'express';
+console.log('--- Server: Starting entry point ---');
 import path from 'path';
 import { Parser } from 'json2csv';
 import cookieParser from 'cookie-parser';
@@ -25,6 +26,14 @@ const PORT = Number(process.env.PORT) || 3000;
 app.use(express.json());
 app.use(cookieParser());
 app.set('trust proxy', 1);
+
+app.get('/api/test-direct', (req, res) => res.json({ message: 'Express is handling /api requests successfully' }));
+
+// Debug logging for all requests
+app.use((req, res, next) => {
+  console.log(`${new Date().toISOString()} - ${req.method} ${req.url}`);
+  next();
+});
 
 // --- Phase 4: RBAC Enforcement ---
   // Simple middleware to inject user context. In production, this would be from a JWT/session.
@@ -229,9 +238,27 @@ app.set('trust proxy', 1);
   // Inventory
   app.get('/api/inventory', async (req, res) => {
     try {
+      const { warehouse } = req.query;
+      if (warehouse && typeof warehouse === 'string') {
+        const items = await db('inventory')
+          .leftJoin('warehouse_stocks', function() {
+            this.on('inventory.id', '=', 'warehouse_stocks.inventory_id')
+                .andOn('warehouse_stocks.warehouse_name', '=', db.raw('?', [warehouse]))
+          })
+          .select('inventory.*', db.raw('COALESCE(warehouse_stocks.stock, 0) as warehouse_specific_stock'));
+        
+        const mapped = items.map((item: any) => ({
+          ...item,
+          total_stock: item.stock,
+          stock: parseInt(item.warehouse_specific_stock)
+        }));
+        return res.json(mapped);
+      }
+
       const items = await db('inventory').select('*');
       res.json(items);
     } catch (error) {
+      console.error('Inventory Fetch Error:', error);
       res.status(500).json({ error: 'Failed to fetch inventory' });
     }
   });
@@ -280,6 +307,7 @@ app.set('trust proxy', 1);
       const { name, sku, category, stock, minStock, price, status, description, display_stock, warehouse_stock } = req.body;
       
       if (stock < 0) return res.status(400).json({ error: 'Initial stock cannot be negative' });
+      if (parseFloat(price as any) <= 0) return res.status(400).json({ error: 'Price must be greater than zero' });
 
       const inventoryData = { 
         name, 
@@ -324,9 +352,16 @@ app.set('trust proxy', 1);
   app.put('/api/inventory/:id', checkPermission('Inventory'), async (req: any, res) => {
     try {
       const { name, sku, category, stock, minStock, price, status, description, display_stock, warehouse_stock } = req.body;
+      const itemId = req.params.id;
       
+      const oldState = await db('inventory').where({ id: itemId }).first();
+      if (!oldState) return res.status(404).json({ error: 'Item not found' });
+
       if (stock !== undefined && stock < 0) {
         return res.status(400).json({ error: 'Stock cannot be negative' });
+      }
+      if (price !== undefined && parseFloat(price as any) <= 0) {
+        return res.status(400).json({ error: 'Price must be greater than zero' });
       }
 
       const updateData: any = {};
@@ -338,15 +373,67 @@ app.set('trust proxy', 1);
       if (price !== undefined) updateData.price = parseFloat(price as any);
       if (status !== undefined) updateData.status = status;
       if (description !== undefined) updateData.description = description;
-      if (display_stock !== undefined) updateData.display_stock = parseInt(display_stock as any);
-      if (warehouse_stock !== undefined) updateData.warehouse_stock = parseInt(warehouse_stock as any);
+      
+      // If stock is being updated directly, we need to balance the warehouse_stocks
+      await db.transaction(async (trx) => {
+        if (stock !== undefined) {
+          const currentTotal = oldState.stock;
+          const diff = updateData.stock - currentTotal;
+          
+          if (diff !== 0) {
+            // Adjust the Main Factory stock by the difference
+            const mainWh = await trx('warehouse_stocks')
+              .where({ inventory_id: itemId, warehouse_name: 'Main Factory (A-1)' })
+              .first();
+            
+            if (mainWh) {
+              const newWhStock = mainWh.stock + diff;
+              if (newWhStock < 0) {
+                throw new Error('Insufficient stock in Main Factory to perform this update');
+              }
+              await trx('warehouse_stocks').where({ id: mainWh.id }).update({ stock: newWhStock });
+            } else if (diff > 0) {
+              await trx('warehouse_stocks').insert({
+                inventory_id: itemId,
+                warehouse_name: 'Main Factory (A-1)',
+                stock: diff
+              });
+            } else {
+              throw new Error('Cannot reduce stock: Main Factory record not found');
+            }
+          }
+        }
 
-      const oldState = await db('inventory').where({ id: req.params.id }).first();
-      await db('inventory').where({ id: req.params.id }).update(updateData);
-      const newState = await db('inventory').where({ id: req.params.id }).first();
+        if (display_stock !== undefined || warehouse_stock !== undefined) {
+           // If they are explicitly providing these, they might want to override.
+           // However, for simplicity and to match the 'Sync main inventory table' logic elsewhere, 
+           // let's just update the main table for now if they are provided, but prefer the warehouse sync.
+           if (display_stock !== undefined) updateData.display_stock = parseInt(display_stock as any);
+           if (warehouse_stock !== undefined) updateData.warehouse_stock = parseInt(warehouse_stock as any);
+        }
+
+        await trx('inventory').where({ id: itemId }).update(updateData);
+
+        // Always re-sync totals from warehouse_stocks to ensure consistency
+        const whStocksUpdate = await trx('warehouse_stocks').where({ inventory_id: itemId });
+        let wTotalUpdate = 0;
+        let dTotalUpdate = 0;
+        whStocksUpdate.forEach((s: any) => {
+          if (s.warehouse_name === 'Shop Display') dTotalUpdate += s.stock;
+          else wTotalUpdate += s.stock;
+        });
+        
+        await trx('inventory').where({ id: itemId }).update({
+          warehouse_stock: wTotalUpdate,
+          display_stock: dTotalUpdate,
+          stock: wTotalUpdate + dTotalUpdate
+        });
+      });
+
+      const newState = await db('inventory').where({ id: itemId }).first();
       
       await auditLog(req, 'UPDATE_ITEM', 'Inventory', { 
-        id: req.params.id,
+        id: itemId,
         changes: updateData,
         before: oldState,
         after: newState 
@@ -441,20 +528,86 @@ app.set('trust proxy', 1);
   });
 
   // Sales Orders (Phase 3: ACID Transactions)
+  app.get('/api/sales/stats', checkPermission('Sales'), async (req, res) => {
+    try {
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+
+      const mtd = new Date(today.getFullYear(), today.getMonth(), 1);
+
+      // Total Revenue MTD
+      // Use strftime for SQLite compatibility if needed, or stick to simple string compare
+      const mtdStr = mtd.toISOString().split('T')[0];
+      
+      const mtdSales = await db('sales_orders')
+        .where('created_at', '>=', mtdStr)
+        .sum('total_amount as sum');
+      const totalRevenue = Number(mtdSales[0]?.sum || 0);
+
+      // Overall Revenue
+      const overallSales = await db('sales_orders').sum('total_amount as sum');
+      const totalRevenueOverall = Number(overallSales[0]?.sum || 0);
+
+      // Orders Today
+      const todayStr = today.toISOString().split('T')[0];
+      const todaySales = await db('sales_orders')
+        .where('created_at', '>=', todayStr)
+        .count('id as count')
+        .sum('total_amount as sum');
+      
+      const ordersToday = Number(todaySales[0]?.count || 0);
+      const todayRevenue = Number(todaySales[0]?.sum || 0);
+
+      // Top Product MTD
+      const topProductRows = await db('sales_order_items')
+        .join('sales_orders', 'sales_order_items.order_id', 'sales_orders.id')
+        .join('inventory', 'sales_order_items.product_id', 'inventory.id')
+        .where('sales_orders.created_at', '>=', mtdStr)
+        .select('inventory.name')
+        .sum('sales_order_items.qty as total_qty')
+        .groupBy('inventory.id', 'inventory.name')
+        .orderBy('total_qty', 'desc')
+        .limit(1);
+
+      res.json({
+        totalRevenue,
+        totalRevenueOverall,
+        ordersToday,
+        todayRevenue,
+        topProduct: topProductRows[0] ? topProductRows[0].name : 'N/A',
+        topProductQty: topProductRows[0] ? topProductRows[0].total_qty : 0,
+      });
+    } catch (error) {
+      console.error('Error fetching sales stats:', error);
+      res.status(500).json({ error: 'Failed' });
+    }
+  });
+
   app.get('/api/sales', checkPermission('Sales'), async (req, res) => {
     try {
       const orders = await db('sales_orders')
         .join('customers', 'sales_orders.customer_id', 'customers.id')
-        .select('sales_orders.*', 'customers.name as customer_name')
-        .orderBy('created_at', 'desc');
+        .select(
+          'sales_orders.id',
+          'sales_orders.order_number',
+          'sales_orders.customer_id',
+          'sales_orders.total_amount',
+          'sales_orders.paid_amount',
+          'sales_orders.discount',
+          'sales_orders.status',
+          'sales_orders.created_at',
+          'customers.name as customer_name'
+        )
+        .orderBy('sales_orders.created_at', 'desc');
       res.json(orders);
     } catch (error) {
-      res.status(500).json({ error: 'Failed to fetch sales' });
+      console.error(error);
+      res.status(500).json({ error: 'Failed' });
     }
   });
 
   app.post('/api/sales', checkPermission('Sales'), async (req: any, res) => {
-    const { customer_id, items } = req.body; // items: [{ product_id, qty, price }]
+    const { customer_id, items, status, paid_amount, discount = 0 } = req.body; 
     
     if (!items || items.length === 0) {
       return res.status(400).json({ error: 'No items in order' });
@@ -463,9 +616,9 @@ app.set('trust proxy', 1);
     const trx = await db.transaction();
 
     try {
-      let total = 0;
+      let subtotal = 0;
       for (const item of items) {
-        total += item.qty * item.price;
+        subtotal += item.qty * item.price;
         
         // Check stock
         const invItem = await trx('inventory').where({ id: item.product_id }).first();
@@ -474,12 +627,18 @@ app.set('trust proxy', 1);
         }
       }
 
+      const total = Math.max(0, subtotal - Number(discount));
       const order_number = `SO-${Date.now()}`;
+      const finalStatus = status || (paid_amount < total ? 'Processing' : 'Completed');
+      const finalPaid = paid_amount === undefined ? total : Number(paid_amount);
+
       const insertResult = await trx('sales_orders').insert({
         order_number,
         customer_id,
         total_amount: total,
-        status: 'Completed'
+        paid_amount: finalPaid,
+        discount: Number(discount),
+        status: finalStatus
       }).returning('id');
       
       const idObj = insertResult[0];
@@ -494,23 +653,105 @@ app.set('trust proxy', 1);
 
       await trx('sales_order_items').insert(orderItems);
       
-      // Phase 3 & 4: Ledger Integration
+      // Record in ledger
+      // 1. Revenue Entry (Company Side)
       await trx('ledger').insert({
         account_type: 'Sales',
+        customer_id: null,
         reference_id: order_number,
+        debit: 0,
         credit: total,
-        description: `Sale to Customer #${customer_id}`
+        description: `Revenue for Sale ${order_number}`
       });
 
-      // Decrement Inventory
+      // 2. Debit Customer (Accounts Receivable)
+      await trx('ledger').insert({
+        account_type: 'Sales',
+        customer_id: customer_id,
+        reference_id: order_number,
+        debit: total,
+        credit: 0,
+        description: `Sale ${order_number}`
+      });
+
+      // 3. Credit Customer (Payment - if any)
+      if (finalPaid > 0) {
+        await trx('ledger').insert({
+          account_type: 'Payment',
+          customer_id: customer_id,
+          reference_id: order_number + '_PAY',
+          debit: 0,
+          credit: finalPaid,
+          description: `Initial payment for ${order_number}`
+        });
+      }
+
+      // Deduct Stock
       for (const item of items) {
+        if (item.qty <= 0) throw new Error('Quantity must be greater than zero');
+
+        const invItem = await trx('inventory').where({ id: item.product_id }).first();
+        if (!invItem) throw new Error(`Product not found: ${item.product_id}`);
+
+        let remainingToDeduct = item.qty;
+
+        // 1. Try to deduct from 'Shop Display' first (as it's a sale)
+        const shopWh = await trx('warehouse_stocks')
+          .where({ inventory_id: item.product_id, warehouse_name: 'Shop Display' })
+          .first();
+
+        if (shopWh && shopWh.stock > 0) {
+          const deductFromShop = Math.min(shopWh.stock, remainingToDeduct);
+          await trx('warehouse_stocks')
+            .where({ id: shopWh.id })
+            .decrement('stock', deductFromShop);
+          
+          await trx('inventory')
+            .where({ id: item.product_id })
+            .decrement('display_stock', deductFromShop);
+          
+          remainingToDeduct -= deductFromShop;
+        }
+
+        // 2. If still need to deduct, take from other warehouses that have stock
+        if (remainingToDeduct > 0) {
+          const otherWhs = await trx('warehouse_stocks')
+            .where({ inventory_id: item.product_id })
+            .where('stock', '>', 0)
+            .whereNot('warehouse_name', 'Shop Display')
+            .orderBy('stock', 'desc');
+
+          for (const wh of otherWhs) {
+            if (remainingToDeduct <= 0) break;
+            const deduct = Math.min(wh.stock, remainingToDeduct);
+            
+            await trx('warehouse_stocks')
+              .where({ id: wh.id })
+              .decrement('stock', deduct);
+            
+            await trx('inventory')
+              .where({ id: item.product_id })
+              .decrement('warehouse_stock', deduct);
+            
+            remainingToDeduct -= deduct;
+          }
+        }
+
+        // 3. Fallback: If we still have remaining (shouldn't happen due to invItem.stock check), 
+        // deduct from Shop Display (it will go negative, but keeps logic total correct)
+        if (remainingToDeduct > 0) {
+           await trx('warehouse_stocks')
+            .where({ inventory_id: item.product_id, warehouse_name: 'Shop Display' })
+            .decrement('stock', remainingToDeduct);
+          
+          await trx('inventory')
+            .where({ id: item.product_id })
+            .decrement('display_stock', remainingToDeduct);
+        }
+
+        // Always decrement total stock
         await trx('inventory')
           .where({ id: item.product_id })
-          .decrement('stock', item.qty)
-          .decrement('display_stock', item.qty);
-          
-        await trx('warehouse_stocks')
-          .where({ inventory_id: item.product_id, warehouse_name: 'Shop Display' })
           .decrement('stock', item.qty);
       }
 
@@ -529,6 +770,88 @@ app.set('trust proxy', 1);
     }
   });
 
+  app.get('/api/sales/:id', checkPermission('Sales'), async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      const sale = await db('sales_orders')
+        .leftJoin('customers', 'sales_orders.customer_id', 'customers.id')
+        .select(
+          'sales_orders.*',
+          'customers.name as customer_name',
+          'customers.company as customer_company',
+          'customers.city as customer_city',
+          'customers.billing_address as customer_address',
+          'customers.phone as customer_phone'
+        )
+        .where('sales_orders.id', id)
+        .first();
+
+      if (!sale) return res.status(404).json({ error: 'Sale not found' });
+
+      const items = await db('sales_order_items')
+        .join('inventory', 'sales_order_items.product_id', 'inventory.id')
+        .select(
+          'sales_order_items.*',
+          'inventory.name as product_name',
+          'inventory.sku as product_sku'
+        )
+        .where('order_id', id);
+
+      res.json({ ...sale, items });
+    } catch (error) {
+      console.error(error);
+      res.status(500).json({ error: 'Failed to fetch sale' });
+    }
+  });
+
+  app.patch('/api/sales/:id', checkPermission('Sales'), async (req: any, res) => {
+    const { id } = req.params;
+    const { status, additional_payment } = req.body;
+    
+    console.log(`PATCH /api/sales/${id} - Body:`, req.body);
+    
+    const trx = await db.transaction();
+    try {
+      const order = await trx('sales_orders').where({ id: Number(id) }).first();
+      if (!order) {
+        await trx.rollback();
+        console.error(`Order ${id} not found`);
+        return res.status(404).json({ error: 'Order not found' });
+      }
+      
+      const updateData: any = {};
+      if (status) updateData.status = status;
+      
+      const paymentAmount = Number(additional_payment || 0);
+      if (paymentAmount !== 0) {
+        updateData.paid_amount = Number(order.paid_amount || 0) + paymentAmount;
+      }
+
+      if (Object.keys(updateData).length > 0) {
+        await trx('sales_orders').where({ id: Number(id) }).update(updateData);
+      }
+
+      if (paymentAmount > 0) {
+        await trx('ledger').insert({
+          account_type: 'Payment',
+          customer_id: order.customer_id,
+          reference_id: `${order.order_number}_PAY_${Date.now()}`,
+          debit: 0,
+          credit: paymentAmount,
+          description: `Additional payment for ${order.order_number}`
+        });
+      }
+
+      await trx.commit();
+      await auditLog(req, 'UPDATE_SALE', 'Sales', { id, updateData });
+      res.json({ success: true });
+    } catch (error) {
+      if (trx) await trx.rollback();
+      console.error('Error updating sale:', error);
+      res.status(500).json({ error: 'Failed to update sale' });
+    }
+  });
+
   // Purchases API
   app.get('/api/purchases', checkPermission('Purchases'), async (req, res) => {
     try {
@@ -542,8 +865,32 @@ app.set('trust proxy', 1);
     }
   });
 
+  app.get('/api/purchases/:id', checkPermission('Purchases'), async (req, res) => {
+    try {
+      const { id } = req.params;
+      const order = await db('purchase_orders')
+        .join('suppliers', 'purchase_orders.supplier_id', 'suppliers.id')
+        .select('purchase_orders.*', 'suppliers.name as supplier_name')
+        .where('purchase_orders.id', Number(id))
+        .first();
+
+      if (!order) {
+        return res.status(404).json({ error: 'Order not found' });
+      }
+
+      const items = await db('purchase_items')
+        .join('inventory', 'purchase_items.product_id', 'inventory.id')
+        .select('purchase_items.*', 'inventory.name as product_name', 'inventory.sku')
+        .where('purchase_items.po_id', Number(id));
+
+      res.json({ ...order, items });
+    } catch (error) {
+      res.status(500).json({ error: 'Failed to fetch purchase order details' });
+    }
+  });
+
   app.post('/api/purchases', checkPermission('Purchases'), async (req: any, res) => {
-    const { supplier_id, items } = req.body; 
+    const { supplier_id, items, status, paid_amount } = req.body; 
     
     if (!items || items.length === 0) {
       return res.status(400).json({ error: 'No items in purchase order' });
@@ -558,11 +905,15 @@ app.set('trust proxy', 1);
       }
 
       const po_number = `PO-${Date.now()}`;
+      const finalStatus = status || (paid_amount < total ? 'Pending' : 'Received');
+      const finalPaid = paid_amount === undefined ? total : paid_amount;
+
       const insertResult = await trx('purchase_orders').insert({
         po_number,
         supplier_id,
         total_cost: total,
-        status: 'Received' 
+        paid_amount: finalPaid,
+        status: finalStatus 
       }).returning('id');
 
       const idObj = insertResult[0];
@@ -585,23 +936,37 @@ app.set('trust proxy', 1);
       }
 
       // Ledger Entries
-      // 1. Debit Purchase Account
+      // 1. Expense Entry (Company Side)
       await trx('ledger').insert({
         account_type: 'Purchases',
-        supplier_id: supplier_id, // Link to supplier for history
+        supplier_id: null,
         reference_id: po_number,
         debit: total,
+        credit: 0,
+        description: `Expense for Purchase ${po_number}`
+      });
+
+      // 2. Credit Supplier (Accounts Payable)
+      await trx('ledger').insert({
+        account_type: 'Purchases',
+        supplier_id: supplier_id, 
+        reference_id: po_number,
+        debit: 0,
+        credit: total,
         description: `Purchase from Supplier #${supplier_id}`
       });
 
-      // 2. Credit Supplier (record what we owe them)
-      await trx('ledger').insert({
-        account_type: 'Supplier Payable',
-        supplier_id: supplier_id,
-        reference_id: po_number,
-        credit: total,
-        description: `Purchase Invoice ${po_number}`
-      });
+      // 3. Debit Supplier (Payment to them)
+      if (finalPaid > 0) {
+        await trx('ledger').insert({
+          account_type: 'Payment',
+          supplier_id: supplier_id,
+          reference_id: po_number + '_PAY',
+          debit: finalPaid,
+          credit: 0,
+          description: `Initial payment for ${po_number}`
+        });
+      }
 
       // Log Audit
       await auditLog(req, 'CREATE_PURCHASE', 'Purchases', { po_number, total }, trx);
@@ -611,6 +976,62 @@ app.set('trust proxy', 1);
     } catch (error) {
       await trx.rollback();
       res.status(500).json({ error: (error as Error).message || 'Failed to create purchase' });
+    }
+  });
+
+  app.patch('/api/purchases/:id', checkPermission('Purchases'), async (req: any, res) => {
+    const { id } = req.params;
+    const { status, additional_payment, items } = req.body;
+    
+    console.log(`PATCH /api/purchases/${id} - Body:`, req.body);
+    
+    const trx = await db.transaction();
+    try {
+      const order = await trx('purchase_orders').where({ id: Number(id) }).first();
+      if (!order) {
+        await trx.rollback();
+        console.error(`Purchase Order ${id} not found`);
+        return res.status(404).json({ error: 'Order not found' });
+      }
+      
+      const updateData: any = {};
+      if (status) updateData.status = status;
+      
+      const paymentAmount = Number(additional_payment || 0);
+      if (paymentAmount !== 0) {
+        updateData.paid_amount = Number(order.paid_amount || 0) + paymentAmount;
+      }
+
+      if (Object.keys(updateData).length > 0) {
+        await trx('purchase_orders').where({ id: Number(id) }).update(updateData);
+      }
+
+      if (items && Array.isArray(items)) {
+         for (const item of items) {
+           await trx('purchase_items')
+             .where({ po_id: Number(id), product_id: item.product_id })
+             .update({ qty: item.qty, cost: item.cost });
+         }
+      }
+
+      if (paymentAmount > 0) {
+        await trx('ledger').insert({
+          account_type: 'Payment',
+          supplier_id: order.supplier_id,
+          reference_id: `${order.po_number}_PAY_${Date.now()}`,
+          debit: paymentAmount,
+          credit: 0,
+          description: `Additional payment for ${order.po_number}`
+        });
+      }
+
+      await trx.commit();
+      await auditLog(req, 'UPDATE_PURCHASE', 'Purchases', { id, updateData });
+      res.json({ success: true });
+    } catch (error) {
+      if (trx) await trx.rollback();
+      console.error('Error updating purchase:', error);
+      res.status(500).json({ error: 'Failed to update purchase' });
     }
   });
 
@@ -793,25 +1214,49 @@ app.set('trust proxy', 1);
         })
         .where('production_batches.status', 'Completed')
         .andWhere('production_batches.completed_at', '>', twentyFourHoursAgo)
-        .select('production_batches.actual_qty', 'production_batches.completed_at', 'inventory.category as product_category');
+        .select('production_batches.actual_qty', 'production_batches.completed_at', 'inventory.category as product_category', 'inventory.name as product_name');
       
-      // Output targets based on categories
-      const ceramicActual = recentBatches
-        .filter(b => (b.product_category || '').toLowerCase().includes('ceram') || (b.product_category || '').toLowerCase().includes('shop'))
-        .reduce((acc, b) => acc + (b.actual_qty || 0), 0);
+      // Calculate real categories and targets
+      const categoryAggregates: Record<string, { actual: number, target: number }> = {};
       
-      const fixingKitsActual = recentBatches
-        .filter(b => (b.product_category || '').toLowerCase().includes('kit') || (b.product_category || '').toLowerCase().includes('fix'))
-        .reduce((acc, b) => acc + (b.actual_qty || 0), 0);
-      
-      // Calculate a "simulated baseline" if it's currently 0 to make it look "populated" as requested by design
-      // but ensure it reacts to real data additions. 
-      // User says "real data not dummy data" - this usually means "I want to see my database changes reflect here"
-      // If someone just reset the DB, it will be 0. I'll stick to real data but add some noise or baseline if it's 0 to look nice, 
-      // but the user wants REAL. So I'll stick to REAL.
-      
-      const finalCeramicActual = ceramicActual || 0;
-      const finalFixingKitsActual = fixingKitsActual || 0;
+      // Initialize with common categories or based on what's active
+      recentBatches.forEach(b => {
+        const cat = b.product_category || 'Uncategorized';
+        if (!categoryAggregates[cat]) {
+          categoryAggregates[cat] = { actual: 0, target: 0 };
+        }
+        categoryAggregates[cat].actual += (b.actual_qty || 0);
+      });
+
+      // Get all active batches for today to set targets
+      const todayBatches = await db('production_batches')
+        .leftJoin('inventory', function() {
+           this.on('production_batches.product_id', '=', 'inventory.id');
+        })
+        .where('production_batches.created_at', '>', twentyFourHoursAgo)
+        .select('production_batches.target_qty', 'inventory.category as product_category');
+
+      todayBatches.forEach(b => {
+        const cat = b.product_category || 'Uncategorized';
+        if (!categoryAggregates[cat]) {
+          categoryAggregates[cat] = { actual: 0, target: 0 };
+        }
+        categoryAggregates[cat].target += (b.target_qty || 0);
+      });
+
+      // Format output targets for the gauges
+      // If we have categories, use them. Otherwise use empty.
+      const outputTargets = Object.entries(categoryAggregates).map(([cat, data]) => ({
+        category: cat,
+        label: cat,
+        target: data.target || 1000, // Default target if none set
+        actual: data.actual
+      })).slice(0, 3); // Limit to top 3 for UI space
+
+      // If no data, provide a clean "0" state instead of hardcoded dummies
+      if (outputTargets.length === 0) {
+        outputTargets.push({ category: 'Production', label: 'Daily Output', target: 5000, actual: 0 });
+      }
 
       const slots = [
         { time: '06:00', value: 0 },
@@ -848,10 +1293,7 @@ app.set('trust proxy', 1);
         machineMaintenance,
         damageReports,
         velocityData: slots,
-        outputTargets: [
-          { category: 'Ceramic', label: 'Ceramic Items', target: 5000, actual: finalCeramicActual }, 
-          { category: 'Fixing Kits', label: 'Fixing Kits', target: 2000, actual: finalFixingKitsActual }
-        ]
+        outputTargets
       });
     } catch (err) {
       console.error(err);
@@ -893,6 +1335,10 @@ app.set('trust proxy', 1);
   app.post('/api/production', checkPermission('Production'), async (req: any, res) => {
     try {
       const { materials, ...batchData } = req.body;
+
+      if (batchData.target_qty <= 0) {
+        return res.status(400).json({ error: 'Target quantity must be greater than zero' });
+      }
       
       const result = await db.transaction(async (trx) => {
         const product_id = parseInt(batchData.product_id as any);
@@ -909,10 +1355,31 @@ app.set('trust proxy', 1);
               qty_consumed: m.qty_consumed
             });
 
-            // Reduce raw material stock
-            await trx('inventory')
-              .where({ id: m.inventory_id })
-              .decrement('stock', m.qty_consumed);
+            // Reduce raw material stock from Main Factory
+            const matWh = await trx('warehouse_stocks')
+                .where({ inventory_id: m.inventory_id, warehouse_name: 'Main Factory (A-1)' })
+                .first();
+            
+            if (!matWh || matWh.stock < m.qty_consumed) {
+                const inv = await trx('inventory').where({ id: m.inventory_id }).first();
+                throw new Error(`Insufficient material: ${inv?.name || m.inventory_id} in Main Factory`);
+            }
+
+            await trx('warehouse_stocks').where({ id: matWh.id }).decrement('stock', m.qty_consumed);
+            
+            // Sync main inventory table for this material
+            const allStocksM = await trx('warehouse_stocks').where({ inventory_id: m.inventory_id });
+            let warehouseTotalM = 0;
+            let displayTotalM = 0;
+            allStocksM.forEach((s: any) => {
+              if (s.warehouse_name === 'Shop Display') displayTotalM += s.stock;
+              else warehouseTotalM += s.stock;
+            });
+            await trx('inventory').where({ id: m.inventory_id }).update({
+              stock: warehouseTotalM + displayTotalM,
+              warehouse_stock: warehouseTotalM,
+              display_stock: displayTotalM
+            });
           }
         }
         
@@ -932,6 +1399,11 @@ app.set('trust proxy', 1);
     try {
       const { id } = req.params;
       const { status, actual_qty, wastage_qty, damaged_qty, materials, ...batchData } = req.body;
+
+      if (actual_qty !== undefined && actual_qty < 0) return res.status(400).json({ error: 'Actual quantity cannot be negative' });
+      if (wastage_qty !== undefined && wastage_qty < 0) return res.status(400).json({ error: 'Wastage quantity cannot be negative' });
+      if (damaged_qty !== undefined && damaged_qty < 0) return res.status(400).json({ error: 'Damaged quantity cannot be negative' });
+
       const oldBatch = await db('production_batches').where({ id }).first();
       
       if (!oldBatch) return res.status(404).json({ error: 'Batch not found' });
@@ -975,18 +1447,18 @@ app.set('trust proxy', 1);
             }
 
             // Sync summary
-            const allStocks = await trx('warehouse_stocks').where({ inventory_id: oldBatch.product_id });
-            let warehouseTotal = 0;
-            let displayTotal = 0;
-            allStocks.forEach((s: any) => {
-              if (s.warehouse_name === 'Shop Display') displayTotal += s.stock;
-              else warehouseTotal += s.stock;
+            const whStocksProd = await trx('warehouse_stocks').where({ inventory_id: oldBatch.product_id });
+            let wTotalProd = 0;
+            let dTotalProd = 0;
+            whStocksProd.forEach((s: any) => {
+              if (s.warehouse_name === 'Shop Display') dTotalProd += s.stock;
+              else wTotalProd += s.stock;
             });
             
             await trx('inventory').where({ id: oldBatch.product_id }).update({
-              warehouse_stock: warehouseTotal,
-              display_stock: displayTotal,
-              stock: warehouseTotal + displayTotal
+              warehouse_stock: wTotalProd,
+              display_stock: dTotalProd,
+              stock: wTotalProd + dTotalProd
             });
 
             await auditLog(req, 'PRODUCTION_COMPLETE', 'Production', { batch_id: id, qty: qtyToIncrease }, trx);
@@ -1018,6 +1490,10 @@ app.set('trust proxy', 1);
   app.post('/api/inventory/adjust', checkPermission('Inventory'), async (req, res) => {
     const { id, type, quantity, reason } = req.body;
     try {
+      if (!quantity || quantity <= 0) {
+        return res.status(400).json({ error: 'Quantity must be positive' });
+      }
+
       const oldItem = await db('inventory').where({ id }).first();
       if (!oldItem) return res.status(404).json({ error: 'Item not found' });
 
@@ -1031,28 +1507,33 @@ app.set('trust proxy', 1);
           .first();
 
         if (factoryWh) {
-          const resStock = Math.max(0, factoryWh.stock + adjustment);
+          const resStock = factoryWh.stock + adjustment;
+          if (resStock < 0) {
+            throw new Error(`Insufficient stock in Main Factory. Current: ${factoryWh.stock}`);
+          }
           await trx('warehouse_stocks').where({ id: factoryWh.id }).update({ stock: resStock });
         } else if (adjustment > 0) {
           await trx('warehouse_stocks').insert({
             inventory_id: id, warehouse_name: 'Main Factory (A-1)', stock: adjustment
           });
+        } else {
+          throw new Error('Cannot reduce stock: Main Factory record not found');
         }
 
         // 2. Sync main table totals
-        const allStocks = await trx('warehouse_stocks').where({ inventory_id: id });
-        let warehouseTotal = 0;
-        let displayTotal = 0;
-        allStocks.forEach((s: any) => {
-          if (s.warehouse_name === 'Shop Display') displayTotal += s.stock;
-          else warehouseTotal += s.stock;
+        const whStocksAdj = await trx('warehouse_stocks').where({ inventory_id: id });
+        let wTotalAdj = 0;
+        let dTotalAdj = 0;
+        whStocksAdj.forEach((s: any) => {
+          if (s.warehouse_name === 'Shop Display') dTotalAdj += s.stock;
+          else wTotalAdj += s.stock;
         });
 
-        newStock = warehouseTotal + displayTotal;
+        newStock = wTotalAdj + dTotalAdj;
         await trx('inventory').where({ id }).update({ 
           stock: newStock, 
-          warehouse_stock: warehouseTotal,
-          display_stock: displayTotal,
+          warehouse_stock: wTotalAdj,
+          display_stock: dTotalAdj,
           updated_at: db.fn.now() 
         });
 
@@ -1075,6 +1556,10 @@ app.set('trust proxy', 1);
   app.post('/api/inventory/transfer', checkPermission('Inventory'), async (req: any, res) => {
     const { id, toWarehouse, quantity } = req.body;
     try {
+      if (!quantity || quantity <= 0) {
+        return res.status(400).json({ error: 'Quantity must be positive' });
+      }
+
       const item = await db('inventory').where({ id }).first();
       if (!item) return res.status(404).json({ error: 'Item not found' });
       
@@ -1087,8 +1572,8 @@ app.set('trust proxy', 1);
           .where({ inventory_id: id, warehouse_name: toWarehouse })
           .first();
 
-        if (!sourceWh) throw new Error('Source warehouse not found');
-        if (sourceWh.stock < quantity) throw new Error('Insufficient stock in Main Factory');
+        if (!sourceWh) throw new Error('Source warehouse (Main Factory) not found');
+        if (sourceWh.stock < quantity) throw new Error(`Insufficient stock in Main Factory. Current: ${sourceWh.stock}`);
 
         await trx('warehouse_stocks')
           .where({ id: sourceWh.id })
@@ -1105,6 +1590,21 @@ app.set('trust proxy', 1);
             stock: quantity
           });
         }
+
+        // Sync main inventory table
+        const syncStocks = await trx('warehouse_stocks').where({ inventory_id: id });
+        let wTotal = 0;
+        let dTotal = 0;
+        syncStocks.forEach((s: any) => {
+          if (s.warehouse_name === 'Shop Display') dTotal += s.stock;
+          else wTotal += s.stock;
+        });
+
+        await trx('inventory').where({ id }).update({
+          stock: wTotal + dTotal,
+          warehouse_stock: wTotal,
+          display_stock: dTotal
+        });
 
         // Create Tracking Record
         const insertResult = await trx('stock_transfers').insert({
@@ -1442,6 +1942,16 @@ app.set('trust proxy', 1);
     const { source, destination, items, status, notes, priority, transport, expectedArrival } = req.body;
     
     try {
+      if (!items || !Array.isArray(items) || items.length === 0) {
+        return res.status(400).json({ error: 'No items provided for transfer' });
+      }
+
+      for (const item of items) {
+        if (item.qty <= 0) {
+          return res.status(400).json({ error: `Invalid quantity for item ${item.id}. Must be positive.` });
+        }
+      }
+
       await db.transaction(async (trx) => {
         // Create Transfer Record
         const insertResult = await trx('stock_transfers').insert({
@@ -1517,19 +2027,19 @@ app.set('trust proxy', 1);
             }
 
             // Recalculate and Sync main inventory table
-            const allStocks = await trx('warehouse_stocks').where({ inventory_id: id });
-            let warehouseTotal = 0;
-            let displayTotal = 0;
+            const whStocksBulk = await trx('warehouse_stocks').where({ inventory_id: id });
+            let wTotalBulk = 0;
+            let dTotalBulk = 0;
             
-            allStocks.forEach((s: any) => {
-              if (s.warehouse_name === 'Shop Display') displayTotal += s.stock;
-              else warehouseTotal += s.stock;
+            whStocksBulk.forEach((s: any) => {
+              if (s.warehouse_name === 'Shop Display') dTotalBulk += s.stock;
+              else wTotalBulk += s.stock;
             });
             
             await trx('inventory').where({ id }).update({
-              warehouse_stock: warehouseTotal,
-              display_stock: displayTotal,
-              stock: warehouseTotal + displayTotal,
+              warehouse_stock: wTotalBulk,
+              display_stock: dTotalBulk,
+              stock: wTotalBulk + dTotalBulk,
               updated_at: db.fn.now()
             });
           }
@@ -1627,33 +2137,97 @@ app.set('trust proxy', 1);
   app.get('/api/inventory/:id/trends', async (req, res) => {
     try {
       const { id } = req.params;
-      const { range } = req.query; // 7D, 30D, 90D
+      const startDate = new Date('2026-05-10T00:00:00Z');
+      const today = new Date();
       
       const item = await db('inventory').where({ id }).first();
       if (!item) return res.status(404).json({ error: 'Item not found' });
 
-      const days = range === '7D' ? 7 : range === '90D' ? 90 : 30;
-      const data = [];
-      let currentStock = item.stock;
-
-      // Mocking trend data based on current stock and some random variations for UI
-      for (let i = days; i >= 0; i--) {
-        const date = new Date();
-        date.setDate(date.getDate() - i);
-        const dayStr = date.toLocaleDateString('en-US', { day: '2-digit', month: 'short' }).toUpperCase();
+      // Gather stock-changing transactions after May 10
+      const sales = await db('sales_order_items')
+        .join('sales_orders', 'sales_order_items.order_id', 'sales_orders.id')
+        .where('sales_order_items.product_id', id)
+        .where('sales_orders.created_at', '>', startDate)
+        .where('sales_orders.status', 'Completed')
+        .select('sales_orders.created_at as timestamp', 'sales_order_items.qty');
+      
+      const production = await db('production_batches')
+        .where('product_id', id)
+        .where('created_at', '>', startDate)
+        .where('status', 'Completed')
+        .select('created_at as timestamp', 'actual_qty as qty');
+      
+      const consumption = await db('production_material_consumption')
+        .where('inventory_id', id)
+        .where('created_at', '>', startDate)
+        .select('created_at as timestamp', 'qty_consumed as qty');
         
-        // Random variation to make it look like real activity
-        const variation = Math.floor(Math.random() * 20) - 10;
-        const value = Math.max(0, currentStock + variation * (days - i));
+      const purchases = await db('purchase_items')
+        .join('purchase_orders', 'purchase_items.po_id', 'purchase_orders.id')
+        .where('purchase_items.product_id', id)
+        .where('purchase_orders.created_at', '>', startDate)
+        .where('purchase_orders.status', 'Received')
+        .select('purchase_orders.created_at as timestamp', 'purchase_items.qty');
+
+      const audits = await db('audit_logs')
+        .where('module', 'Inventory')
+        .where('timestamp', '>', startDate)
+        .whereIn('action', ['ADJUST', 'UPDATE_ITEM'])
+        .select('timestamp', 'details', 'action');
+      
+      const adjustments: any[] = audits.map(a => {
+        try {
+          const d = JSON.parse(a.details);
+          if (d.item_id == id || d.id == id || d.product_id == id) {
+             if (a.action === 'ADJUST') {
+               return { t: new Date(a.timestamp), q: d.type === 'add' ? d.quantity : -d.quantity };
+             } else if (a.action === 'UPDATE_ITEM' && d.before && d.after && d.before.stock !== undefined && d.after.stock !== undefined) {
+               return { t: new Date(a.timestamp), q: d.after.stock - d.before.stock };
+             }
+          }
+        } catch(e) {
+          console.error('Trend parse error:', e);
+        }
+        return null;
+      }).filter(Boolean);
+
+      const changes = [
+        ...sales.map(s => ({ t: new Date(s.timestamp), q: -s.qty })),
+        ...production.map(p => ({ t: new Date(p.timestamp), q: p.qty })),
+        ...consumption.map(c => ({ t: new Date(c.timestamp), q: -c.qty })),
+        ...purchases.map(p => ({ t: new Date(p.timestamp), q: p.qty })),
+        ...adjustments
+      ];
+
+      // Calculate starting stock at May 10
+      const totalChangeSinceStart = changes.reduce((acc, curr) => acc + curr.q, 0);
+      let runningStock = item.stock - totalChangeSinceStart;
+
+      const data = [];
+      const iter = new Date(startDate);
+      const endDate = new Date(today);
+      endDate.setHours(23, 59, 59, 999);
+
+      while (iter <= endDate) {
+        const dayStart = new Date(iter);
+        dayStart.setHours(0,0,0,0);
+        const dayEnd = new Date(iter);
+        dayEnd.setHours(23, 59, 59, 999);
+
+        const dayChanges = changes.filter(c => c.t >= dayStart && c.t <= dayEnd);
+        runningStock += dayChanges.reduce((acc, curr) => acc + curr.q, 0);
 
         data.push({
-          name: dayStr,
-          value: value
+          name: iter.toLocaleDateString('en-US', { day: '2-digit', month: 'short' }).toUpperCase(),
+          value: runningStock
         });
+
+        iter.setDate(iter.getDate() + 1);
       }
 
       res.json(data);
     } catch (error) {
+      console.error('Trends error:', error);
       res.status(500).json({ error: 'Failed to fetch trends' });
     }
   });
@@ -1704,6 +2278,23 @@ app.set('trust proxy', 1);
         .sum('sales_orders.total_amount as value')
         .groupBy('customers.city')
         .orderBy('value', 'desc');
+
+      res.json(results);
+    } catch (error) {
+      console.error(error);
+      res.status(500).json({ error: 'Failed' });
+    }
+  });
+
+  app.get('/api/reports/customer-summary-city-wise', checkPermission('Customers'), async (req, res) => {
+    try {
+      const results = await db('customers')
+        .leftJoin('ledger', 'customers.id', 'ledger.customer_id')
+        .select('customers.id', 'customers.name', 'customers.company', 'customers.city', 'customers.phone')
+        .sum('ledger.debit as total_sales')
+        .sum('ledger.credit as total_purchases_payments')
+        .groupBy('customers.id', 'customers.name', 'customers.company', 'customers.city', 'customers.phone')
+        .orderBy('customers.city', 'asc');
 
       res.json(results);
     } catch (error) {
@@ -1764,11 +2355,12 @@ app.set('trust proxy', 1);
 
   app.get('/api/reports/profit-loss', checkPermission('Reports'), async (req, res) => {
     try {
-      const revenue = await db('ledger').where('account_type', 'Sales').sum('credit as total').first() as any;
-      const purchases = await db('ledger').where('account_type', 'Purchases').sum('debit as total').first() as any;
+      // Use direct tables for accuracy if ledger is missing entries
+      const salesTotal = await db('sales_orders').sum('total_amount as sum').first() as any;
+      const purchasesTotal = await db('purchase_orders').sum('total_amount as sum').first() as any;
       
-      const rev = revenue?.total || 0;
-      const exp = purchases?.total || 0;
+      const rev = Number(salesTotal?.sum || 0);
+      const exp = Number(purchasesTotal?.sum || 0);
 
       res.json({
         revenue: rev,
@@ -1776,8 +2368,27 @@ app.set('trust proxy', 1);
         netProfit: rev - exp
       });
     } catch (error) {
+      console.error(error);
       res.status(500).json({ error: 'Failed' });
     }
+  });
+
+  // API 404 Handler - Catch unmatched API routes before SPA fallback
+  app.use('/api', (req, res) => {
+    console.warn(`404 API Not Found: ${req.method} ${req.originalUrl}`);
+    res.status(404).json({ error: `API route ${req.method} ${req.originalUrl} not found` });
+  });
+
+  // Global Error Handler
+  app.use((err: any, req: any, res: any, next: any) => {
+    console.error('SERVER ERROR:', err);
+    if (res.headersSent) {
+      return next(err);
+    }
+    res.status(err.status || 500).json({ 
+      error: err.message || 'Internal Server Error',
+      stack: process.env.NODE_ENV === 'development' ? err.stack : undefined
+    });
   });
 
 // Vite middleware for development
