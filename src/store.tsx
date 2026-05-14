@@ -148,7 +148,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     fetch('/api/me', { credentials: 'include' })
       .then(async res => {
-        if (res.ok) {
+        const contentType = res.headers.get('content-type');
+        if (res.ok && contentType && contentType.includes('application/json')) {
           const data = await res.json();
           setCurrentUser(data);
         } else {
@@ -184,12 +185,27 @@ export function AppProvider({ children }: { children: ReactNode }) {
       credentials: 'include'
     });
     
-    if (res.ok) {
+    const contentType = res.headers.get('content-type');
+    if (res.ok && contentType && contentType.includes('application/json')) {
       const user = await res.json();
       setCurrentUser(user);
     } else {
-      const err = await res.json();
-      throw new Error(err.error || 'Login failed');
+      const text = await res.text();
+      let errorMsg = 'Login failed';
+      try {
+        if (contentType && contentType.includes('application/json')) {
+          const err = JSON.parse(text);
+          errorMsg = err.error || errorMsg;
+        } else if (res.status === 404) {
+          errorMsg = 'Login endpoint not found (404)';
+        } else {
+          errorMsg = `Server error (${res.status})`;
+          console.error('Non-JSON error response:', text.substring(0, 200));
+        }
+      } catch (e) {
+        errorMsg = `Server error (${res.status})`;
+      }
+      throw new Error(errorMsg);
     }
   };
 
