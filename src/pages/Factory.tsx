@@ -19,14 +19,12 @@ import {
   PlusCircle
 } from 'lucide-react';
 import { 
-  BarChart, 
-  Bar, 
-  XAxis, 
-  YAxis, 
-  CartesianGrid, 
-  Tooltip, 
+  PieChart,
+  Pie,
+  Cell,
+  Tooltip,
   ResponsiveContainer,
-  Cell
+  Legend
 } from 'recharts';
 import { Link } from 'react-router-dom';
 
@@ -81,7 +79,7 @@ export default function Factory() {
 
   const [showCompleteModal, setShowCompleteModal] = useState(false);
   const [showDamageModal, setShowDamageModal] = useState(false);
-  const [damageForm, setDamageForm] = useState({ type: 'Thermal Cracks', quantity: 0, notes: '' });
+  const [damageForm, setDamageForm] = useState({ type: 'Thermal Cracks', customType: '', quantity: 0, notes: '' });
 
   const [selectedBatch, setSelectedBatch] = useState<any>(null);
   const [completeForm, setCompleteForm] = useState({
@@ -260,14 +258,23 @@ export default function Factory() {
   const handleDamageSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
+      const finalType = damageForm.type === 'Other' ? damageForm.customType : damageForm.type;
+      if (damageForm.type === 'Other' && !damageForm.customType) {
+        showToast?.('Please specify the damage type', 'error');
+        return;
+      }
+
       const response = await fetch('/api/factory/damage-reports', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(damageForm)
+        body: JSON.stringify({
+          ...damageForm,
+          type: finalType
+        })
       });
       if (response.ok) {
         setShowDamageModal(false);
-        setDamageForm({ type: 'Thermal Cracks', quantity: 0, notes: '' });
+        setDamageForm({ type: 'Thermal Cracks', customType: '', quantity: 0, notes: '' });
         fetchData();
         showToast?.('Damage report logged successfully', 'success');
       } else {
@@ -278,6 +285,10 @@ export default function Factory() {
       showToast?.('Network error.', 'error');
     }
   };
+
+  const defaultDamageTypes = ['Thermal Cracks', 'Glaze Defects', 'Structural Failure'];
+  const historicalTypes = Array.from(new Set((dashboardData?.damageReports || []).map((r: any) => r.type) as string[]));
+  const availableTypes = Array.from(new Set([...defaultDamageTypes, ...historicalTypes]));
 
   return (
     <>
@@ -340,66 +351,36 @@ export default function Factory() {
           </div>
         </div>
 
-        {/* Output Velocity Chart */}
+        {/* Output Targets Breakdown Chart */}
         <div className="col-span-12 lg:col-span-8 bg-white border border-[#edeeef] rounded-xl shadow-sm p-8">
-          <div className="flex justify-between items-center mb-8">
-            <h3 className="text-[18px] font-bold text-[#162839]">Output Velocity (Last 24h)</h3>
-            <select className="px-3 py-1.5 bg-[#f3f4f5] border border-[#edeeef] rounded text-[12px] font-medium text-[#162839] outline-none">
-              <option>Shift A (06:00 - 14:00)</option>
-              <option>Shift B (14:00 - 22:00)</option>
-              <option>Shift C (22:00 - 06:00)</option>
-            </select>
-          </div>
-          <div className="h-72 w-full">
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={dashboardData?.velocityData || []} margin={{ top: 20, right: 0, left: -20, bottom: 0 }}>
-                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#edeeef" />
-                <XAxis 
-                  dataKey="time" 
-                  axisLine={false} 
-                  tickLine={false} 
-                  tick={{ fill: '#9ca3af', fontSize: 10, fontWeight: 700 }}
-                  interval={2}
-                />
-                <YAxis 
-                  axisLine={false} 
-                  tickLine={false} 
-                  tick={{ fill: '#9ca3af', fontSize: 10, fontWeight: 700 }}
-                />
-                <Tooltip 
-                  cursor={{ fill: '#f8f9fa' }}
-                  content={({ active, payload }) => {
-                    if (active && payload && payload.length) {
-                      return (
-                        <div className="bg-[#162839] text-white px-3 py-1.5 rounded-lg text-[11px] font-bold shadow-lg">
-                          {payload[0].value} units
-                        </div>
-                      );
-                    }
-                    return null;
-                  }}
-                />
-                <Bar dataKey="value" radius={[4, 4, 0, 0]} barSize={40}>
-                  {(dashboardData?.velocityData || []).map((entry: any, index: number) => (
-                    <Cell key={`cell-${index}`} fill={entry.peak ? '#006397' : '#e1e3e4'} />
-                  ))}
-                </Bar>
-              </BarChart>
-            </ResponsiveContainer>
-          </div>
-          <div className="mt-2 text-center">
-            {dashboardData?.velocityData?.map((entry: any, i: number) => entry.peak && (
-               <div key={i} className="inline-block bg-[#162839] text-white px-3 py-1 rounded text-[10px] font-bold shadow-sm">
-                 Peak: {entry.value} units at {entry.time}
-               </div>
-            ))}
+          <h3 className="text-[18px] font-bold text-[#162839] mb-8">Output Targets Breakdown</h3>
+          <div className="h-[300px]">
+             <ResponsiveContainer width="100%" height="100%">
+               <PieChart>
+                 <Pie
+                   data={dashboardData?.outputTargets || []}
+                   dataKey="actual"
+                   nameKey="label"
+                   cx="50%"
+                   cy="50%"
+                   innerRadius={60}
+                   outerRadius={100}
+                   paddingAngle={5}
+                 >
+                   {(dashboardData?.outputTargets || []).map((_: any, index: number) => (
+                     <Cell key={`cell-${index}`} fill={index === 0 ? '#006397' : '#5cb8fd'} />
+                   ))}
+                 </Pie>
+                 <Tooltip />
+                 <Legend />
+               </PieChart>
+             </ResponsiveContainer>
           </div>
         </div>
 
-        {/* Right Column Misc */}
-        <div className="col-span-12 lg:col-span-4 flex flex-col gap-8">
-           {/* Wastage Card */}
-           <div className="bg-white border border-[#edeeef] rounded-xl shadow-sm p-8">
+           <div className="col-span-12 lg:col-span-4 flex flex-col gap-8">
+            {/* Wastage Card */}
+            <div className="bg-white border border-[#edeeef] rounded-xl shadow-sm p-8 flex flex-col mb-8 lg:mb-0">
               <div className="flex items-center gap-4 mb-8">
                 <div className="p-3 bg-red-50 text-red-500 rounded-xl">
                   <Trash2 className="w-6 h-6" />
@@ -410,7 +391,7 @@ export default function Factory() {
                 </div>
               </div>
 
-              <div className="space-y-6">
+              <div className="max-h-[300px] overflow-y-auto pr-2 space-y-6">
                 {(dashboardData?.damageReports || []).reduce((acc: any, rep: any) => {
                   const existing = acc.find((a: any) => a.type === rep.type);
                   if (existing) existing.quantity += rep.quantity;
@@ -448,28 +429,6 @@ export default function Factory() {
               </button>
            </div>
 
-           {/* Raw Material Card */}
-           <div className="bg-[#162839] rounded-xl p-8 text-white relative overflow-hidden group">
-              <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:scale-110 transition-transform">
-                <Box className="w-24 h-24" />
-              </div>
-              <p className="text-[11px] font-bold text-white/60 uppercase tracking-widest mb-2">CURRENT RAW MATERIAL</p>
-              <div className="flex items-end justify-between">
-                <div>
-                  <h4 className="text-[32px] font-bold leading-none">
-                    {dashboardData ? ((dashboardData.rawMaterialStock || 0) / 1000).toFixed(1) : '0.0'} Tons
-                  </h4>
-                  <p className="text-[14px] text-white/80 mt-1">Total Stock</p>
-                </div>
-                <div className="text-right">
-                  <div className="flex items-center gap-1 text-emerald-400 font-bold">
-                    <TrendingUp className="w-4 h-4" />
-                    <span>+2.1%</span>
-                  </div>
-                  <p className="text-[10px] text-white/50 font-bold mt-1 uppercase tracking-wider">vs Last Shift</p>
-                </div>
-              </div>
-           </div>
         </div>
 
         {/* Real Production Batches Table */}
@@ -554,66 +513,6 @@ export default function Factory() {
             </table>
           </div>
         </div>
-
-        {/* Maintenance Table */}
-        <div className="col-span-12 bg-white border border-[#edeeef] rounded-xl shadow-sm overflow-hidden">
-          <div className="bg-[#f3f4f5] px-6 py-4 border-b border-[#edeeef] flex justify-between items-center">
-            <h3 className="text-[18px] font-bold text-[#162839]">Line A-04 Maintenance Schedule</h3>
-          </div>
-          <div className="overflow-x-auto">
-            <table className="w-full text-left">
-              <thead>
-                <tr className="bg-[#e1e3e4] text-[11px] font-bold text-neutral-500 uppercase tracking-widest border-b border-[#edeeef]">
-                  <th className="px-8 py-4">MACHINE ID</th>
-                  <th className="px-8 py-4">LAST SERVICE</th>
-                  <th className="px-8 py-4">NEXT SERVICE</th>
-                  <th className="px-8 py-4">UPTIME</th>
-                  <th className="px-8 py-4">STATUS</th>
-                  <th className="px-8 py-4">OPERATOR</th>
-                </tr>
-              </thead>
-              <tbody className="text-[14px] divide-y divide-[#edeeef]">
-                {(dashboardData?.machineMaintenance || []).map((s: any, i: number) => {
-                  const now = new Date();
-                  const nextSvc = new Date(s.next_service);
-                  const isOverdue = nextSvc < now;
-                  
-                  return (
-                    <tr key={i} className="hover:bg-[#f8f9fa] transition-colors">
-                      <td className="px-8 py-5 font-bold text-[#162839]">{s.machine_id}</td>
-                      <td className="px-8 py-5 text-neutral-500 font-medium">{new Date(s.last_service).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })}</td>
-                      <td className={`px-8 py-5 font-bold ${isOverdue ? 'text-red-500 italic' : 'text-neutral-500'}`}>
-                        {isOverdue ? 'OVERDUE' : new Date(s.next_service).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })}
-                      </td>
-                      <td className="px-8 py-5 font-bold text-[#162839]">{s.uptime_percentage}%</td>
-                      <td className="px-8 py-5">
-                        <span className={`px-2.5 py-0.5 text-[10px] font-bold rounded-full border ${
-                          s.status === 'OPTIMAL' ? 'bg-[#dcfce7] text-[#166534] border-emerald-200' :
-                          s.status === 'RUNNING' ? 'bg-[#e0f2fe] text-[#0369a1] border-blue-200' :
-                          'bg-red-50 text-red-600 border-red-200'
-                        }`}>
-                          {s.status}
-                        </span>
-                      </td>
-                      <td className="px-8 py-5">
-                        <div className="flex items-center gap-3">
-                          {s.avatar_url ? (
-                            <img src={s.avatar_url} alt={s.operator} className="w-7 h-7 rounded-full shadow-sm" />
-                          ) : (
-                            <div className="w-7 h-7 rounded-full bg-neutral-200 flex items-center justify-center text-[10px] font-bold text-neutral-500">
-                               NA
-                            </div>
-                          )}
-                          <span className="font-bold text-[#162839]">{s.operator}</span>
-                        </div>
-                      </td>
-                    </tr>
-                  )
-                })}
-              </tbody>
-            </table>
-          </div>
-        </div>
       </div>
     </div>
 
@@ -654,12 +553,25 @@ export default function Factory() {
                       onChange={e => setDamageForm({...damageForm, type: e.target.value})}
                       className="w-full bg-[#f8f9fa] border border-neutral-200 rounded-xl px-4 py-3 text-[14px] outline-none focus:ring-2 focus:ring-[#5cb8fd]"
                     >
-                      <option value="Thermal Cracks">Thermal Cracks</option>
-                      <option value="Glaze Defects">Glaze Defects</option>
-                      <option value="Structural Failure">Structural Failure</option>
+                      {availableTypes.map(t => (
+                        <option key={t} value={t}>{t}</option>
+                      ))}
                       <option value="Other">Other</option>
                     </select>
                  </div>
+                 {damageForm.type === 'Other' && (
+                   <div className="space-y-1.5 animate-in slide-in-from-top-2 duration-300">
+                      <label className="text-[11px] font-bold text-neutral-400 uppercase tracking-widest">Specify Damage Type</label>
+                      <input 
+                        required
+                        type="text" 
+                        placeholder="Enter new damage type"
+                        value={damageForm.customType}
+                        onChange={e => setDamageForm({...damageForm, customType: e.target.value})}
+                        className="w-full bg-[#f8f9fa] border border-neutral-200 rounded-xl px-4 py-3 text-[14px] outline-none focus:ring-2 focus:ring-[#5cb8fd]"
+                      />
+                   </div>
+                 )}
                  <div className="space-y-1.5">
                     <label className="text-[11px] font-bold text-neutral-400 uppercase tracking-widest">Quantity</label>
                     <input 
