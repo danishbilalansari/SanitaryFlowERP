@@ -36,10 +36,10 @@ export default function Toast() {
     <AnimatePresence>
       {toast.type && (
         <motion.div
-          initial={{ opacity: 0, y: 20, scale: 0.95 }}
+          initial={{ opacity: 0, y: -20, scale: 0.95 }}
           animate={{ opacity: 1, y: 0, scale: 1 }}
-          exit={{ opacity: 0, y: 20, scale: 0.95 }}
-          className="fixed bottom-6 right-6 z-[9999]"
+          exit={{ opacity: 0, y: -20, scale: 0.95 }}
+          className="fixed top-20 right-6 z-[9999]"
         >
           <div className={`flex items-center space-x-3 px-4 py-3 rounded-xl border shadow-lg ${getStyles()}`}>
             {getIcon()}
