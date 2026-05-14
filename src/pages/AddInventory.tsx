@@ -197,8 +197,9 @@ export default function AddInventory() {
                   <label className="text-[13px] font-bold text-[#162839] block">Stock Quantity</label>
                   <input 
                     type="number" 
+                    min="0"
                     value={formData.stock}
-                    onChange={(e) => setFormData({ ...formData, stock: parseInt(e.target.value) || 0 })}
+                    onChange={(e) => setFormData({ ...formData, stock: Math.max(0, parseInt(e.target.value) || 0) })}
                     className="w-full bg-[#f8f9fa] border border-[#edeeef] rounded-xl px-4 py-3 text-[14px] font-medium outline-none"
                   />
                 </div>
@@ -206,19 +207,22 @@ export default function AddInventory() {
                   <label className="text-[13px] font-bold text-[#162839] block">Unit Price ($)</label>
                   <input 
                     type="number"
+                    min="0.01"
+                    step="0.01"
                     value={formData.price}
-                    onChange={(e) => setFormData({ ...formData, price: parseFloat(e.target.value) || 0 })}
+                    onChange={(e) => setFormData({ ...formData, price: Math.max(0, parseFloat(e.target.value) || 0) })}
                     className="w-full bg-[#f8f9fa] border border-[#edeeef] rounded-xl px-4 py-3 text-[14px] font-medium outline-none"
                   />
                 </div>
               </div>
-
+ 
               <div className="space-y-2">
                 <label className="text-[13px] font-bold text-[#162839] block">Safety Stock (Min)</label>
                 <input 
                   type="number" 
+                  min="0"
                   value={formData.minStock}
-                  onChange={(e) => setFormData({ ...formData, minStock: parseInt(e.target.value) || 0 })}
+                  onChange={(e) => setFormData({ ...formData, minStock: Math.max(0, parseInt(e.target.value) || 0) })}
                   className="w-full bg-[#f8f9fa] border border-[#edeeef] rounded-xl px-4 py-3 text-[14px] font-medium outline-none"
                 />
               </div>
