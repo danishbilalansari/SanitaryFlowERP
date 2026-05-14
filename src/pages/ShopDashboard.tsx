@@ -118,18 +118,19 @@ export default function ShopDashboard() {
                   <th className="px-6 py-4">Product Name</th>
                   <th className="px-6 py-4">SKU</th>
                   <th className="px-6 py-4 text-right">Display Stock</th>
+                  <th className="px-6 py-4 text-right">Display Status</th>
                   <th className="px-6 py-4 text-right">Warehouse Stock</th>
-                  <th className="px-6 py-4 text-right">Total Status</th>
+                  <th className="px-6 py-4 text-right">Warehouse Status</th>
                 </tr>
               </thead>
               <tbody className="text-[14px] divide-y divide-[#edeeef]">
                 {loading ? (
                   <tr>
-                    <td colSpan={5} className="px-6 py-12 text-center text-neutral-400">Loading shop inventory...</td>
+                    <td colSpan={6} className="px-6 py-12 text-center text-neutral-400">Loading shop inventory...</td>
                   </tr>
                 ) : inventory.length === 0 ? (
                   <tr>
-                    <td colSpan={5} className="px-6 py-12 text-center text-neutral-400">No shop items found.</td>
+                    <td colSpan={6} className="px-6 py-12 text-center text-neutral-400">No shop items found.</td>
                   </tr>
                 ) : inventory.map((item) => (
                   <tr key={item.id} className="hover:bg-[#f8f9fa] transition-colors">
@@ -139,12 +140,19 @@ export default function ShopDashboard() {
                     </td>
                     <td className="px-6 py-4 text-neutral-500 font-mono text-[13px]">{item.sku}</td>
                     <td className="px-6 py-4 text-right font-medium">{item.display_stock?.toLocaleString() || 0}</td>
+                    <td className="px-6 py-4 text-right">
+                      <span className={`inline-flex px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider ${
+                        (item.display_stock || 0) < (item.minStock || 0) ? 'bg-red-100 text-red-600' : 'bg-green-100 text-green-600'
+                      }`}>
+                        {(item.display_stock || 0) < (item.minStock || 0) ? 'Low Stock' : 'In Stock'}
+                      </span>
+                    </td>
                     <td className="px-6 py-4 text-right font-medium">{item.warehouse_stock?.toLocaleString() || 0}</td>
                     <td className="px-6 py-4 text-right">
-                      <span className={`inline-flex px-2 py-0.5 rounded-full text-[11px] font-bold uppercase tracking-wider ${
-                        (item.stock || 0) < (item.minStock || 0) ? 'bg-red-100 text-red-600' : 'bg-green-100 text-green-600'
+                      <span className={`inline-flex px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider ${
+                        (item.warehouse_stock || 0) < (item.minStock || 0) ? 'bg-red-100 text-red-600' : 'bg-green-100 text-green-600'
                       }`}>
-                        {(item.stock || 0) < (item.minStock || 0) ? 'Low Stock' : 'Healthy'}
+                        {(item.warehouse_stock || 0) < (item.minStock || 0) ? 'Low Stock' : 'In Stock'}
                       </span>
                     </td>
                   </tr>
