@@ -28,6 +28,7 @@ import {
   ResponsiveContainer 
 } from 'recharts';
 import { motion } from 'motion/react';
+import { useAppContext } from '../store';
 
 interface InventoryItem {
   id: number;
@@ -46,15 +47,26 @@ interface InventoryItem {
 export default function InventoryDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
+  const { showToast } = useAppContext();
     const [item, setItem] = useState<InventoryItem | null>(null);
   const [loading, setLoading] = useState(true);
-  const [timeRange, setTimeRange] = useState('30D');
   const [transactions, setTransactions] = useState<any[]>([]);
   const [transactionType, setTransactionType] = useState('All');
   const [trendData, setTrendData] = useState<any[]>([]);
   const [loadingHistory, setLoadingHistory] = useState(false);
   const [distribution, setDistribution] = useState<any[]>([]);
   const [isFullHistory, setIsFullHistory] = useState(false);
+
+  const fetchTrends = () => {
+    fetch(`/api/inventory/${id}/trends`)
+      .then(async res => {
+        if (!res.ok) throw new Error('Trends fetch failed');
+        const text = await res.text();
+        return text ? JSON.parse(text) : [];
+      })
+      .then(data => setTrendData(data))
+      .catch(err => console.error(err));
+  };
 
   const fetchDistribution = () => {
     fetch(`/api/inventory/${id}/distribution`)
@@ -107,23 +119,22 @@ export default function InventoryDetail() {
   }, [id]);
 
   useEffect(() => {
-    fetch(`/api/inventory/${id}/trends?range=${timeRange}`)
-      .then(async res => {
-        if (!res.ok) throw new Error('Trends fetch failed');
-        const text = await res.text();
-        return text ? JSON.parse(text) : [];
-      })
-      .then(data => setTrendData(data))
-      .catch(err => console.error(err));
-  }, [id, timeRange]);
+    fetchTrends();
+    const interval = setInterval(fetchTrends, 30000); // Refresh trends every 30 seconds
+    return () => clearInterval(interval);
+  }, [id]);
 
   const [showAdjust, setShowAdjust] = useState(false);
   const [showTransfer, setShowTransfer] = useState(false);
+  const [isTransferring, setIsTransferring] = useState(false);
   const [adjustment, setAdjustment] = useState({ type: 'add', quantity: 0, reason: '' });
   const [transfer, setTransfer] = useState({ toWarehouse: 'Secondary Storage (B-4)', quantity: 0 });
 
   const handleAdjust = async () => {
-    if (adjustment.quantity <= 0) return;
+    if (adjustment.quantity <= 0) {
+      showToast('Please enter a valid quantity', 'error');
+      return;
+    }
     try {
       const res = await fetch('/api/inventory/adjust', {
         method: 'POST',
@@ -131,19 +142,34 @@ export default function InventoryDetail() {
         body: JSON.stringify({ id: item?.id, ...adjustment })
       });
       if (res.ok) {
+        showToast('Inventory adjusted successfully', 'success');
         const text = await res.text();
         const data = text ? JSON.parse(text) : {};
         if (item) setItem({ ...item, stock: data.newStock });
         setShowAdjust(false);
         fetchHistory(transactionType);
+        fetchTrends();
+      } else {
+        const errData = await res.json().catch(() => ({}));
+        showToast(errData.error || 'Adjustment failed', 'error');
       }
     } catch (err) {
       console.error('Adjustment failed:', err);
+      showToast('Network error occurred during adjustment', 'error');
     }
   };
 
   const handleTransfer = async () => {
-    if (transfer.quantity <= 0) return;
+    if (transfer.quantity <= 0) {
+      showToast('Please enter a valid quantity', 'error');
+      return;
+    }
+    if (item && transfer.quantity > item.stock) {
+      showToast(`Cannot transfer more than available stock (${item.stock})`, 'error');
+      return;
+    }
+
+    setIsTransferring(true);
     try {
       const res = await fetch('/api/inventory/transfer', {
         method: 'POST',
@@ -155,9 +181,11 @@ export default function InventoryDetail() {
         })
       });
       if (res.ok) {
+        showToast('Stock transfer successful', 'success');
         setShowTransfer(false);
         fetchHistory(transactionType);
         fetchDistribution();
+        fetchTrends();
         // Refresh item main stock too
         fetch(`/api/inventory/${id}`)
           .then(async r => {
@@ -167,9 +195,15 @@ export default function InventoryDetail() {
           })
           .then(setItem)
           .catch(err => console.error('Error refreshing item:', err));
+      } else {
+        const errData = await res.json().catch(() => ({}));
+        showToast(errData.error || 'Transfer failed', 'error');
       }
     } catch (err) {
       console.error('Transfer failed:', err);
+      showToast('Network error occurred during transfer', 'error');
+    } finally {
+      setIsTransferring(false);
     }
   };
 
@@ -351,21 +385,9 @@ export default function InventoryDetail() {
         {/* Stock Trend */}
         <section className="xl:col-span-2 bg-white rounded-2xl border border-[#edeeef] p-8 shadow-sm flex flex-col h-[450px]">
           <div className="flex justify-between items-center mb-8">
-            <h3 className="text-[18px] font-bold text-[#162839]">Stock Level Trends</h3>
-            <div className="flex bg-[#f8f9fa] p-1 rounded-lg border border-[#edeeef]">
-              {['7D', '30D', '90D'].map((range) => (
-                <button 
-                  key={range}
-                  onClick={() => setTimeRange(range)}
-                  className={`px-4 py-1.5 rounded-md text-[11px] font-black tracking-widest transition-all ${
-                    timeRange === range 
-                      ? 'bg-[#006397] text-white shadow-md' 
-                      : 'text-neutral-500 hover:text-[#162839]'
-                  }`}
-                >
-                  {range}
-                </button>
-              ))}
+            <div>
+              <h3 className="text-[18px] font-bold text-[#162839]">Stock Level Trends</h3>
+              <p className="text-[12px] text-neutral-400 mt-1 font-medium">Tracking from May 10, 2026</p>
             </div>
           </div>
           <div className="flex-1 w-full">
@@ -586,9 +608,10 @@ export default function InventoryDetail() {
                 </button>
                 <button 
                   onClick={handleTransfer}
-                  className="flex-1 py-4 bg-[#006397] text-white font-bold rounded-xl hover:opacity-90 shadow-lg shadow-blue-900/20 transition-all uppercase tracking-widest text-[12px]"
+                  disabled={isTransferring}
+                  className="flex-1 py-4 bg-[#006397] text-white font-bold rounded-xl hover:opacity-90 shadow-lg shadow-blue-900/20 transition-all uppercase tracking-widest text-[12px] disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  Track Transfer
+                  {isTransferring ? 'Processing...' : 'Track Transfer'}
                 </button>
               </div>
             </div>
