@@ -221,17 +221,19 @@ export default function AddPurchase() {
                                </div>
                             </div>
                          </td>
-                         <td className="px-6 py-4 text-right">
+                          <td className="px-6 py-4 text-right">
                             <div className="flex items-center justify-end gap-1 font-bold">
                                <span className="text-neutral-400">$</span>
                                <input 
                                  type="number" 
+                                 min="0.01"
+                                 step="0.01"
                                  value={item.cost}
-                                 onChange={e => handleUpdateCost(item.product_id, Number(e.target.value))}
+                                 onChange={e => handleUpdateCost(item.product_id, Math.max(0.01, Number(e.target.value)))}
                                  className="w-20 text-right bg-neutral-100 border-none rounded p-1 outline-none"
                                />
                             </div>
-                         </td>
+                          </td>
                          <td className="px-6 py-4 text-center">
                             <div className="inline-flex items-center gap-2 bg-neutral-100 px-2 py-1 rounded">
                                <button onClick={() => handleUpdateQty(item.product_id, -1)} className="hover:text-red-500"><Minus className="w-3 h-3"/></button>
