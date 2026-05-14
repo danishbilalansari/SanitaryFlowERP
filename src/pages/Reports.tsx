@@ -298,7 +298,9 @@ export default function Reports() {
               <tr className="text-[11px] font-black text-neutral-400 uppercase tracking-[0.2em] border-b border-neutral-50">
                 <th className="px-10 py-6">Customer Identity</th>
                 <th className="px-10 py-6">Region</th>
-                <th className="px-10 py-6 text-right">Debit Balance</th>
+                <th className="px-10 py-6 text-right">Total Amount</th>
+                <th className="px-10 py-6 text-right">Paid Amount</th>
+                <th className="px-10 py-6 text-right">Remaining Balance</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-neutral-50">
@@ -309,6 +311,12 @@ export default function Reports() {
                     <p className="text-[12px] text-neutral-400 font-bold uppercase tracking-widest mt-0.5">{r.phone}</p>
                   </td>
                   <td className="px-10 py-6 text-neutral-500 font-bold uppercase text-[12px] tracking-tight">{r.city}</td>
+                  <td className="px-10 py-6 text-right font-black text-[#162839] text-lg">
+                    Rs {(r.total_debit || 0).toLocaleString()}
+                  </td>
+                  <td className="px-10 py-6 text-right font-black text-emerald-600 text-lg">
+                    Rs {(r.total_credit || 0).toLocaleString()}
+                  </td>
                   <td className="px-10 py-6 text-right">
                     <p className="font-black text-rose-500 text-lg">Rs {(r.balance || 0).toLocaleString()}</p>
                   </td>
