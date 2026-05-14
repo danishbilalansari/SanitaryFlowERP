@@ -166,8 +166,9 @@ export default function AddFactoryBatch() {
                 <label className="text-[11px] font-bold text-neutral-400 uppercase tracking-widest block">Target Yield *</label>
                 <input 
                   type="number" 
+                  min="1"
                   value={formData.target_qty}
-                  onChange={e => setFormData({...formData, target_qty: Number(e.target.value)})}
+                  onChange={e => setFormData({...formData, target_qty: Math.max(1, Number(e.target.value))})}
                   className="w-full border border-neutral-200/80 rounded-xl py-3 px-4 text-[14px] font-bold outline-none focus:ring-2 focus:ring-[#5cb8fd] transition-all" 
                   placeholder="e.g. 500" 
                 />
