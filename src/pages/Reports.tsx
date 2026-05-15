@@ -1,3 +1,4 @@
+import { formatCurrency } from '../lib/currency';
 import React, { useState } from 'react';
 import { 
   BarChart, 
@@ -52,7 +53,7 @@ import { motion } from 'motion/react';
 type ReportView = 'main' | 'sales' | 'city-sales' | 'outstanding' | 'inventory-valuation' | 'production-summary' | 'profit-loss';
 
 export default function Reports() {
-  const { showToast } = useAppContext();
+  const { showToast, currency } = useAppContext();
   const [activeReport, setActiveReport] = useState<ReportView>('main');
   const [reportData, setReportData] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(false);
@@ -79,19 +80,19 @@ export default function Reports() {
     let filename = `${activeReport}_report_${new Date().toISOString().split('T')[0]}.csv`;
 
     if (activeReport === 'sales' || activeReport === 'city-sales') {
-      headers = ['Label', 'Value (Rs)'];
+      headers = ['Label', `Value (${currency})`];
       rows = reportData.map((d: any) => [d.label, d.value]);
     } else if (activeReport === 'outstanding') {
-      headers = ['Customer Name', 'Phone', 'City', 'Balance (Rs)'];
+      headers = ['Customer Name', 'Phone', 'City', `Balance (${currency})`];
       rows = reportData.map((d: any) => [d.name, d.phone, d.city, d.balance]);
     } else if (activeReport === 'inventory-valuation') {
-      headers = ['Item Name', 'Unit Stock', 'Weighted Value (Rs)'];
+      headers = ['Item Name', 'Unit Stock', `Weighted Value (${currency})`];
       rows = (reportData.items || []).map((i: any) => [i.name, i.stock, i.value]);
     } else if (activeReport === 'production-summary') {
       headers = ['Status', 'Efficiency (Batch Count)', 'Total Units (PCS)'];
       rows = reportData.map((s: any) => [s.status, s.count, s.total_qty]);
     } else if (activeReport === 'profit-loss') {
-      headers = ['Category', 'Amount (Rs)'];
+      headers = ['Category', `Amount (${currency})`];
       rows = [
         ['Gross Revenue', reportData.revenue],
         ['Total Expenditure', reportData.expenses],
@@ -148,12 +149,12 @@ export default function Reports() {
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           <div className="bg-white p-8 rounded-[32px] border border-neutral-100 shadow-sm relative overflow-hidden group">
             <p className="text-[11px] font-black text-neutral-400 uppercase tracking-[0.2em] mb-2">Total Period Revenue</p>
-            <h4 className="text-[32px] font-black text-[#162839] tracking-tight">Rs {totalRevenue.toLocaleString()}</h4>
+            <h4 className="text-[32px] font-black text-[#162839] tracking-tight">{formatCurrency(totalRevenue, currency)}</h4>
             <BarChart2 className="absolute -bottom-4 -right-4 w-24 h-24 text-emerald-500 opacity-[0.05]" />
           </div>
           <div className="bg-white p-8 rounded-[32px] border border-neutral-100 shadow-sm relative overflow-hidden group">
             <p className="text-[11px] font-black text-neutral-400 uppercase tracking-[0.2em] mb-2">Avg. Per {salesPeriod.replace('ly', '')}</p>
-            <h4 className="text-[32px] font-black text-[#162839] tracking-tight">Rs {Math.round(totalRevenue / (reportData.length || 1)).toLocaleString()}</h4>
+            <h4 className="text-[32px] font-black text-[#162839] tracking-tight">{formatCurrency(Math.round(totalRevenue / (reportData.length || 1)), currency)}</h4>
             <TrendingUp className="absolute -bottom-4 -right-4 w-24 h-24 text-emerald-500 opacity-[0.05]" />
           </div>
           <div className="bg-white p-8 rounded-[32px] border border-neutral-100 shadow-sm relative overflow-hidden">
@@ -189,7 +190,7 @@ export default function Reports() {
                 <tr key={i} className="hover:bg-neutral-50/50 transition-colors group">
                   <td className="px-10 py-6 font-bold text-[#162839] group-hover:text-emerald-600 transition-colors uppercase tracking-tight">{d.label}</td>
                   <td className="px-10 py-6 text-right font-black text-[#162839]">
-                    <span className="text-emerald-600 mr-1">Rs</span>
+                    <span className="text-emerald-600 mr-1">{currency}</span>
                     {(d.value || 0).toLocaleString()}
                   </td>
                 </tr>
@@ -239,7 +240,7 @@ export default function Reports() {
                     <p className="text-[16px] font-black text-[#162839] tracking-tight">{d.label || 'Unspecified'}</p>
                     <p className="text-[12px] text-neutral-400 font-bold uppercase tracking-widest mt-0.5">Territory {i+1}</p>
                   </div>
-                  <p className="text-[18px] font-black text-blue-600">Rs {(d.value || 0).toLocaleString()}</p>
+                  <p className="text-[18px] font-black text-blue-600">{formatCurrency((d.value || 0), currency)}</p>
                 </div>
                 <div className="w-full h-3 bg-neutral-50 rounded-full overflow-hidden border border-neutral-100">
                   <motion.div 
@@ -265,7 +266,7 @@ export default function Reports() {
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           <div className="bg-rose-50 p-8 rounded-[32px] border border-rose-100 shadow-sm relative overflow-hidden group">
             <p className="text-[11px] font-black text-rose-400 uppercase tracking-[0.2em] mb-2">Total Receivables</p>
-            <h4 className="text-[32px] font-black text-rose-700 tracking-tight">Rs {totalOutstanding.toLocaleString()}</h4>
+            <h4 className="text-[32px] font-black text-rose-700 tracking-tight">{formatCurrency(totalOutstanding, currency)}</h4>
             <Receipt className="absolute -bottom-4 -right-4 w-24 h-24 text-rose-500 opacity-10" />
           </div>
           <div className="bg-white p-8 rounded-[32px] border border-neutral-100 shadow-sm relative overflow-hidden group">
@@ -312,13 +313,13 @@ export default function Reports() {
                   </td>
                   <td className="px-10 py-6 text-neutral-500 font-bold uppercase text-[12px] tracking-tight">{r.city}</td>
                   <td className="px-10 py-6 text-right font-black text-[#162839] text-lg">
-                    Rs {(r.total_debit || 0).toLocaleString()}
+                    {formatCurrency((r.total_debit || 0), currency)}
                   </td>
                   <td className="px-10 py-6 text-right font-black text-emerald-600 text-lg">
-                    Rs {(r.total_credit || 0).toLocaleString()}
+                    {formatCurrency((r.total_credit || 0), currency)}
                   </td>
                   <td className="px-10 py-6 text-right">
-                    <p className="font-black text-rose-500 text-lg">Rs {(r.balance || 0).toLocaleString()}</p>
+                    <p className="font-black text-rose-500 text-lg">{formatCurrency((r.balance || 0), currency)}</p>
                   </td>
                 </tr>
               ))}
@@ -336,7 +337,7 @@ export default function Reports() {
         <div className="bg-gradient-to-br from-amber-400 to-orange-600 p-12 rounded-[40px] shadow-2xl relative overflow-hidden text-white">
           <div className="relative z-10">
             <p className="text-[12px] font-black text-white/60 uppercase tracking-[0.3em] mb-4">Net Asset Value</p>
-            <h4 className="text-[56px] font-black tracking-tight leading-none">Rs {(reportData.total || 0).toLocaleString()}</h4>
+            <h4 className="text-[56px] font-black tracking-tight leading-none">{formatCurrency((reportData.total || 0), currency)}</h4>
             <div className="mt-8 flex gap-8">
               <div>
                 <p className="text-white/60 text-[11px] font-bold uppercase tracking-widest leading-none mb-2">Total SKUs</p>
@@ -372,7 +373,7 @@ export default function Reports() {
                   <td className="px-10 py-6 text-center">
                     <span className="px-4 py-1.5 bg-neutral-50 border border-neutral-100 rounded-xl font-black text-[#162839] text-[13px]">{i.stock}</span>
                   </td>
-                  <td className="px-10 py-6 text-right font-black text-amber-600">Rs {(i.value || 0).toLocaleString()}</td>
+                  <td className="px-10 py-6 text-right font-black text-amber-600">{formatCurrency((i.value || 0), currency)}</td>
                 </tr>
               ))}
             </tbody>
@@ -456,7 +457,7 @@ export default function Reports() {
                   <div className="p-2 bg-emerald-500/10 text-emerald-400 rounded-lg">
                     <TrendingUp size={20} />
                   </div>
-                  <h4 className="text-[32px] font-black text-emerald-400 font-mono">Rs {(reportData.revenue || 0).toLocaleString()}</h4>
+                  <h4 className="text-[32px] font-black text-emerald-400 font-mono">{formatCurrency((reportData.revenue || 0), currency)}</h4>
                 </div>
               </div>
               <div className="space-y-2">
@@ -465,7 +466,7 @@ export default function Reports() {
                   <div className="p-2 bg-rose-500/10 text-rose-400 rounded-lg">
                     <CreditCard size={20} />
                   </div>
-                  <h4 className="text-[32px] font-black text-rose-400 font-mono">Rs {(reportData.expenses || 0).toLocaleString()}</h4>
+                  <h4 className="text-[32px] font-black text-rose-400 font-mono">{formatCurrency((reportData.expenses || 0), currency)}</h4>
                 </div>
               </div>
             </div>
@@ -475,7 +476,7 @@ export default function Reports() {
                  <p className="text-[12px] font-black text-white/30 uppercase tracking-[0.3em] mb-4">Calculated Operational Balance</p>
                  <div className="flex flex-col items-center gap-2">
                     <span className={`text-[64px] font-black leading-none ${(reportData.netProfit || 0) >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
-                      Rs {(reportData.netProfit || 0).toLocaleString()}
+                      {formatCurrency((reportData.netProfit || 0), currency)}
                     </span>
                     <span className={`px-5 py-1.5 rounded-full text-[12px] font-black uppercase tracking-[0.2em] mt-4 ${ (reportData.netProfit || 0) >= 0 ? 'bg-emerald-500 text-white' : 'bg-rose-500 text-white'}`}>
                       { (reportData.netProfit || 0) >= 0 ? 'Surplus Balance' : 'Operating Deficit' }
