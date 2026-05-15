@@ -1,3 +1,4 @@
+import { formatCurrency } from '../lib/currency';
 import React, { useState, useEffect } from 'react';
 import { 
   Plus, 
@@ -26,7 +27,7 @@ import { motion } from 'motion/react';
 import { useAppContext } from '../store';
 
 export default function Sales() {
-  const { showToast, currentUser } = useAppContext();
+  const { showToast, currentUser, currency } = useAppContext();
   const [sales, setSales] = useState<any[]>([]);
   const [stats, setStats] = useState({
     totalRevenue: 0,
@@ -108,7 +109,7 @@ export default function Sales() {
   const kpis: any[] = [
     { 
       label: 'TOTAL REVENUE (ALL)', 
-      value: `$${(stats.totalRevenueOverall || stats.totalRevenue || 0).toLocaleString()}`, 
+      value: `${formatCurrency((stats.totalRevenueOverall || stats.totalRevenue || 0), currency)}`, 
       trend: '', 
       trendColor: 'text-green-600', 
       trendBg: 'bg-green-50',
@@ -125,7 +126,7 @@ export default function Sales() {
     { 
       label: 'ORDERS TODAY', 
       value: (stats.ordersToday || 0).toString(), 
-      subValue: `Revenue: $${(stats.todayRevenue || 0).toLocaleString()}`,
+      subValue: `Revenue: ${formatCurrency((stats.todayRevenue || 0), currency)}`,
       icon: ShoppingBag,
       id: 'kpi-orders'
     }
@@ -376,9 +377,9 @@ export default function Sales() {
                   <td className="px-8 py-6 text-[14px] text-neutral-500 font-medium">
                     {new Date(sale.created_at).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}
                   </td>
-                  <td className="px-8 py-6 text-[14px] font-black text-[#162839]">${total.toLocaleString(undefined, { minimumFractionDigits: 2 })}</td>
-                  <td className="px-8 py-6 text-[14px] font-black text-emerald-600">${paid.toLocaleString(undefined, { minimumFractionDigits: 2 })}</td>
-                  <td className={`px-8 py-6 text-[14px] font-black ${balance > 0 ? 'text-red-500' : 'text-neutral-500'}`}>${Math.abs(balance).toLocaleString(undefined, { minimumFractionDigits: 2 })} {balance > 0 && '(Dr)'}</td>
+                  <td className="px-8 py-6 text-[14px] font-black text-[#162839]">{formatCurrency(total, currency)}</td>
+                  <td className="px-8 py-6 text-[14px] font-black text-emerald-600">{formatCurrency(paid, currency)}</td>
+                  <td className={`px-8 py-6 text-[14px] font-black ${balance > 0 ? 'text-red-500' : 'text-neutral-500'}`}>{formatCurrency(Math.abs(balance), currency)} {balance > 0 && '(Dr)'}</td>
                   <td className="px-8 py-6">
                     <span className={`px-3 py-1 text-[11px] font-black rounded-full uppercase tracking-widest ${
                       sale.status?.toLowerCase() === 'completed' ? 'bg-green-50 text-green-700 border border-green-200' :
