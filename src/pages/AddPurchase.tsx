@@ -1,3 +1,4 @@
+import { formatCurrency } from '../lib/currency';
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { 
@@ -13,7 +14,7 @@ import {
 import { useAppContext } from '../store';
 
 export default function AddPurchase() {
-  const { showToast } = useAppContext();
+  const { showToast, currency } = useAppContext();
   const navigate = useNavigate();
 
   const [inventory, setInventory] = useState<any[]>([]);
@@ -223,7 +224,7 @@ export default function AddPurchase() {
                          </td>
                           <td className="px-6 py-4 text-right">
                             <div className="flex items-center justify-end gap-1 font-bold">
-                               <span className="text-neutral-400">$</span>
+                               <span className="text-neutral-400">{currency}</span>
                                <input 
                                  type="number" 
                                  min="0.01"
@@ -241,7 +242,7 @@ export default function AddPurchase() {
                                <button onClick={() => handleUpdateQty(item.product_id, 1)} className="hover:text-emerald-500"><Plus className="w-3 h-3"/></button>
                             </div>
                          </td>
-                         <td className="px-6 py-4 text-right font-bold">${(item.cost * item.qty).toFixed(2)}</td>
+                         <td className="px-6 py-4 text-right font-bold">{formatCurrency(item.cost * item.qty, currency)}</td>
                          <td className="px-6 py-4 text-right"><button onClick={() => handleRemoveItem(item.product_id)}><Trash2 className="w-4 h-4 text-neutral-300 hover:text-red-500"/></button></td>
                       </tr>
                    ))}
@@ -275,7 +276,7 @@ export default function AddPurchase() {
           </div>
           <div className="bg-[#162839] p-8 rounded-2xl shadow-xl text-white">
              <p className="text-white/40 text-[10px] font-bold uppercase tracking-widest mb-2">Total Estimated Cost</p>
-             <p className="text-[42px] font-bold mb-8 tracking-tight">${total.toFixed(2)}</p>
+             <p className="text-[42px] font-bold mb-8 tracking-tight">{formatCurrency(total, currency)}</p>
              <button onClick={handleCompletePurchase} className="w-full bg-[#5cb8fd] text-[#00476e] font-black py-4 rounded-xl hover:brightness-110 active:scale-95 transition-all flex items-center justify-center gap-2 shadow-lg">
                 <ShoppingCart className="w-5 h-5"/>
                 CREATE PURCHASE ORDER
