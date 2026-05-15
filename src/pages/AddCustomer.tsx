@@ -1,3 +1,4 @@
+import { formatCurrency } from '../lib/currency';
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { 
@@ -20,7 +21,7 @@ import { motion } from 'motion/react';
 import { useAppContext } from '../store';
 
 export default function AddCustomer() {
-  const { showToast } = useAppContext();
+  const { showToast, currency } = useAppContext();
   const navigate = useNavigate();
 
   const [formData, setFormData] = useState({
@@ -182,7 +183,7 @@ export default function AddCustomer() {
                 <div className="space-y-2">
                   <label className="text-[13px] font-bold text-[#162839] block">Opening Balance</label>
                   <div className="relative">
-                    <span className="absolute left-4 top-1/2 -translate-y-1/2 text-neutral-400 font-bold">Rs</span>
+                    <span className="absolute left-4 top-1/2 -translate-y-1/2 text-neutral-400 font-bold">{currency}</span>
                     <input 
                       type="number"
                       value={formData.opening_balance || 0}
@@ -195,7 +196,7 @@ export default function AddCustomer() {
                 <div className="space-y-2">
                   <label className="text-[13px] font-bold text-[#162839] block">Credit Limit</label>
                   <div className="relative">
-                    <span className="absolute left-4 top-1/2 -translate-y-1/2 text-neutral-400 font-bold">$</span>
+                    <span className="absolute left-4 top-1/2 -translate-y-1/2 text-neutral-400 font-bold">{currency}</span>
                     <input 
                       type="number"
                       value={formData.credit_limit}
