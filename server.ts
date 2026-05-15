@@ -880,7 +880,7 @@ app.use((req, res, next) => {
 
       const items = await db('purchase_items')
         .join('inventory', 'purchase_items.product_id', 'inventory.id')
-        .select('purchase_items.*', 'inventory.name as product_name', 'inventory.sku')
+        .select('purchase_items.*', 'inventory.name', 'inventory.sku')
         .where('purchase_items.po_id', Number(id));
 
       res.json({ ...order, items });
@@ -981,7 +981,7 @@ app.use((req, res, next) => {
 
   app.patch('/api/purchases/:id', checkPermission('Purchases'), async (req: any, res) => {
     const { id } = req.params;
-    const { status, additional_payment, items } = req.body;
+    const { status, additional_payment, items, supplier_id } = req.body;
     
     console.log(`PATCH /api/purchases/${id} - Body:`, req.body);
     
@@ -996,22 +996,59 @@ app.use((req, res, next) => {
       
       const updateData: any = {};
       if (status) updateData.status = status;
+      if (supplier_id) updateData.supplier_id = supplier_id;
       
       const paymentAmount = Number(additional_payment || 0);
       if (paymentAmount !== 0) {
         updateData.paid_amount = Number(order.paid_amount || 0) + paymentAmount;
       }
 
-      if (Object.keys(updateData).length > 0) {
-        await trx('purchase_orders').where({ id: Number(id) }).update(updateData);
+      if (items && Array.isArray(items)) {
+         let newTotalCost = 0;
+         for (const item of items) {
+           newTotalCost += (item.qty || 1) * (item.cost || item.price || 0);
+         }
+         updateData.total_cost = newTotalCost;
+         
+         const oldItems = await trx('purchase_items').where({ po_id: Number(id) });
+         for (const oldItem of oldItems) {
+           await trx('inventory').where({ id: oldItem.product_id }).decrement('stock', oldItem.qty);
+         }
+
+         await trx('purchase_items').where({ po_id: Number(id) }).delete();
+         
+         const newItems = items.map((item: any) => ({
+           po_id: Number(id),
+           product_id: item.product_id,
+           qty: item.qty || 1,
+           cost: item.cost || item.price || 0
+         }));
+         
+         if (newItems.length > 0) {
+           await trx('purchase_items').insert(newItems);
+           const finalStatus = status || order.status;
+           if (finalStatus !== 'Cancelled') {
+             for (const newItem of newItems) {
+               await trx('inventory').where({ id: newItem.product_id }).increment('stock', newItem.qty);
+             }
+           }
+         }
+      } else if (status === 'Cancelled' && order.status !== 'Cancelled') {
+         // Cancelled without items provided, must deduct stock of old items
+         const oldItems = await trx('purchase_items').where({ po_id: Number(id) });
+         for (const oldItem of oldItems) {
+           await trx('inventory').where({ id: oldItem.product_id }).decrement('stock', oldItem.qty);
+         }
+      } else if (status === 'Received' && order.status === 'Cancelled') {
+         // Un-cancelling, must add back stock of old items
+         const oldItems = await trx('purchase_items').where({ po_id: Number(id) });
+         for (const oldItem of oldItems) {
+           await trx('inventory').where({ id: oldItem.product_id }).increment('stock', oldItem.qty);
+         }
       }
 
-      if (items && Array.isArray(items)) {
-         for (const item of items) {
-           await trx('purchase_items')
-             .where({ po_id: Number(id), product_id: item.product_id })
-             .update({ qty: item.qty, cost: item.cost });
-         }
+      if (Object.keys(updateData).length > 0) {
+        await trx('purchase_orders').where({ id: Number(id) }).update(updateData);
       }
 
       if (paymentAmount > 0) {
