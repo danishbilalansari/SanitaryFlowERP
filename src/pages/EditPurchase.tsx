@@ -1,3 +1,4 @@
+import { formatCurrency } from '../lib/currency';
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { 
@@ -9,47 +10,95 @@ import {
   Info, 
   RotateCcw, 
   CheckCircle,
-  HelpCircle,
-  Bell,
-  Search,
-  User,
-  History,
   Key,
+  History,
+  User,
   Trash
 } from 'lucide-react';
-import { motion } from 'motion/react';
 import { useAppContext } from '../store';
 
 export default function EditPurchase() {
   const { id } = useParams();
-  const { showToast } = useAppContext();
+  const { showToast, currency } = useAppContext();
   const navigate = useNavigate();
 
   const [order, setOrder] = useState<any>(null);
   const [items, setItems] = useState<any[]>([]);
+  const [inventory, setInventory] = useState<any[]>([]);
+  const [suppliers, setSuppliers] = useState<any[]>([]);
+  const [showItemSelect, setShowItemSelect] = useState(false);
+  const [selectedProduct, setSelectedProduct] = useState<string>('');
 
-  useEffect(() => {
-    fetch(`/api/purchases/${id}`)
+  const fetchOrderData = () => {
+    fetch(`/api/purchases/${id}`, { credentials: 'include' })
       .then(res => res.json())
       .then(data => {
-        setOrder(data);
-        setItems(data.items);
+        if (!data.error) {
+          setOrder(data);
+          setItems(data.items || []);
+        } else {
+          showToast(data.error);
+        }
       })
       .catch(err => console.error('Error fetching order', err));
+  };
+
+  useEffect(() => {
+    fetchOrderData();
+    // Load inventory for adding new items
+    fetch('/api/inventory', { credentials: 'include' })
+      .then(res => res.json())
+      .then(data => setInventory(data))
+      .catch(err => console.error('Error fetching inventory', err));
+      
+    // Load suppliers
+    fetch('/api/suppliers', { credentials: 'include' })
+      .then(res => res.json())
+      .then(data => setSuppliers(data))
+      .catch(err => console.error('Error fetching suppliers', err));
   }, [id]);
 
-  const subtotal = items.reduce((sum, item) => sum + (item.qty * item.cost), 0);
+  const handleAddItem = () => {
+    if (!selectedProduct) return;
+    const product = inventory.find(i => String(i.id) === selectedProduct);
+    if (!product) return;
+
+    // Check if already in items
+    if (items.some(i => i.product_id === product.id)) {
+      showToast('Item already in the order');
+      return;
+    }
+
+    setItems([...items, {
+      product_id: product.id,
+      name: product.name,
+      sku: product.sku,
+      qty: 1,
+      cost: product.cost_price || product.price || 0
+    }]);
+    setShowItemSelect(false);
+    setSelectedProduct('');
+  };
+
+  const handleRemoveItem = (index: number) => {
+    const newItems = [...items];
+    newItems.splice(index, 1);
+    setItems(newItems);
+  };
+
+  const subtotal = items.reduce((sum, item) => sum + ((Number(item.qty) || 0) * (Number(item.cost || item.price) || 0)), 0);
   const tax = subtotal * 0.08;
   const total = subtotal + tax;
 
   const handleUpdate = async () => {
-    console.log('Update button clicked');
     try {
       const response = await fetch(`/api/purchases/${id}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
         body: JSON.stringify({ 
           status: order.status,
+          supplier_id: order.supplier_id,
           items
         })
       });
@@ -58,7 +107,6 @@ export default function EditPurchase() {
         showToast('Purchase order updated successfully');
         navigate('/purchases');
       } else {
-        console.error('Failed to update purchase order');
         showToast('Failed to update purchase order');
       }
     } catch (error) {
@@ -68,12 +116,11 @@ export default function EditPurchase() {
   };
 
   const handleCancel = async () => {
-    console.log('Cancel button clicked');
-    if (!confirm('Are you sure you want to cancel this purchase order?')) return;
     try {
       const response = await fetch(`/api/purchases/${id}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
         body: JSON.stringify({ 
           status: 'Cancelled'
         })
@@ -83,7 +130,6 @@ export default function EditPurchase() {
         showToast('Purchase order cancelled successfully');
         navigate('/purchases');
       } else {
-        console.error('Failed to cancel purchase order');
         showToast('Failed to cancel purchase order');
       }
     } catch (error) {
@@ -106,11 +152,11 @@ export default function EditPurchase() {
           <h1 className="text-[32px] font-bold text-[#162839] tracking-tight leading-none">Edit Purchase Order</h1>
         </div>
         <div>
-          <span className="inline-flex items-center gap-1.5 px-4 py-1.5 bg-[#cce5ff] text-[#001d31] rounded-full text-[11px] font-black tracking-widest border border-[#5cb8fd]/30 shadow-sm">
-            <div className="p-0.5 bg-[#006397] rounded-full">
+          <span className={`inline-flex items-center gap-1.5 px-4 py-1.5 rounded-full text-[11px] font-black tracking-widest border shadow-sm ${order?.status === 'CANCELLED' ? 'bg-red-50 text-red-600 border-red-100' : 'bg-[#cce5ff] text-[#001d31] border-[#5cb8fd]/30'}`}>
+            <div className={`p-0.5 rounded-full ${order?.status === 'CANCELLED' ? 'bg-red-600' : 'bg-[#006397]'}`}>
               <Info className="w-2.5 h-2.5 text-white fill-current" />
             </div>
-            DRAFT STATUS
+            {order?.status || 'DRAFT'} STATUS
           </span>
         </div>
       </div>
@@ -131,30 +177,42 @@ export default function EditPurchase() {
               <div className="space-y-2">
                 <label className="text-[13px] font-bold text-[#162839] block">Supplier Name</label>
                 <div className="relative">
-                  <select className="w-full bg-[#f8f9fa] border border-[#edeeef] rounded-xl px-4 py-3 text-[14px] font-medium outline-none appearance-none focus:ring-2 focus:ring-[#5cb8fd] transition-all">
-                    <option>Ceramic Solutions Inc.</option>
-                    <option>Global Pipes Ltd.</option>
-                    <option>Industrial Fittings Co.</option>
+                  <select 
+                    value={order.supplier_id || ''}
+                    onChange={(e) => setOrder({...order, supplier_id: e.target.value})}
+                    className="w-full bg-[#f8f9fa] border border-[#edeeef] rounded-xl px-4 py-3 text-[14px] font-medium outline-none appearance-none focus:ring-2 focus:ring-[#5cb8fd] transition-all">
+                    <option value="">Select a supplier...</option>
+                    {suppliers.map(s => (
+                      <option key={s.id} value={s.id}>{s.name}</option>
+                    ))}
                   </select>
                   <ChevronRight className="w-4 h-4 text-neutral-400 absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none rotate-90" />
                 </div>
               </div>
 
-              <div className="space-y-2">
-                <label className="text-[13px] font-bold text-[#162839] block">Contact Person</label>
-                <input 
-                  type="text" 
-                  defaultValue="Marco Verratti"
-                  className="w-full bg-[#f8f9fa] border border-[#edeeef] rounded-xl px-4 py-3 text-[14px] font-medium outline-none focus:ring-2 focus:ring-[#5cb8fd] transition-all"
-                />
-              </div>
+              {(() => {
+                const selectedSup = suppliers.find(s => String(s.id) === String(order.supplier_id));
+                return (
+                  <>
+                    <div className="space-y-2">
+                      <label className="text-[13px] font-bold text-[#162839] block">Contact Person</label>
+                      <input 
+                        type="text" 
+                        readOnly
+                        value={selectedSup?.contact_person || 'N/A'}
+                        className="w-full bg-[#f8f9fa] border border-[#edeeef] rounded-xl px-4 py-3 text-[14px] font-medium outline-none focus:ring-2 focus:ring-[#5cb8fd] transition-all"
+                      />
+                    </div>
 
-              <div className="pt-2">
-                <p className="text-[13px] text-neutral-500 leading-relaxed">
-                  <span className="font-bold text-[#162839]">Address:</span> 442 Industrial Way, Suite 200,<br />
-                  Columbus, OH 43215
-                </p>
-              </div>
+                    <div className="pt-2">
+                      <p className="text-[13px] text-neutral-500 leading-relaxed">
+                        <span className="font-bold text-[#162839]">Address:</span> {selectedSup?.address || 'N/A'}<br />
+                        {selectedSup?.city || ''}
+                      </p>
+                    </div>
+                  </>
+                );
+              })()}
             </div>
           </section>
 
@@ -197,10 +255,40 @@ export default function EditPurchase() {
           <section className="bg-white border border-[#edeeef] rounded-2xl shadow-sm overflow-hidden flex flex-col h-full">
             <div className="p-8 border-b border-[#edeeef] flex justify-between items-center bg-white">
               <h3 className="text-[20px] font-bold text-[#162839]">Order Items</h3>
-              <button className="flex items-center gap-2 text-[#006397] font-bold text-[14px] hover:underline">
-                <PlusCircle className="w-5 h-5" />
-                Add New Item
-              </button>
+              {!showItemSelect ? (
+                <button 
+                  onClick={() => setShowItemSelect(true)}
+                  className="flex items-center gap-2 text-[#006397] font-bold text-[14px] hover:underline"
+                >
+                  <PlusCircle className="w-5 h-5" />
+                  Add New Item
+                </button>
+              ) : (
+                <div className="flex flex-col sm:flex-row items-center gap-2">
+                  <select 
+                    value={selectedProduct} 
+                    onChange={(e) => setSelectedProduct(e.target.value)}
+                    className="bg-[#f8f9fa] border border-[#edeeef] rounded-lg px-3 py-2 text-[14px] font-medium outline-none"
+                  >
+                    <option value="">Select a product...</option>
+                    {inventory.map(inv => (
+                      <option key={inv.id} value={String(inv.id)}>{inv.name} ({inv.sku})</option>
+                    ))}
+                  </select>
+                  <button 
+                    onClick={handleAddItem}
+                    className="px-4 py-2 bg-[#006397] text-white rounded-lg text-[13px] font-bold hover:bg-[#004e7a]"
+                  >
+                    Add
+                  </button>
+                  <button 
+                    onClick={() => { setShowItemSelect(false); setSelectedProduct(''); }}
+                    className="px-4 py-2 bg-neutral-200 text-neutral-600 rounded-lg text-[13px] font-bold hover:bg-neutral-300"
+                  >
+                    Cancel
+                  </button>
+                </div>
+              )}
             </div>
 
             <div className="overflow-x-auto">
@@ -216,7 +304,7 @@ export default function EditPurchase() {
                 </thead>
                 <tbody className="divide-y divide-[#edeeef]">
                   {items.map((item, itemIndex) => (
-                    <tr key={item.id} className="group hover:bg-[#f8f9fa]/50 transition-colors">
+                    <tr key={`item-${item.id || 'new'}-${item.product_id || '0'}-${itemIndex}`} className="group hover:bg-[#f8f9fa]/50 transition-colors">
                       <td className="px-8 py-6">
                         <p className="text-[15px] font-bold text-[#162839]">{item.name}</p>
                         <p className="text-[12px] text-neutral-500 mt-1">SKU: {item.sku}</p>
@@ -235,7 +323,7 @@ export default function EditPurchase() {
                       </td>
                       <td className="px-8 py-6">
                         <div className="flex items-center gap-2">
-                          <span className="text-neutral-400 font-medium">$</span>
+                          <span className="text-neutral-400 font-medium">{currency}</span>
                           <input 
                             type="number" 
                             step="0.01"
@@ -250,10 +338,13 @@ export default function EditPurchase() {
                         </div>
                       </td>
                       <td className="px-8 py-6 text-right font-bold text-[#162839] text-[15px]">
-                        ${((+item.qty) * (+item.cost || +item.price || 0)).toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                        {formatCurrency(((+item.qty) * (+item.cost || +item.price || 0)), currency)}
                       </td>
                       <td className="px-8 py-6 text-right">
-                        <button className="p-2 text-neutral-400 hover:text-[#ba1a1a] transition-all opacity-0 group-hover:opacity-100">
+                        <button 
+                          onClick={() => handleRemoveItem(itemIndex)}
+                          className="p-2 text-neutral-400 hover:text-[#ba1a1a] transition-all opacity-0 group-hover:opacity-100"
+                        >
                           <Trash2 className="w-5 h-5" />
                         </button>
                       </td>
@@ -267,16 +358,16 @@ export default function EditPurchase() {
               <div className="w-72 space-y-3">
                 <div className="flex justify-between text-[14px] text-neutral-500">
                   <span className="font-medium">Subtotal:</span>
-                  <span className="font-bold">${subtotal.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
+                  <span className="font-bold">{formatCurrency(subtotal, currency)}</span>
                 </div>
                 <div className="flex justify-between text-[14px] text-neutral-500 pb-3 border-b border-[#edeeef]">
                   <span className="font-medium">Tax (8%):</span>
-                  <span className="font-bold">${tax.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
+                  <span className="font-bold">{formatCurrency(tax, currency)}</span>
                 </div>
                 <div className="flex justify-between pt-3">
                   <span className="text-[20px] font-black text-[#162839]">Total:</span>
                   <span className="text-[24px] font-black text-[#162839] tracking-tight">
-                    ${total.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                    {formatCurrency(total, currency)}
                   </span>
                 </div>
               </div>
@@ -307,7 +398,7 @@ export default function EditPurchase() {
         </button>
         <div className="flex items-center gap-4 w-full md:w-auto">
           <button 
-            onClick={() => window.location.reload()}
+            onClick={fetchOrderData}
             className="flex-1 md:flex-none px-8 py-3 bg-[#e1e3e4] text-[#43474c] font-bold text-[14px] rounded-lg hover:bg-[#d9dadb] transition-all flex items-center justify-center gap-2 uppercase tracking-widest">
             <RotateCcw className="w-5 h-5" />
             Revert Changes
