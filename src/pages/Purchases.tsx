@@ -1,3 +1,4 @@
+import { formatCurrency } from '../lib/currency';
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { 
@@ -19,7 +20,7 @@ import {
 import { useAppContext } from '../store';
 
 export default function Purchases() {
-  const { showToast, currentUser } = useAppContext();
+  const { showToast, currentUser, currency } = useAppContext();
   const [purchaseOrders, setPurchaseOrders] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [statusFilter, setStatusFilter] = useState('All Statuses');
@@ -53,6 +54,7 @@ export default function Purchases() {
       case 'ORDERED': return 'bg-blue-50 text-blue-600 border-blue-100';
       case 'PAID': return 'bg-teal-50 text-teal-600 border-teal-100';
       case 'DRAFT': return 'bg-neutral-100 text-neutral-500 border-neutral-200';
+      case 'CANCELLED': return 'bg-red-50 text-red-600 border-red-100';
       default: return 'bg-neutral-50 text-neutral-400 border-neutral-100';
     }
   };
@@ -163,7 +165,7 @@ export default function Purchases() {
             <span className="text-[11px] font-bold text-neutral-400 uppercase tracking-widest text-[#006397]">Net Procurement</span>
             <div className="p-3 bg-blue-50 text-[#006397] rounded-xl"><CreditCard className="w-5 h-5" /></div>
           </div>
-          <div className="text-[32px] font-bold text-[#162839] leading-none">${totalSpend.toLocaleString()}</div>
+          <div className="text-[32px] font-bold text-[#162839] leading-none">{formatCurrency(totalSpend, currency)}</div>
           <p className="mt-2 text-[13px] text-neutral-400 font-medium">Total value of all purchase orders</p>
         </div>
 
@@ -294,13 +296,13 @@ export default function Purchases() {
                     {new Date(po.created_at).toLocaleDateString()}
                   </td>
                   <td className="px-8 py-5 text-right font-black text-[#162839] tracking-tight">
-                    ${total.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                    {formatCurrency(total, currency)}
                   </td>
                   <td className="px-8 py-5 text-right font-black text-emerald-600 tracking-tight">
-                    ${paid.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                    {formatCurrency(paid, currency)}
                   </td>
                   <td className={`px-8 py-5 text-right font-black tracking-tight ${balance > 0 ? 'text-red-500' : 'text-neutral-500'}`}>
-                    ${Math.abs(balance).toLocaleString(undefined, { minimumFractionDigits: 2 })} {balance > 0 && '(Cr)'}
+                    {formatCurrency(Math.abs(balance), currency)} {balance > 0 && '(Cr)'}
                   </td>
                   <td className="px-8 py-5">
                     <span className={`px-3 py-1 text-[10px] font-black rounded-full border uppercase tracking-wider ${getStatusStyles(po.status)}`}>
