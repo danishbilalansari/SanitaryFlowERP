@@ -1,3 +1,4 @@
+import { formatCurrency } from '../lib/currency';
 import React, { useState, useEffect } from 'react';
 import { 
   ChevronRight, 
@@ -9,7 +10,7 @@ import { useAppContext } from '../store';
 import { Link } from 'react-router-dom';
 
 export default function CitySales() {
-  const { sales, customers } = useAppContext();
+  const { sales, customers, currency } = useAppContext();
 
   const [cityData, setCityData] = useState<any[]>([]);
 
@@ -42,7 +43,7 @@ export default function CitySales() {
       return;
     }
 
-    const headers = ['City Name', 'Total Orders', 'Revenue (Rs)'];
+    const headers = ['City Name', 'Total Orders', `Revenue (${currency})`];
     const rows = cityTracking.map(cityData => [
       cityData.city,
       cityData.orderCount,
@@ -112,7 +113,7 @@ export default function CitySales() {
                     <span className="text-[24px] font-black text-[#006397] opacity-20">0{index+1}</span>
                     <p className="font-bold text-[#162839]">{cityData.city}</p>
                   </div>
-                  <p className="font-black text-[#006397]">Rs. {cityData.totalRevenue.toLocaleString()}</p>
+                  <p className="font-black text-[#006397]">{formatCurrency(cityData.totalRevenue, currency)}</p>
                </div>
              ))}
           </div>
@@ -135,7 +136,7 @@ export default function CitySales() {
                  <div className="flex gap-4">
                    <div className="text-right">
                      <p className="text-[11px] font-bold text-neutral-400 uppercase tracking-widest">Total Sales</p>
-                     <p className="text-[14px] font-black text-[#162839]">Rs. {cityData.totalRevenue.toLocaleString()}</p>
+                     <p className="text-[14px] font-black text-[#162839]">{formatCurrency(cityData.totalRevenue, currency)}</p>
                    </div>
                  </div>
               </div>
@@ -162,10 +163,10 @@ export default function CitySales() {
                             </Link>
                             {c.company && <p className="text-[11px] text-neutral-400 mt-0.5 font-medium">{c.company}</p>}
                           </td>
-                          <td className="px-6 py-4 text-right font-medium text-[#162839]">Rs. {sales.toLocaleString()}</td>
-                          <td className="px-6 py-4 text-right font-medium text-emerald-600">Rs. {payments.toLocaleString()}</td>
+                          <td className="px-6 py-4 text-right font-medium text-[#162839]">{formatCurrency(sales, currency)}</td>
+                          <td className="px-6 py-4 text-right font-medium text-emerald-600">{formatCurrency(payments, currency)}</td>
                           <td className={`px-6 py-4 text-right font-bold ${balance > 0 ? 'text-red-500' : 'text-neutral-500'}`}>
-                            Rs. {Math.abs(balance).toLocaleString()} {balance > 0 && '(Dr)'}
+                            {formatCurrency(Math.abs(balance), currency)} {balance > 0 && '(Dr)'}
                           </td>
                         </tr>
                       );
