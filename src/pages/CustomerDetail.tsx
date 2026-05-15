@@ -1,3 +1,5 @@
+import { useAppContext } from '../store';
+import { formatCurrency } from '../lib/currency';
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { 
@@ -23,6 +25,7 @@ import {
 } from 'lucide-react';
 
 export default function CustomerDetail() {
+  const { currency } = useAppContext();
   const { id } = useParams();
   const navigate = useNavigate();
   const [customer, setCustomer] = useState<any>(null);
@@ -114,12 +117,12 @@ export default function CustomerDetail() {
             <div className="flex items-center gap-12">
               <div className="text-right">
                 <p className="text-[10px] font-bold text-neutral-400 uppercase tracking-widest mb-1">TOTAL DEBIT (Receivable)</p>
-                <p className="text-[28px] font-bold text-[#162839] leading-none">Rs {totalDebit.toLocaleString()}</p>
+                <p className="text-[28px] font-bold text-[#162839] leading-none">{formatCurrency(totalDebit, currency)}</p>
               </div>
               <div className="text-right">
                 <p className="text-[10px] font-bold text-neutral-400 uppercase tracking-widest mb-1">CURRENT BALANCE</p>
                 <p className={`text-[28px] font-bold leading-none ${balance > 0 ? 'text-red-500' : 'text-emerald-500'}`}>
-                  Rs {Math.abs(balance).toLocaleString()}
+                  {formatCurrency(Math.abs(balance), currency)}
                   <span className="text-[12px] block mt-1">{balance > 0 ? '(Pending)' : '(Credit)'}</span>
                 </p>
               </div>
@@ -230,8 +233,8 @@ export default function CustomerDetail() {
                          <span className="text-[12px] font-bold text-neutral-400 uppercase tracking-wider">{e.account_type}</span>
                          <p className="text-[11px] text-neutral-400 truncate max-w-[150px]">{e.description}</p>
                       </td>
-                      <td className="px-6 py-5 text-right font-bold text-[#162839]">{e.debit > 0 ? `Rs ${e.debit.toLocaleString()}` : '-'}</td>
-                      <td className="px-6 py-5 text-right font-bold text-emerald-500">{e.credit > 0 ? `Rs ${e.credit.toLocaleString()}` : '-'}</td>
+                      <td className="px-6 py-5 text-right font-bold text-[#162839]">{e.debit > 0 ? formatCurrency(e.debit, currency) : '-'}</td>
+                      <td className="px-6 py-5 text-right font-bold text-emerald-500">{e.credit > 0 ? formatCurrency(e.credit, currency) : '-'}</td>
                     </tr>
                   ))
                 )}
@@ -258,7 +261,7 @@ export default function CustomerDetail() {
                <div>
                  <label className="text-[12px] font-bold text-neutral-400 uppercase tracking-wider mb-2 block">Amount</label>
                  <div className="relative">
-                   <span className="absolute left-4 top-1/2 -translate-y-1/2 text-neutral-400 font-bold">Rs</span>
+                   <span className="absolute left-4 top-1/2 -translate-y-1/2 text-neutral-400 font-bold">{currency}</span>
                    <input 
                      type="number"
                      value={paymentData.amount}
