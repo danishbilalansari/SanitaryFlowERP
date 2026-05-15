@@ -1,3 +1,4 @@
+import { formatCurrency } from '../lib/currency';
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { 
@@ -25,7 +26,7 @@ import {
 import { useAppContext } from '../store';
 
 export default function AddSale() {
-  const { showToast } = useAppContext();
+  const { showToast, currency } = useAppContext();
   const navigate = useNavigate();
 
   const [inventory, setInventory] = useState<any[]>([]);
@@ -208,7 +209,7 @@ export default function AddSale() {
                         <p className="font-bold">{item.name}</p>
                         <p className="text-xs text-neutral-400">{item.sku} • {item.stock} in stock</p>
                       </div>
-                      <span className="font-bold">${(item.price ?? 0).toFixed(2)}</span>
+                      <span className="font-bold">{formatCurrency(item.price ?? 0, currency)}</span>
                     </div>
                   )) : <div className="p-3 text-neutral-400 text-sm">No items found</div>}
                 </div>
@@ -234,7 +235,7 @@ export default function AddSale() {
                             <p className="font-bold">{item.name}</p>
                             <p className="text-[10px] text-neutral-400">{item.sku}</p>
                          </td>
-                         <td className="px-6 py-4 text-right font-bold">${(item.price ?? 0).toFixed(2)}</td>
+                         <td className="px-6 py-4 text-right font-bold">{formatCurrency(item.price ?? 0, currency)}</td>
                          <td className="px-6 py-4 text-center">
                             <div className="inline-flex items-center gap-2 bg-neutral-100 px-2 py-1 rounded">
                                <button onClick={() => handleUpdateQty(item.product_id, -1)}><Minus className="w-3 h-3"/></button>
@@ -242,7 +243,7 @@ export default function AddSale() {
                                <button onClick={() => handleUpdateQty(item.product_id, 1)}><Plus className="w-3 h-3"/></button>
                             </div>
                          </td>
-                         <td className="px-6 py-4 text-right font-bold">${((item.price ?? 0) * (item.qty ?? 0)).toFixed(2)}</td>
+                         <td className="px-6 py-4 text-right font-bold">{formatCurrency((item.price ?? 0) * (item.qty ?? 0), currency)}</td>
                          <td className="px-6 py-4 text-right"><button onClick={() => handleRemoveItem(item.product_id)}><Trash2 className="w-4 h-4 text-neutral-300 hover:text-red-500"/></button></td>
                       </tr>
                    ))}
@@ -263,7 +264,7 @@ export default function AddSale() {
                 {customers.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
              </select>
 
-              <h3 className="font-bold mt-4">Discount ($)</h3>
+              <h3 className="font-bold mt-4">Discount ({currency})</h3>
               <input
                 type="number"
                 min="0"
@@ -290,7 +291,7 @@ export default function AddSale() {
 
               {paymentMethod === 'CREDIT' && (
                 <div className="mb-4">
-                  <h3 className="font-bold mb-2">Paid Amount ($)</h3>
+                  <h3 className="font-bold mb-2">Paid Amount ({currency})</h3>
                   <input
                      type="number"
                      min="0"
@@ -310,7 +311,7 @@ export default function AddSale() {
           </div>
           <div className="bg-[#162839] p-8 rounded-2xl shadow-xl text-white">
              <p className="text-white/40 text-[10px] font-bold uppercase tracking-widest mb-2">Total Amount</p>
-             <p className="text-[42px] font-bold mb-8">${grandTotal.toFixed(2)}</p>
+             <p className="text-[42px] font-bold mb-8">{formatCurrency(grandTotal, currency)}</p>
              <button onClick={handleCompleteSale} className="w-full bg-[#5cb8fd] text-[#00476e] font-black py-4 rounded-xl hover:brightness-110 active:scale-95 transition-all">
                 COMPLETE SALE
              </button>
