@@ -1,3 +1,5 @@
+import { useAppContext } from '../store';
+import { formatCurrency } from '../lib/currency';
 import React, { useState, useEffect } from 'react';
 import { 
   Plus, 
@@ -19,6 +21,7 @@ import {
 import { Link, useNavigate } from 'react-router-dom';
 
 export default function Customers() {
+  const { currency } = useAppContext();
   const navigate = useNavigate();
   const [customers, setCustomers] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -69,10 +72,23 @@ export default function Customers() {
       .catch(err => console.error('Error fetching city data:', err));
   }, []);
 
+  let totalOutstanding = 0;
+  let outstandingCount = 0;
+  
+  cityData.forEach(c => {
+    const sales = Number(c.total_sales) || 0;
+    const payments = Number(c.total_purchases_payments) || 0;
+    const balance = sales - payments;
+    if (balance > 0) {
+      totalOutstanding += balance;
+      outstandingCount++;
+    }
+  });
+
   const stats = [
     { label: 'Total Customers', value: customers.length.toString(), trend: 'Active baseline', trendColor: 'text-[#006397]' },
     { label: 'Active Orders', value: '42', trend: '8 pending shipment', trendColor: 'text-[#006397]' },
-    { label: 'Outstanding Total', value: '$142,500', trend: 'Across 18 customers', trendColor: 'text-neutral-500' },
+    { label: 'Outstanding Total', value: formatCurrency(totalOutstanding, currency), trend: `Across ${outstandingCount} customers`, trendColor: 'text-neutral-500' },
     { label: 'Collection Rate', value: '94.2%', trend: '94.2%', progress: true },
   ];
 
@@ -306,10 +322,10 @@ export default function Customers() {
                             </Link>
                             {c.company && <p className="text-[11px] text-neutral-400 mt-1 font-medium">{c.company}</p>}
                           </td>
-                          <td className="px-8 py-4 text-right font-medium text-[#162839]">Rs. {sales.toLocaleString()}</td>
-                          <td className="px-8 py-4 text-right font-medium text-emerald-600">Rs. {payments.toLocaleString()}</td>
+                          <td className="px-8 py-4 text-right font-medium text-[#162839]">{formatCurrency(sales, currency)}</td>
+                          <td className="px-8 py-4 text-right font-medium text-emerald-600">{formatCurrency(payments, currency)}</td>
                           <td className={`px-8 py-4 text-right font-bold ${balance > 0 ? 'text-red-500' : 'text-neutral-500'}`}>
-                            Rs. {Math.abs(balance).toLocaleString()} {balance > 0 && '(Dr)'}
+                            {formatCurrency(Math.abs(balance), currency)} {balance > 0 && '(Dr)'}
                           </td>
                         </tr>
                       );
@@ -373,7 +389,7 @@ export default function Customers() {
                       <p className="text-[12px] text-neutral-400 mt-1 font-medium">{customer.phone || 'N/A'}</p>
                     </td>
                     <td className="px-8 py-5 text-right font-bold text-[#162839]">
-                      ${(customer.credit_limit || 0).toLocaleString()}
+                      {formatCurrency((customer.credit_limit || 0), currency)}
                     </td>
                     <td className="px-8 py-5">
                       <div className="flex items-center justify-center gap-1">
