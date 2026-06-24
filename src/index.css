@@ -1,0 +1,99 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
+@import "tailwindcss";
+
+@theme {
+  --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, monospace;
+
+  --color-inverse-primary: #b5c8df;
+  --color-on-secondary: #ffffff;
+  --color-inverse-on-surface: #f0f1f2;
+  --color-error: #ba1a1a;
+  --color-primary: #162839;
+  --color-primary-fixed-dim: #b5c8df;
+  --color-surface-dim: #d9dadb;
+  --color-on-error: #ffffff;
+  --color-on-secondary-fixed: #001d31;
+  --color-on-primary: #ffffff;
+  --color-on-tertiary-container: #98a8c1;
+  --color-on-error-container: #93000a;
+  --color-surface-container-lowest: #ffffff;
+  --color-outline: #74777d;
+  --color-tertiary-fixed: #d3e4fe;
+  --color-primary-container: #2c3e50;
+  --color-on-tertiary: #ffffff;
+  --color-inverse-surface: #2e3132;
+  --color-tertiary-fixed-dim: #b7c8e1;
+  --color-surface-variant: #e1e3e4;
+  --color-secondary-container: #5cb8fd;
+  --color-surface-bright: #f8f9fa;
+  --color-on-surface-variant: #43474c;
+  --color-surface-tint: #4e6073;
+  --color-tertiary-container: #2d3d52;
+  --color-error-container: #ffdad6;
+  --color-surface-container: #edeeef;
+  --color-on-tertiary-fixed: #0b1c30;
+  --color-tertiary: #17273b;
+  --color-surface: #f8f9fa;
+  --color-surface-container-highest: #e1e3e4;
+  --color-secondary: #006397;
+  --color-background: #f8f9fa;
+  --color-surface-container-low: #f3f4f5;
+  --color-secondary-fixed: #cce5ff;
+  --color-outline-variant: #c4c6cd;
+  --color-on-primary-fixed-variant: #36485b;
+  --color-secondary-fixed-dim: #92ccff;
+  --color-on-tertiary-fixed-variant: #38485d;
+  --color-on-secondary-container: #00476e;
+  --color-on-secondary-fixed-variant: #004b73;
+  --color-on-primary-fixed: #091d2e;
+  --color-surface-container-high: #e7e8e9;
+  --color-primary-fixed: #d1e4fb;
+  --color-on-background: #191c1d;
+  --color-on-surface: #191c1d;
+  --color-on-primary-container: #96a9be;
+
+  --spacing-xl: 32px;
+  --spacing-lg: 24px;
+  --spacing-md: 16px;
+  --spacing-margin: 24px;
+  --spacing-gutter: 16px;
+  --spacing-xs: 4px;
+  --spacing-sm: 8px;
+  --spacing-base: 4px;
+
+  --font-body-md: "Inter";
+  --font-h3: "Inter";
+  --font-h1: "Inter";
+  --font-body-lg: "Inter";
+  --font-table-header: "Inter";
+  --font-label-caps: "Inter";
+  --font-h2: "Inter";
+  --font-body-sm: "Inter";
+}
+
+@layer base {
+  body {
+    @apply bg-[#f8f9fa] text-[#191c1d];
+  }
+
+  @media print {
+    body {
+      background-color: white !important;
+      -webkit-print-color-adjust: exact;
+      print-color-adjust: exact;
+    }
+    
+    @page {
+      margin: 1.5cm;
+    }
+
+    .print-hidden {
+      display: none !important;
+    }
+    
+    .no-print {
+      display: none !important;
+    }
+  }
+}
