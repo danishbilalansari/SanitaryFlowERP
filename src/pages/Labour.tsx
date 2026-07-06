@@ -41,8 +41,11 @@ export default function LabourPage() {
     try {
       const res = await fetch('/api/labour');
       if (res.ok) {
-        const data = await res.json();
-        setLabour(data);
+        const contentType = res.headers.get("content-type");
+        if (contentType && contentType.indexOf("application/json") !== -1) {
+          const data = await res.json();
+          setLabour(data);
+        }
       }
     } catch (err) {
       console.error(err);
