@@ -22,6 +22,7 @@ interface InventoryItem {
   description?: string;
   warehouse?: string;
   image?: string;
+  color?: string;
 }
 
 export default function Inventory() {
@@ -30,6 +31,8 @@ export default function Inventory() {
   const [inventory, setInventory] = useState<InventoryItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
+  const [selectedCategory, setSelectedCategory] = useState('');
+  const [selectedColor, setSelectedColor] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 10;
 
@@ -50,14 +53,35 @@ export default function Inventory() {
       });
   }, []);
 
+  const categories = React.useMemo(() => {
+    return Array.from(new Set(inventory.map(item => item.category).filter(Boolean)));
+  }, [inventory]);
+
+  const colors = React.useMemo(() => {
+    return Array.from(new Set(inventory.map(item => item.color).filter(Boolean)));
+  }, [inventory]);
+
   const filteredInventory = React.useMemo(() => {
     const query = searchQuery.toLowerCase().trim();
-    if (!query) return inventory;
-    return inventory.filter(item => 
-      (item.name || '').toLowerCase().includes(query) ||
-      (item.sku || '').toLowerCase().includes(query)
-    );
-  }, [inventory, searchQuery]);
+    let result = inventory;
+    
+    if (query) {
+      result = result.filter(item => 
+        (item.name || '').toLowerCase().includes(query) ||
+        (item.sku || '').toLowerCase().includes(query)
+      );
+    }
+    
+    if (selectedCategory) {
+      result = result.filter(item => item.category === selectedCategory);
+    }
+    
+    if (selectedColor) {
+      result = result.filter(item => item.color === selectedColor);
+    }
+    
+    return result;
+  }, [inventory, searchQuery, selectedCategory, selectedColor]);
 
   const totalPages = React.useMemo(() => {
     return Math.ceil(filteredInventory.length / itemsPerPage);
@@ -219,15 +243,37 @@ export default function Inventory() {
           <div className="flex items-center gap-4">
             <h4 className="text-[20px] font-bold text-[#162839]">Finished Goods Inventory</h4>
           </div>
-          <div className="relative group w-full sm:w-80">
-            <Search className="w-5 h-5 text-neutral-400 absolute left-4 top-1/2 -translate-y-1/2 group-focus-within:text-[#006397] transition-colors" />
-            <input 
-              type="text" 
-              placeholder="Search inventory..."
-              value={searchQuery}
-              onChange={e => setSearchQuery(e.target.value)}
-              className="w-full pl-12 pr-4 py-3 bg-white border border-[#edeeef] rounded-lg text-[14px] focus:ring-2 focus:ring-[#5cb8fd]/20 focus:border-[#5cb8fd] outline-none transition-all"
-            />
+          <div className="flex flex-col sm:flex-row gap-3 w-full sm:w-auto">
+            <div className="relative group w-full sm:w-64">
+              <Search className="w-5 h-5 text-neutral-400 absolute left-4 top-1/2 -translate-y-1/2 group-focus-within:text-[#006397] transition-colors" />
+              <input 
+                type="text" 
+                placeholder="Search inventory..."
+                value={searchQuery}
+                onChange={e => setSearchQuery(e.target.value)}
+                className="w-full pl-12 pr-4 py-2.5 bg-white border border-[#edeeef] rounded-lg text-[14px] focus:ring-2 focus:ring-[#5cb8fd]/20 focus:border-[#5cb8fd] outline-none transition-all"
+              />
+            </div>
+            <select
+              value={selectedCategory}
+              onChange={(e) => setSelectedCategory(e.target.value)}
+              className="px-4 py-2.5 bg-white border border-[#edeeef] rounded-lg text-[14px] focus:outline-none focus:border-[#006397] min-w-[140px]"
+            >
+              <option value="">All Categories</option>
+              {categories.map(cat => (
+                <option key={cat} value={cat}>{cat}</option>
+              ))}
+            </select>
+            <select
+              value={selectedColor}
+              onChange={(e) => setSelectedColor(e.target.value)}
+              className="px-4 py-2.5 bg-white border border-[#edeeef] rounded-lg text-[14px] focus:outline-none focus:border-[#006397] min-w-[120px]"
+            >
+              <option value="">All Colors</option>
+              {colors.map(color => (
+                <option key={color} value={color}>{color}</option>
+              ))}
+            </select>
           </div>
         </div>
 
