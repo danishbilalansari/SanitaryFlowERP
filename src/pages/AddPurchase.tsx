@@ -85,6 +85,7 @@ export default function AddPurchase() {
         description: product.description,
         size: product.size,
         color: product.color,
+        weight: product.weight,
         image: product.image,
         stock: product.stock,
         cost: product.cost || product.price || 0,
@@ -208,7 +209,9 @@ export default function AddPurchase() {
                       <div className="min-w-0">
                       <p className="font-bold">{item.name}</p>
                       <p className="text-xs text-neutral-500 truncate">{item.description || item.product_line || 'No description'}</p>
-                      <p className="text-xs text-neutral-400">{item.sku} • Size: {item.size || '-'} • Color: {item.color || '-'} • Current Stock: {item.stock ?? 0}</p>
+                      <p className="text-xs text-neutral-400">
+                        {item.sku} • Size: {item.size || '-'} • Color: {item.color || '-'} • Weight: {item.weight || '-'} • Current Stock: {item.stock ?? 0}
+                      </p>
                       </div>
                     </div>
                     <Plus className="w-4 h-4 text-[#5cb8fd]"/>
@@ -240,7 +243,9 @@ export default function AddPurchase() {
                                <div>
                                   <p className="font-bold">{item.name}</p>
                                   <p className="text-[11px] text-neutral-500">{item.description || 'No description'}</p>
-                                  <p className="text-[10px] text-neutral-400 uppercase tracking-tight">{item.sku} • Size: {item.size || '-'} • Color: {item.color || '-'} • Stock: {item.stock ?? 0}</p>
+                                  <p className="text-[10px] text-neutral-400 uppercase tracking-tight">
+                                    {item.sku} • Size: {item.size || '-'} • Color: {item.color || '-'} • Weight: {item.weight || '-'} • Stock: {item.stock ?? 0}
+                                  </p>
                                </div>
                             </div>
                          </td>
@@ -260,7 +265,18 @@ export default function AddPurchase() {
                          <td className="px-6 py-4 text-center">
                             <div className="inline-flex items-center gap-2 bg-neutral-100 px-2 py-1 rounded">
                                <button onClick={() => handleUpdateQty(item.product_id, -1)} className="hover:text-red-500"><Minus className="w-3 h-3"/></button>
-                               <span className="min-w-6 font-bold">{item.qty}</span>
+                               <input
+                                 type="number"
+                                 min="1"
+                                 value={item.qty}
+                                 onChange={(e) => {
+                                   const val = parseInt(e.target.value, 10);
+                                   if (!isNaN(val)) {
+                                     setSelectedItems(items => items.map(i => i.product_id === item.product_id ? { ...i, qty: Math.max(1, val) } : i));
+                                   }
+                                 }}
+                                 className="w-16 text-center bg-transparent border-none outline-none font-bold p-0"
+                               />
                                <button onClick={() => handleUpdateQty(item.product_id, 1)} className="hover:text-emerald-500"><Plus className="w-3 h-3"/></button>
                             </div>
                          </td>
