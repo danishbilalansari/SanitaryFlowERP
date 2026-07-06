@@ -219,8 +219,14 @@ export default function Settings() {
     const fetchBackups = async () => {
       try {
         const res = await fetch('/api/backups');
-        const data = await res.json();
-        setBackups(data);
+        if (!res.ok) throw new Error('Backups fetch failed');
+        const contentType = res.headers.get("content-type");
+        if (contentType && contentType.indexOf("application/json") !== -1) {
+          const data = await res.json();
+          setBackups(data);
+        } else {
+          console.error('Backups response is not JSON');
+        }
       } catch (err) {
         console.error('Error fetching backups:', err);
       } finally {
@@ -299,11 +305,25 @@ export default function Settings() {
         if (!usersRes.ok) throw new Error('Users fetch failed');
         if (!rolesRes.ok) throw new Error('Roles fetch failed');
         
-        const usersText = await usersRes.text();
-        const rolesText = await rolesRes.text();
+        const isJson = (res: Response) => {
+          const contentType = res.headers.get("content-type");
+          return contentType && contentType.indexOf("application/json") !== -1;
+        };
+
+        let usersData = [];
+        if (isJson(usersRes)) {
+          usersData = await usersRes.json();
+        } else {
+          console.error('Users response is not JSON');
+        }
+
+        let rolesData = [];
+        if (isJson(rolesRes)) {
+          rolesData = await rolesRes.json();
+        } else {
+          console.error('Roles response is not JSON');
+        }
         
-        const usersData = usersText ? JSON.parse(usersText) : [];
-        const rolesData = rolesText ? JSON.parse(rolesText) : [];
         setUsers(usersData);
         setRoles(rolesData);
       } catch (error) {
