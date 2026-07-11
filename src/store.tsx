@@ -147,7 +147,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [accounts, setAccounts] = useState<AccountEntry[]>(initialAccounts);
   const [factoryBatches, setFactoryBatches] = useState<FactoryBatch[]>(initialBatches);
   const [purchases, setPurchases] = useState<Purchase[]>(initialPurchases);
-  const [currency, setCurrency] = useState<string>(() => localStorage.getItem('app_currency') || 'USD');
+  const [currency, setCurrency] = useState<string>('PKR');
+  useEffect(() => {
+    localStorage.setItem('app_currency', 'PKR');
+  }, []);
   const [logoUrl, setLogoUrl] = useState<string | null>(() => localStorage.getItem('app_logo'));
   const [companyName, setCompanyName] = useState<string>(() => {
     const saved = localStorage.getItem('company_name');
