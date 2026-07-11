@@ -331,7 +331,7 @@ export default function Purchases() {
                        {po.status !== 'Received' && ( // assuming 'Received' means fully paid or just status
                          <button 
                          onClick={() => {
-                           if (window.confirm(`Mark this PO as Received and record full payment of $${balance.toFixed(2)}?`)) {
+                           if (window.confirm(`Mark this PO as Received and record full payment of ${formatCurrency(balance, currency)}?`)) {
                              fetch(`/api/purchases/${po.id}`, {
                                method: 'PATCH',
                                headers: { 
