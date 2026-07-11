@@ -117,11 +117,11 @@ export default function CustomerDetail() {
             <div className="flex items-center gap-12">
               <div className="text-right">
                 <p className="text-[10px] font-bold text-neutral-400 uppercase tracking-widest mb-1">TOTAL DEBIT (Receivable)</p>
-                <p className="text-[28px] font-bold text-[#162839] leading-none">{formatCurrency(totalDebit, currency)}</p>
+                <p className="text-[28px] font-bold text-emerald-500 leading-none">{formatCurrency(totalDebit, currency)}</p>
               </div>
               <div className="text-right">
                 <p className="text-[10px] font-bold text-neutral-400 uppercase tracking-widest mb-1">CURRENT BALANCE</p>
-                <p className={`text-[28px] font-bold leading-none ${balance > 0 ? 'text-red-500' : 'text-emerald-500'}`}>
+                <p className={`text-[28px] font-bold leading-none ${balance > 0 ? 'text-emerald-500' : 'text-red-500'}`}>
                   {formatCurrency(Math.abs(balance), currency)}
                   <span className="text-[12px] block mt-1">{balance > 0 ? '(Pending)' : '(Credit)'}</span>
                 </p>
@@ -233,8 +233,8 @@ export default function CustomerDetail() {
                          <span className="text-[12px] font-bold text-neutral-400 uppercase tracking-wider">{e.account_type}</span>
                          <p className="text-[11px] text-neutral-400 truncate max-w-[150px]">{e.description}</p>
                       </td>
-                      <td className="px-6 py-5 text-right font-bold text-[#162839]">{e.debit > 0 ? formatCurrency(e.debit, currency) : '-'}</td>
-                      <td className="px-6 py-5 text-right font-bold text-emerald-500">{e.credit > 0 ? formatCurrency(e.credit, currency) : '-'}</td>
+                      <td className="px-6 py-5 text-right font-bold text-emerald-500">{e.debit > 0 ? formatCurrency(e.debit, currency) : '-'}</td>
+                      <td className="px-6 py-5 text-right font-bold text-red-500">{e.credit > 0 ? formatCurrency(e.credit, currency) : '-'}</td>
                     </tr>
                   ))
                 )}
