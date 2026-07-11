@@ -78,7 +78,7 @@ export default function CustomerLedger() {
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         <div className="bg-white rounded-2xl p-6 border border-neutral-200/60 shadow-sm flex flex-col justify-center">
           <p className="text-[12px] font-medium uppercase tracking-wider text-neutral-500 mb-1">Statement Balance</p>
-          <p className={`text-3xl font-bold tracking-tight ${currentBalance > 0 ? 'text-red-600' : currentBalance < 0 ? 'text-emerald-600' : 'text-neutral-900'}`}>
+          <p className={`text-3xl font-bold tracking-tight ${currentBalance > 0 ? 'text-emerald-500' : currentBalance < 0 ? 'text-red-500' : 'text-neutral-900'}`}>
             {formatCurrency(Math.abs(currentBalance), currency)}
             <span className="text-sm font-medium ml-2 text-neutral-500">
               {currentBalance > 0 ? 'Recv' : currentBalance < 0 ? 'Credit' : ''}
@@ -131,10 +131,10 @@ export default function CustomerLedger() {
                          <span className="text-[11px] text-neutral-400 truncate max-w-[200px]">{entry.description}</span>
                        </div>
                     </td>
-                    <td className="px-6 py-4 text-right font-bold text-[#162839]">
+                    <td className="px-6 py-4 text-right font-bold text-emerald-600">
                       {entry.debit > 0 ? formatCurrency(entry.debit, currency) : '-'}
                     </td>
-                    <td className="px-6 py-4 text-right font-bold text-emerald-600">
+                    <td className="px-6 py-4 text-right font-bold text-red-500">
                       {entry.credit > 0 ? formatCurrency(entry.credit, currency) : '-'}
                     </td>
                     <td className="px-6 py-4 text-right font-bold text-neutral-900 bg-neutral-50/50">
