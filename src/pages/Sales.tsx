@@ -406,7 +406,7 @@ export default function Sales() {
                       {sale.status?.toLowerCase() !== 'completed' && (
                         <button 
                          onClick={() => {
-                           if (window.confirm(`Complete this sale by recording full remaining payment of $${balance.toFixed(2)}?`)) {
+                           if (window.confirm(`Complete this sale by recording full remaining payment of ${formatCurrency(balance, currency)}?`)) {
                              fetch(`/api/sales/${sale.id}`, {
                                method: 'PATCH',
                                headers: { 
