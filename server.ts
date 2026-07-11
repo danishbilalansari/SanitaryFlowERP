@@ -205,7 +205,7 @@ app.use(async (req, res, next) => {
   next();
 });
 
-const PORT = 3000;
+const PORT = Number(process.env.PORT) || 3000;
 
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ limit: '50mb', extended: true }));
@@ -2749,7 +2749,7 @@ app.use((req, res, next) => {
 
     try {
       const salesTotal = await db('sales_orders').sum('total_amount as sum').first() as any;
-      const purchasesTotal = await db('purchase_orders').sum('total_amount as sum').first() as any;
+      const purchasesTotal = await db('purchase_orders').sum('total_cost as sum').first() as any;
       
       const rev = Number(salesTotal?.sum || 0);
       const exp = Number(purchasesTotal?.sum || 0);
