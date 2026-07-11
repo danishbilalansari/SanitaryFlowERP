@@ -265,7 +265,36 @@ export default function AddSale() {
                          <td className="px-6 py-4 text-center">
                             <div className="inline-flex items-center gap-2 bg-neutral-100 px-2 py-1 rounded">
                                <button onClick={() => handleUpdateQty(item.product_id, -1)}><Minus className="w-3 h-3"/></button>
-                               <span className="min-w-6 font-bold">{item.qty}</span>
+                               <input
+                                 type="number"
+                                 min="1"
+                                 max={item.max}
+                                 value={item.qty}
+                                 onChange={(e) => {
+                                   const val = parseInt(e.target.value, 10);
+                                   if (!isNaN(val)) {
+                                     if (val > item.max) {
+                                       showToast(`Cannot exceed available stock (${item.max})`, 'error');
+                                       setSelectedItems(items => items.map(i => i.product_id === item.product_id ? { ...i, qty: item.max } : i));
+                                     } else {
+                                       setSelectedItems(items => items.map(i => i.product_id === item.product_id ? { ...i, qty: Math.max(1, val) } : i));
+                                     }
+                                   } else {
+                                     setSelectedItems(items => items.map(i => i.product_id === item.product_id ? { ...i, qty: '' as any } : i));
+                                   }
+                                 }}
+                                 onBlur={() => {
+                                   setSelectedItems(items => items.map(i => {
+                                     if (i.product_id === item.product_id) {
+                                       if (!i.qty || isNaN(Number(i.qty))) {
+                                         return { ...i, qty: 1 };
+                                       }
+                                     }
+                                     return i;
+                                   }));
+                                 }}
+                                 className="w-16 text-center bg-transparent border-none outline-none font-bold p-0 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                               />
                                <button onClick={() => handleUpdateQty(item.product_id, 1)}><Plus className="w-3 h-3"/></button>
                             </div>
                          </td>
