@@ -34,3 +34,4 @@ for (const file of filesToFixFormat) {
     console.log('Fixed formatCurrency in', file);
   }
 }
+ 
