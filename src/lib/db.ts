@@ -1055,6 +1055,26 @@ export async function initDb() {
     });
   }
 
+  if (!(await db.schema.hasTable('labour_advances'))) {
+    await db.schema.createTable('labour_advances', (table) => {
+      table.increments('id').primary();
+      table.integer('labour_id').references('id').inTable('labour').onDelete('CASCADE');
+      table.decimal('amount', 12, 2).notNullable();
+      table.string('date_text').notNullable();
+      table.string('description').nullable();
+      table.timestamp('created_at').defaultTo(db.fn.now());
+    });
+  }
+
+  if (await db.schema.hasTable('labour_advances')) {
+    const hasDescription = await db.schema.hasColumn('labour_advances', 'description');
+    if (!hasDescription) {
+      await db.schema.alterTable('labour_advances', (table) => {
+        table.string('description').nullable();
+      });
+    }
+  }
+
     // AUTOMATIC CLEANUP FOR REDUNDANT ITEMS
     const skusToDelete = [
       'CPS-001',
