@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, Search, Edit2, Trash2, ChevronRight } from 'lucide-react';
+import { Plus, Search, Edit2, Trash2, ChevronRight, Wallet, X, ChevronDown, ChevronUp } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { useAppContext } from '../store';
+import { formatCurrency } from '../lib/currency';
 
 interface Labour {
   id: number;
@@ -13,6 +14,15 @@ interface Labour {
   salary: number;
 }
 
+interface Advance {
+  id: number;
+  labour_id: number;
+  amount: number;
+  date_text: string;
+  description: string;
+  created_at: string;
+}
+
 export default function LabourPage() {
   const [labour, setLabour] = useState<Labour[]>([]);
   const [loading, setLoading] = useState(true);
@@ -20,7 +30,13 @@ export default function LabourPage() {
   const [showModal, setShowModal] = useState(false);
   const [deleteId, setDeleteId] = useState<number | null>(null);
   const [formData, setFormData] = useState({ id: 0, name: '', cnic: '', address: '', mobile_no: '', designation: '', salary: 0 });
-  const { showToast } = useAppContext();
+  
+  const [expandedLabour, setExpandedLabour] = useState<Labour | null>(null);
+  const [advances, setAdvances] = useState<Advance[]>([]);
+  const [advanceLoading, setAdvanceLoading] = useState(false);
+  const [advanceFormData, setAdvanceFormData] = useState({ amount: '', date_text: '', description: '' });
+  
+  const { showToast, currency } = useAppContext();
 
   const formatCNIC = (value: string) => {
     const v = value.replace(/\D/g, '');
@@ -58,6 +74,63 @@ export default function LabourPage() {
   useEffect(() => {
     fetchLabour();
   }, []);
+
+  const fetchAdvances = async (labourId: number) => {
+    setAdvanceLoading(true);
+    try {
+      const res = await fetch(`/api/labour/${labourId}/advances`);
+      if (res.ok) {
+        const data = await res.json();
+        setAdvances(data);
+      }
+    } catch (err) {
+      console.error(err);
+      showToast?.('Failed to fetch advances', 'error');
+    } finally {
+      setAdvanceLoading(false);
+    }
+  };
+
+  const handleOpenAdvances = (lab: Labour) => {
+    if (expandedLabour?.id === lab.id) {
+      setExpandedLabour(null);
+    } else {
+      setExpandedLabour(lab);
+      fetchAdvances(lab.id);
+    }
+  };
+
+  const handleSaveAdvance = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!expandedLabour) return;
+    try {
+      const res = await fetch(`/api/labour/${expandedLabour.id}/advances`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(advanceFormData)
+      });
+      if (!res.ok) throw new Error('Failed to save advance');
+      
+      setAdvanceFormData({ amount: '', date_text: '', description: '' });
+      fetchAdvances(expandedLabour.id);
+      showToast?.('Advance recorded', 'success');
+    } catch (err) {
+      console.error(err);
+      showToast?.('Failed to save advance', 'error');
+    }
+  };
+
+  const handleDeleteAdvance = async (id: number) => {
+    if (!expandedLabour) return;
+    try {
+      const res = await fetch(`/api/labour_advances/${id}`, { method: 'DELETE' });
+      if (!res.ok) throw new Error('Failed to delete advance');
+      fetchAdvances(expandedLabour.id);
+    } catch (err) {
+      console.error(err);
+      showToast?.('Failed to delete advance', 'error');
+    }
+  };
 
   const handleOpenModal = (lab: Labour | null = null) => {
     if (lab) {
@@ -178,7 +251,8 @@ export default function LabourPage() {
                 </tr>
               ) : (
                 filteredLabour.map(lab => (
-                  <tr key={lab.id} className="hover:bg-[#f8f9fa] transition-colors">
+                  <React.Fragment key={lab.id}>
+                  <tr className={`hover:bg-[#f8f9fa] transition-colors ${expandedLabour?.id === lab.id ? 'bg-[#f8f9fa]' : ''}`}>
                     <td className="px-6 py-4 font-bold text-[#162839]">{lab.name}</td>
                     <td className="px-6 py-4 text-sm">{lab.cnic}</td>
                     <td className="px-6 py-4 text-sm">{lab.mobile_no}</td>
@@ -193,6 +267,9 @@ export default function LabourPage() {
                     </td>
                     <td className="px-6 py-4">
                       <div className="flex items-center justify-center gap-3">
+                        <button onClick={() => handleOpenAdvances(lab)} className={`p-1.5 rounded transition-colors ${expandedLabour?.id === lab.id ? 'text-white bg-emerald-600' : 'text-emerald-600 hover:bg-emerald-50'}`} title="Advances">
+                          {expandedLabour?.id === lab.id ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+                        </button>
                         <button onClick={() => handleOpenModal(lab)} className="p-1.5 text-[#006397] hover:bg-[#cde5ff] rounded transition-colors" title="Edit">
                           <Edit2 className="w-4 h-4" />
                         </button>
@@ -202,6 +279,129 @@ export default function LabourPage() {
                       </div>
                     </td>
                   </tr>
+                  {expandedLabour?.id === lab.id && (
+                    <tr className="bg-white">
+                      <td colSpan={7} className="p-0 border-b-2 border-emerald-500">
+                        <div className="p-6 md:px-12 bg-white flex flex-col xl:flex-row gap-8 animate-in fade-in slide-in-from-top-2 duration-300">
+                          
+                          <div className="flex-1 space-y-6">
+                            <h4 className="text-[14px] font-bold text-[#162839] uppercase tracking-wider">Payment History</h4>
+                            <div className="border border-[#edeeef] rounded-xl overflow-hidden">
+                              <table className="w-full text-left">
+                                <thead>
+                                  <tr className="bg-[#f8f9fa] border-b border-[#edeeef] text-[12px] font-bold text-neutral-500 uppercase tracking-wider">
+                                    <th className="px-4 py-3">Date</th>
+                                    <th className="px-4 py-3">Description</th>
+                                    <th className="px-4 py-3 text-right">Advance Amount</th>
+                                    <th className="px-4 py-3 text-right">Remaining Balance</th>
+                                    <th className="px-4 py-3 text-center w-16">Action</th>
+                                  </tr>
+                                </thead>
+                                <tbody className="divide-y divide-[#edeeef] text-[14px]">
+                                  {advances.length === 0 ? (
+                                    <tr>
+                                      <td colSpan={5} className="px-4 py-8 text-center text-neutral-400">No advance payments recorded.</td>
+                                    </tr>
+                                  ) : (
+                                    (() => {
+                                      let runningBalance = lab.salary;
+                                      return advances.map(adv => {
+                                        runningBalance -= adv.amount;
+                                        return (
+                                          <tr key={adv.id} className="hover:bg-[#f8f9fa]">
+                                            <td className="px-4 py-3 font-medium text-[#162839]">{adv.date_text}</td>
+                                            <td className="px-4 py-3 text-neutral-500">{adv.description || '-'}</td>
+                                            <td className="px-4 py-3 text-right text-red-600 font-bold">{formatCurrency(adv.amount, currency)}</td>
+                                            <td className="px-4 py-3 text-right font-medium text-[#162839]">{formatCurrency(runningBalance, currency)}</td>
+                                            <td className="px-4 py-3 text-center">
+                                              <button onClick={() => handleDeleteAdvance(adv.id)} className="p-1.5 text-red-600 hover:bg-red-50 rounded transition-colors" title="Delete">
+                                                <Trash2 className="w-4 h-4 mx-auto" />
+                                              </button>
+                                            </td>
+                                          </tr>
+                                        );
+                                      });
+                                    })()
+                                  )}
+                                </tbody>
+                              </table>
+                            </div>
+                            
+                            <form onSubmit={handleSaveAdvance} className="flex flex-wrap gap-4 items-end bg-[#f8f9fa] p-4 rounded-xl border border-[#edeeef]">
+                              <div className="flex-1 min-w-[150px] space-y-2">
+                                <label className="text-[13px] font-bold text-[#162839] block">Date</label>
+                                <input 
+                                  type="date" required value={advanceFormData.date_text} 
+                                  onChange={e => setAdvanceFormData({...advanceFormData, date_text: e.target.value})}
+                                  className="w-full bg-white border border-[#edeeef] rounded-xl px-4 py-2.5 text-[14px] font-medium outline-none focus:ring-2 focus:ring-[#5cb8fd] transition-all"
+                                />
+                              </div>
+                              <div className="flex-1 min-w-[150px] space-y-2">
+                                <label className="text-[13px] font-bold text-[#162839] block">Description (Optional)</label>
+                                <input 
+                                  type="text" value={advanceFormData.description} 
+                                  onChange={e => setAdvanceFormData({...advanceFormData, description: e.target.value})}
+                                  placeholder="e.g. For medical, Bonus"
+                                  className="w-full bg-white border border-[#edeeef] rounded-xl px-4 py-2.5 text-[14px] font-medium outline-none focus:ring-2 focus:ring-[#5cb8fd] transition-all"
+                                />
+                              </div>
+                              <div className="flex-1 min-w-[150px] space-y-2">
+                                <label className="text-[13px] font-bold text-[#162839] block">Amount</label>
+                                <input 
+                                  type="number" required value={advanceFormData.amount} 
+                                  onChange={e => setAdvanceFormData({...advanceFormData, amount: e.target.value})}
+                                  placeholder="Enter amount"
+                                  className="w-full bg-white border border-[#edeeef] rounded-xl px-4 py-2.5 text-[14px] font-medium outline-none focus:ring-2 focus:ring-[#5cb8fd] transition-all"
+                                />
+                              </div>
+                              <button 
+                                type="submit"
+                                disabled={advanceLoading || !advanceFormData.amount || !advanceFormData.date_text}
+                                className="px-6 py-2.5 bg-[#006397] text-white font-bold rounded-xl hover:bg-[#00517a] transition-colors disabled:opacity-50 h-[46px]"
+                              >
+                                Add
+                              </button>
+                            </form>
+                          </div>
+
+                          <div className="w-full xl:w-80">
+                            {(() => {
+                              const totalAdvances = advances.reduce((sum, a) => sum + a.amount, 0);
+                              const remaining = lab.salary - totalAdvances;
+                              const extraAmount = totalAdvances > lab.salary ? totalAdvances - lab.salary : 0;
+                              
+                              return (
+                                <div className="bg-[#f8f9fa] border border-[#edeeef] rounded-xl p-5 sticky top-6">
+                                  <h4 className="text-[14px] font-bold text-[#162839] mb-4 uppercase tracking-wider">Summary</h4>
+                                  <div className="grid grid-cols-2 gap-y-3 text-[14px]">
+                                    <div className="text-neutral-500">Total Salary:</div>
+                                    <div className="text-right font-bold text-[#162839]">{formatCurrency(lab.salary, currency)}</div>
+                                    
+                                    <div className="text-neutral-500">Number of Advances:</div>
+                                    <div className="text-right font-bold text-[#162839]">{advances.length}</div>
+                                    
+                                    <div className="text-neutral-500">Total Amount Taken:</div>
+                                    <div className="text-right font-bold text-red-600">{formatCurrency(totalAdvances, currency)}</div>
+                                    
+                                    <div className="text-neutral-500 border-t border-[#edeeef] pt-3 mt-1">Remaining Balance:</div>
+                                    <div className={`text-right font-black text-[16px] border-t border-[#edeeef] pt-3 mt-1 ${remaining < 0 ? 'text-red-600' : 'text-emerald-600'}`}>
+                                      {formatCurrency(remaining, currency)}
+                                    </div>
+                                  </div>
+                                  {extraAmount > 0 && (
+                                    <div className="mt-4 p-3 bg-red-50 border border-red-100 rounded-lg text-red-700 text-[13px] font-bold text-center">
+                                      Warning: Advances exceed salary by {formatCurrency(extraAmount, currency)}.
+                                    </div>
+                                  )}
+                                </div>
+                              );
+                            })()}
+                          </div>
+                        </div>
+                      </td>
+                    </tr>
+                  )}
+                  </React.Fragment>
                 ))
               )}
             </tbody>
