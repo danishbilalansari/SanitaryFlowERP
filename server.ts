@@ -2818,6 +2818,50 @@ app.use((req, res, next) => {
     }
   });
 
+  app.get('/api/labour/:id/advances', checkPermission('Labour'), async (req, res) => {
+    try {
+      const advances = await db('labour_advances')
+        .where({ labour_id: req.params.id })
+        .orderBy('id', 'asc');
+      res.json(advances);
+    } catch (error) {
+      console.error(error);
+      res.status(500).json({ error: 'Failed to fetch advances' });
+    }
+  });
+
+  app.post('/api/labour/:id/advances', checkPermission('Labour'), async (req, res) => {
+    try {
+      const { amount, date_text, description } = req.body;
+      const insertResult = await db('labour_advances').insert({
+        labour_id: req.params.id,
+        amount: Number(amount),
+        date_text,
+        description,
+      }).returning('id');
+      const id = typeof insertResult[0] === 'object' ? insertResult[0].id : insertResult[0];
+      const advance = await db('labour_advances').where({ id }).first();
+      
+      const labour = await db('labour').where({ id: req.params.id }).first();
+      await auditLog(req, 'CREATE', 'Labour Advance', { id, labour_id: req.params.id, name: labour?.name });
+      
+      res.status(201).json(advance);
+    } catch (error) {
+      console.error(error);
+      res.status(500).json({ error: 'Failed to add advance' });
+    }
+  });
+
+  app.delete('/api/labour_advances/:id', checkPermission('Labour'), async (req, res) => {
+    try {
+      await db('labour_advances').where({ id: req.params.id }).delete();
+      res.json({ success: true });
+    } catch (error) {
+      console.error(error);
+      res.status(500).json({ error: 'Failed to delete advance' });
+    }
+  });
+
   // API 404 Handler - Catch unmatched API routes before SPA fallback
   app.use('/api', (req, res) => {
     console.warn(`404 API Not Found: ${req.method} ${req.originalUrl}`);
