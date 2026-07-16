@@ -14,7 +14,7 @@ interface Labour {
   salary: number;
 }
 
-interface Advance {a
+interface Advance {
   id: number;
   labour_id: number;
   amount: number;
