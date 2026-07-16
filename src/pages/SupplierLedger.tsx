@@ -109,7 +109,7 @@ export default function SupplierLedger() {
                 <ArrowLeft className="w-5 h-5" />
             </Link>
             <div>
-              <h2 className="text-[32px] font-black text-[#001d31] tracking-tight leading-none">{supplier.name}</h2>
+              <h2 className="text-[32px] print:text-xl font-black text-[#001d31] tracking-tight leading-none">{supplier.name}</h2>
               <p className="text-[16px] text-neutral-500 mt-1">Transaction history and balance tracking.</p>
             </div>
           </div>
@@ -124,9 +124,9 @@ export default function SupplierLedger() {
 
       {/* Summary Cards */}
       <div className="grid grid-cols-1 md:grid-cols-4 print:flex print:flex-row print:justify-between gap-6 print:gap-4">
-         <div className="print:flex-1 bg-white border border-neutral-200 p-8 rounded-2xl shadow-sm">
+         <div className="print:flex-1 bg-white border border-neutral-200 p-8 print:p-3 rounded-2xl shadow-sm">
             <p className="text-[11px] font-bold text-neutral-400 uppercase tracking-widest mb-4">Current Balance</p>
-            <h3 className={`text-[32px] font-bold leading-none ${currentBalance > 0 ? 'text-red-500' : 'text-emerald-600'}`}>
+            <h3 className={`text-[32px] print:text-xl font-bold leading-none ${currentBalance > 0 ? 'text-red-500' : 'text-emerald-600'}`}>
                {formatCurrency(Math.abs(currentBalance), currency)}
             </h3>
             <p className="mt-2 text-[12px] font-medium text-neutral-400">
@@ -134,25 +134,25 @@ export default function SupplierLedger() {
             </p>
          </div>
 
-         <div className="print:flex-1 bg-white border border-neutral-200 p-8 rounded-2xl shadow-sm">
+         <div className="print:flex-1 bg-white border border-neutral-200 p-8 print:p-3 rounded-2xl shadow-sm">
             <p className="text-[11px] font-bold text-neutral-400 uppercase tracking-widest mb-4">Total Purchases</p>
-            <h3 className="text-[32px] font-bold text-[#162839] leading-none">{formatCurrency(totalCredit, currency)}</h3>
+            <h3 className="text-[32px] print:text-xl font-bold text-[#162839] leading-none">{formatCurrency(totalCredit, currency)}</h3>
             <div className="mt-4 flex items-center gap-1.5 text-emerald-500 text-[13px] font-bold">
                <TrendingUp className="w-4 h-4" />
                <span>Lifetime supply</span>
             </div>
          </div>
 
-         <div className="print:flex-1 bg-white border border-neutral-200 p-8 rounded-2xl shadow-sm">
+         <div className="print:flex-1 bg-white border border-neutral-200 p-8 print:p-3 rounded-2xl shadow-sm">
             <p className="text-[11px] font-bold text-neutral-400 uppercase tracking-widest mb-4">Total Paid</p>
-            <h3 className="text-[32px] font-bold text-[#162839] leading-none">{formatCurrency(totalDebit, currency)}</h3>
+            <h3 className="text-[32px] print:text-xl font-bold text-[#162839] leading-none">{formatCurrency(totalDebit, currency)}</h3>
             <div className="mt-4 flex items-center gap-1.5 text-blue-500 text-[13px] font-bold">
                <Wallet className="w-4 h-4" />
                <span>Settled invoices</span>
             </div>
          </div>
 
-         <div className="print:hidden bg-[#2c3e50] p-8 rounded-2xl shadow-xl flex items-center justify-center">
+         <div className="print:hidden bg-[#2c3e50] p-8 print:p-3 rounded-2xl shadow-xl flex items-center justify-center">
              <button onClick={() => setShowPaymentModal(true)} className="flex flex-col items-center gap-3 text-white group">
                 <div className="w-14 h-14 bg-white/10 rounded-2xl flex items-center justify-center group-hover:bg-white/20 transition-all shadow-lg ring-1 ring-white/20">
                    <Plus className="w-7 h-7" />
@@ -215,39 +215,39 @@ export default function SupplierLedger() {
             </div>
          </div>
          <div className="overflow-x-auto print:overflow-visible">
-            <table className="w-full text-left print:whitespace-normal">
+            <table className="w-full text-left print:whitespace-normal print:table-fixed print:text-[11px]">
                <thead>
                   <tr className="bg-white text-[11px] font-bold text-neutral-400 uppercase tracking-widest border-b border-neutral-100">
-                     <th className="px-8 py-5">Date</th>
-                     <th className="px-8 py-5">Description</th>
-                     <th className="px-8 py-5">Reference</th>
-                     <th className="px-8 py-5 text-right">Debit (Paid)</th>
-                     <th className="px-8 py-5 text-right">Credit (Purchased)</th>
-                     <th className="px-8 py-5 text-right">Running Balance</th>
+                     <th className="w-[12%] px-8 py-5 print:px-2 print:py-2">Date</th>
+                     <th className="w-[28%] px-8 py-5 print:px-2 print:py-2">Description</th>
+                     <th className="w-[15%] px-8 py-5 print:px-2 print:py-2">Reference</th>
+                     <th className="w-[15%] px-8 py-5 print:px-2 print:py-2 text-right">Debit (Paid)</th>
+                     <th className="w-[15%] px-8 py-5 print:px-2 print:py-2 text-right">Credit (Purchased)</th>
+                     <th className="w-[15%] px-8 py-5 print:px-2 print:py-2 text-right">Running Balance</th>
                   </tr>
                </thead>
                <tbody className="divide-y divide-neutral-50 text-[14px]">
                   {ledgerWithBalance.map((entry, idx) => (
                      <tr key={idx} className="hover:bg-neutral-50/50 transition-colors">
-                        <td className="px-8 py-5 text-[#162839] font-medium">
+                        <td className="px-8 py-5 print:px-2 print:py-2 text-[#162839] font-medium">
                            {new Date(entry.created_at).toLocaleDateString()}
                         </td>
-                        <td className="px-8 py-5">
+                        <td className="px-8 py-5 print:px-2 print:py-2">
                            <p className="font-bold text-[#162839]">{entry.description}</p>
                            <p className="text-[11px] text-neutral-400 font-medium uppercase tracking-tight">{entry.account_type}</p>
                         </td>
-                        <td className="px-8 py-5">
+                        <td className="px-8 py-5 print:px-2 print:py-2">
                            <span className="bg-neutral-100 text-neutral-600 px-3 py-1 rounded text-[12px] font-bold inline-block print:whitespace-normal print:break-all">
                               {entry.reference_id}
                            </span>
                         </td>
-                        <td className="px-8 py-5 text-right font-black text-emerald-600">
+                        <td className="px-8 py-5 print:px-2 print:py-2 text-right font-black text-emerald-600">
                            {entry.debit > 0 ? `${formatCurrency(entry.debit, currency)}` : '-'}
                         </td>
-                        <td className="px-8 py-5 text-right font-black text-red-500">
+                        <td className="px-8 py-5 print:px-2 print:py-2 text-right font-black text-red-500">
                            {entry.credit > 0 ? `${formatCurrency(entry.credit, currency)}` : '-'}
                         </td>
-                        <td className="px-8 py-5 text-right font-black text-[#162839]">
+                        <td className="px-8 py-5 print:px-2 print:py-2 text-right font-black text-[#162839]">
                            {formatCurrency(Math.abs(entry.balance), currency)}
                            <span className="ml-1 text-[10px] text-neutral-400">{entry.balance > 0 ? 'DR' : 'CR'}</span>
                         </td>
