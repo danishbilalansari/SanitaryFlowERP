@@ -99,13 +99,13 @@ export default function SupplierLedger() {
        {/* Header */}
        <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
         <div>
-          <nav className="flex items-center gap-2 text-[13px] font-medium text-neutral-400 mb-2">
+          <nav className="print:hidden flex items-center gap-2 text-[13px] font-medium text-neutral-400 mb-2">
             <Link to="/suppliers" className="hover:text-[#006397] transition-colors">Suppliers</Link>
             <ChevronRight className="w-3.5 h-3.5" />
             <span className="text-[#006397] font-bold">Ledger</span>
           </nav>
           <div className="flex items-center gap-4">
-            <Link to="/suppliers" className="p-2 hover:bg-neutral-100 rounded-full text-neutral-400 transition-all">
+            <Link to="/suppliers" className="print:hidden p-2 hover:bg-neutral-100 rounded-full text-neutral-400 transition-all">
                 <ArrowLeft className="w-5 h-5" />
             </Link>
             <div>
@@ -115,7 +115,7 @@ export default function SupplierLedger() {
           </div>
         </div>
         <div className="flex gap-3">
-          <button onClick={() => window.print()} className="flex items-center gap-2 px-5 py-2.5 bg-white border border-neutral-200 text-neutral-600 font-bold rounded-lg hover:bg-neutral-50 transition-all text-[14px]">
+          <button onClick={() => window.print()} className="print:hidden flex items-center gap-2 px-5 py-2.5 bg-white border border-neutral-200 text-neutral-600 font-bold rounded-lg hover:bg-neutral-50 transition-all text-[14px]">
             <Printer className="w-4 h-4" />
             Print Statement
           </button>
@@ -123,7 +123,7 @@ export default function SupplierLedger() {
       </div>
 
       {/* Summary Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-4 print:grid-cols-3 gap-6 print:gap-4">
          <div className="bg-white border border-neutral-200 p-8 rounded-2xl shadow-sm">
             <p className="text-[11px] font-bold text-neutral-400 uppercase tracking-widest mb-4">Current Balance</p>
             <h3 className={`text-[32px] font-bold leading-none ${currentBalance > 0 ? 'text-red-500' : 'text-emerald-600'}`}>
@@ -152,7 +152,7 @@ export default function SupplierLedger() {
             </div>
          </div>
 
-         <div className="bg-[#2c3e50] p-8 rounded-2xl shadow-xl flex items-center justify-center">
+         <div className="print:hidden bg-[#2c3e50] p-8 rounded-2xl shadow-xl flex items-center justify-center">
              <button onClick={() => setShowPaymentModal(true)} className="flex flex-col items-center gap-3 text-white group">
                 <div className="w-14 h-14 bg-white/10 rounded-2xl flex items-center justify-center group-hover:bg-white/20 transition-all shadow-lg ring-1 ring-white/20">
                    <Plus className="w-7 h-7" />
@@ -207,14 +207,14 @@ export default function SupplierLedger() {
                 <CalendarDays className="w-5 h-5 text-neutral-400" />
                 All Transactions
             </h3>
-            <div className="flex gap-4">
+            <div className="print:hidden flex gap-4">
                <div className="relative">
                   <Search className="w-4 h-4 text-neutral-300 absolute left-4 top-1/2 -translate-y-1/2" />
                   <input type="text" placeholder="Search entries..." className="bg-white border border-neutral-200 rounded-lg pl-10 pr-4 py-2 text-[13px] outline-none focus:ring-1 focus:ring-[#5cb8fd]" />
                </div>
             </div>
          </div>
-         <div className="overflow-x-auto">
+         <div className="overflow-x-auto print:overflow-visible">
             <table className="w-full text-left">
                <thead>
                   <tr className="bg-white text-[11px] font-bold text-neutral-400 uppercase tracking-widest border-b border-neutral-100">
