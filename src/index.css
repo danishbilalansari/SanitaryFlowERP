@@ -79,7 +79,8 @@
 
   @media print {
     @page {
-      margin: 0;
+      size: auto;
+      margin: 0mm !important;
     }
     body {
       background-color: white !important;
