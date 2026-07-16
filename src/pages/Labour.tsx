@@ -14,7 +14,7 @@ interface Labour {
   salary: number;
 }
 
-interface Advance {
+interface Advance {a
   id: number;
   labour_id: number;
   amount: number;
@@ -263,7 +263,7 @@ export default function LabourPage() {
                       </span>
                     </td>
                     <td className="px-6 py-4 text-right font-mono font-medium text-[#162839]">
-                      {lab.salary.toLocaleString('en-US')}
+                      {Number(lab.salary).toLocaleString('en-US')}
                     </td>
                     <td className="px-6 py-4">
                       <div className="flex items-center justify-center gap-3">
@@ -304,14 +304,14 @@ export default function LabourPage() {
                                     </tr>
                                   ) : (
                                     (() => {
-                                      let runningBalance = lab.salary;
+                                      let runningBalance = Number(lab.salary);
                                       return advances.map(adv => {
-                                        runningBalance -= adv.amount;
+                                        runningBalance -= Number(adv.amount);
                                         return (
                                           <tr key={adv.id} className="hover:bg-[#f8f9fa]">
                                             <td className="px-4 py-3 font-medium text-[#162839]">{adv.date_text}</td>
                                             <td className="px-4 py-3 text-neutral-500">{adv.description || '-'}</td>
-                                            <td className="px-4 py-3 text-right text-red-600 font-bold">{formatCurrency(adv.amount, currency)}</td>
+                                            <td className="px-4 py-3 text-right text-red-600 font-bold">{formatCurrency(Number(adv.amount), currency)}</td>
                                             <td className="px-4 py-3 text-right font-medium text-[#162839]">{formatCurrency(runningBalance, currency)}</td>
                                             <td className="px-4 py-3 text-center">
                                               <button onClick={() => handleDeleteAdvance(adv.id)} className="p-1.5 text-red-600 hover:bg-red-50 rounded transition-colors" title="Delete">
@@ -366,16 +366,16 @@ export default function LabourPage() {
 
                           <div className="w-full xl:w-80">
                             {(() => {
-                              const totalAdvances = advances.reduce((sum, a) => sum + a.amount, 0);
-                              const remaining = lab.salary - totalAdvances;
-                              const extraAmount = totalAdvances > lab.salary ? totalAdvances - lab.salary : 0;
+                              const totalAdvances = advances.reduce((sum, a) => sum + Number(a.amount), 0);
+                              const remaining = Number(lab.salary) - totalAdvances;
+                              const extraAmount = totalAdvances > Number(lab.salary) ? totalAdvances - Number(lab.salary) : 0;
                               
                               return (
                                 <div className="bg-[#f8f9fa] border border-[#edeeef] rounded-xl p-5 sticky top-6">
                                   <h4 className="text-[14px] font-bold text-[#162839] mb-4 uppercase tracking-wider">Summary</h4>
                                   <div className="grid grid-cols-2 gap-y-3 text-[14px]">
                                     <div className="text-neutral-500">Total Salary:</div>
-                                    <div className="text-right font-bold text-[#162839]">{formatCurrency(lab.salary, currency)}</div>
+                                    <div className="text-right font-bold text-[#162839]">{formatCurrency(Number(lab.salary), currency)}</div>
                                     
                                     <div className="text-neutral-500">Number of Advances:</div>
                                     <div className="text-right font-bold text-[#162839]">{advances.length}</div>
