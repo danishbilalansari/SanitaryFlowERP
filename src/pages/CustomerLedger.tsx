@@ -54,10 +54,10 @@ export default function CustomerLedger() {
   const currentBalance = ledgerEntries.length > 0 ? ledgerEntries[0].running_balance : 0;
 
   return (
-    <div className="space-y-6 max-w-5xl mx-auto pb-20">
+    <div className="space-y-6 max-w-5xl print:max-w-none mx-auto pb-20 print:pb-0">
       <div className="flex items-center justify-between z-10 relative">
         <div className="flex items-center space-x-4">
-          <Link to={`/customers/${id}`} className="p-2 text-neutral-500 hover:text-neutral-900 hover:bg-neutral-100 rounded-lg transition-colors bg-white shadow-sm border border-neutral-200/60">
+          <Link to={`/customers/${id}`} className="print:hidden p-2 text-neutral-500 hover:text-neutral-900 hover:bg-neutral-100 rounded-lg transition-colors bg-white shadow-sm border border-neutral-200/60">
             <ArrowLeft className="w-5 h-5" />
           </Link>
           <div>
@@ -68,14 +68,14 @@ export default function CustomerLedger() {
         
         <button 
           onClick={() => window.print()}
-          className="flex items-center text-[13px] font-medium text-neutral-600 hover:text-neutral-900 bg-white border border-neutral-200/80 px-4 py-2 rounded-lg shadow-sm transition-colors"
+          className="print:hidden flex items-center text-[13px] font-medium text-neutral-600 hover:text-neutral-900 bg-white border border-neutral-200/80 px-4 py-2 rounded-lg shadow-sm transition-colors"
         >
           <Printer className="w-4 h-4 mr-2" />
           Print Statement
         </button>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-3 print:grid-cols-3 gap-4 print:gap-2">
         <div className="bg-white rounded-2xl p-6 border border-neutral-200/60 shadow-sm flex flex-col justify-center">
           <p className="text-[12px] font-medium uppercase tracking-wider text-neutral-500 mb-1">Statement Balance</p>
           <p className={`text-3xl font-bold tracking-tight ${currentBalance > 0 ? 'text-emerald-500' : currentBalance < 0 ? 'text-red-500' : 'text-neutral-900'}`}>
@@ -109,8 +109,8 @@ export default function CustomerLedger() {
             <p className="text-neutral-500 text-[13px] font-medium">No ledger entries found for this customer.</p>
           </div>
         ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-left text-[13px] whitespace-nowrap">
+          <div className="overflow-x-auto print:overflow-visible">
+            <table className="w-full text-left text-[13px] whitespace-nowrap print:whitespace-normal">
               <thead className="bg-[#f8f9fa] border-b border-neutral-100">
                 <tr>
                   <th className="px-6 py-3 font-bold text-neutral-500 uppercase tracking-widest text-[10px]">Date</th>
@@ -128,7 +128,7 @@ export default function CustomerLedger() {
                        <span className="font-bold text-[#162839] tracking-tight block">{entry.reference_id}</span>
                        <div className="flex items-center gap-2 mt-0.5">
                          <span className="text-[10px] font-bold text-neutral-400 border border-neutral-200 px-1.5 rounded">{entry.account_type}</span>
-                         <span className="text-[11px] text-neutral-400 truncate max-w-[200px]">{entry.description}</span>
+                         <span className="text-[11px] text-neutral-400 truncate max-w-[200px] print:max-w-none print:whitespace-normal">{entry.description}</span>
                        </div>
                     </td>
                     <td className="px-6 py-4 text-right font-bold text-emerald-600">
