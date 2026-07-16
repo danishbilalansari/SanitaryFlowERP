@@ -109,7 +109,7 @@ export default function Layout() {
   }, [location.pathname]);
 
   return (
-    <div className="flex h-screen bg-[#f8f9fa] text-[#191c1d] font-sans tracking-normal overflow-hidden">
+    <div className="flex h-screen print:h-auto bg-[#f8f9fa] print:bg-white text-[#191c1d] font-sans tracking-normal overflow-hidden print:overflow-visible">
       {/* Sidebar for Desktop */}
       <aside className="hidden md:flex w-[260px] flex-col bg-[#162839] z-40 print:hidden shadow-lg transition-all border-r border-[#2c3e50]">
         <div className="p-8 mb-4">
@@ -210,7 +210,7 @@ export default function Layout() {
       </aside>
 
       {/* Main Content Area */}
-      <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
+      <div className="flex-1 flex flex-col min-w-0 overflow-hidden print:overflow-visible">
         {/* Topbar */}
         <header className="bg-white sticky top-0 h-16 border-b border-[#edeeef] flex items-center justify-between px-8 z-30 print:hidden shadow-sm">
           <div className="flex items-center flex-1">
@@ -257,7 +257,7 @@ export default function Layout() {
         </header>
 
         {/* Page Content */}
-        <main className="flex-1 overflow-auto p-4 sm:p-8 print:p-0 print:bg-white bg-[#f8f9fa]">
+        <main className="flex-1 overflow-auto print:overflow-visible p-4 sm:p-8 print:p-0 print:bg-white bg-[#f8f9fa]">
           <Outlet />
         </main>
         <Toast />
