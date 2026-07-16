@@ -237,7 +237,7 @@ export default function SupplierLedger() {
                            <p className="text-[11px] text-neutral-400 font-medium uppercase tracking-tight">{entry.account_type}</p>
                         </td>
                         <td className="px-8 py-5">
-                           <span className="bg-neutral-100 text-neutral-600 px-3 py-1 rounded text-[12px] font-bold flex items-center gap-2 w-fit">
+                           <span className="bg-neutral-100 text-neutral-600 px-3 py-1 rounded text-[12px] font-bold inline-block print:whitespace-normal print:break-all">
                               {entry.reference_id}
                            </span>
                         </td>
