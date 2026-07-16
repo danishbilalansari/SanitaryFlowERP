@@ -75,8 +75,8 @@ export default function CustomerLedger() {
         </button>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 print:grid-cols-3 gap-4 print:gap-2">
-        <div className="bg-white rounded-2xl p-6 border border-neutral-200/60 shadow-sm flex flex-col justify-center">
+      <div className="grid grid-cols-1 md:grid-cols-3 print:flex print:flex-row print:justify-between gap-4 print:gap-2">
+        <div className="print:flex-1 bg-white rounded-2xl p-6 border border-neutral-200/60 shadow-sm flex flex-col justify-center">
           <p className="text-[12px] font-medium uppercase tracking-wider text-neutral-500 mb-1">Statement Balance</p>
           <p className={`text-3xl font-bold tracking-tight ${currentBalance > 0 ? 'text-emerald-500' : currentBalance < 0 ? 'text-red-500' : 'text-neutral-900'}`}>
             {formatCurrency(Math.abs(currentBalance), currency)}
@@ -85,13 +85,13 @@ export default function CustomerLedger() {
             </span>
           </p>
         </div>
-        <div className="bg-white rounded-2xl p-6 border border-neutral-200/60 shadow-sm flex flex-col justify-center">
+        <div className="print:flex-1 bg-white rounded-2xl p-6 border border-neutral-200/60 shadow-sm flex flex-col justify-center">
           <p className="text-[12px] font-medium uppercase tracking-wider text-neutral-500 mb-1">Total Transactions</p>
           <p className="text-3xl font-bold tracking-tight text-neutral-900">
             {ledgerEntries.length}
           </p>
         </div>
-        <div className="bg-white rounded-2xl p-6 border border-neutral-200/60 shadow-sm flex flex-col justify-center">
+        <div className="print:flex-1 bg-white rounded-2xl p-6 border border-neutral-200/60 shadow-sm flex flex-col justify-center">
           <p className="text-[12px] font-medium uppercase tracking-wider text-neutral-500 mb-1">Customer Type</p>
           <p className="text-xl font-bold tracking-tight text-[#006397] mt-1">
             {customer.business_type}
@@ -99,7 +99,7 @@ export default function CustomerLedger() {
         </div>
       </div>
 
-      <div className="bg-white rounded-2xl border border-neutral-200/60 shadow-sm overflow-hidden">
+      <div className="bg-white rounded-2xl border border-neutral-200/60 shadow-sm overflow-hidden print:overflow-visible">
         <div className="p-5 border-b border-neutral-100 flex justify-between items-center bg-neutral-50/50">
           <h2 className="text-[15px] font-bold tracking-tight text-neutral-900">Statement of Account</h2>
         </div>
