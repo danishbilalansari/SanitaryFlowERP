@@ -123,8 +123,8 @@ export default function SupplierLedger() {
       </div>
 
       {/* Summary Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-4 print:grid-cols-3 gap-6 print:gap-4">
-         <div className="bg-white border border-neutral-200 p-8 rounded-2xl shadow-sm">
+      <div className="grid grid-cols-1 md:grid-cols-4 print:flex print:flex-row print:justify-between gap-6 print:gap-4">
+         <div className="print:flex-1 bg-white border border-neutral-200 p-8 rounded-2xl shadow-sm">
             <p className="text-[11px] font-bold text-neutral-400 uppercase tracking-widest mb-4">Current Balance</p>
             <h3 className={`text-[32px] font-bold leading-none ${currentBalance > 0 ? 'text-red-500' : 'text-emerald-600'}`}>
                {formatCurrency(Math.abs(currentBalance), currency)}
@@ -134,7 +134,7 @@ export default function SupplierLedger() {
             </p>
          </div>
 
-         <div className="bg-white border border-neutral-200 p-8 rounded-2xl shadow-sm">
+         <div className="print:flex-1 bg-white border border-neutral-200 p-8 rounded-2xl shadow-sm">
             <p className="text-[11px] font-bold text-neutral-400 uppercase tracking-widest mb-4">Total Purchases</p>
             <h3 className="text-[32px] font-bold text-[#162839] leading-none">{formatCurrency(totalCredit, currency)}</h3>
             <div className="mt-4 flex items-center gap-1.5 text-emerald-500 text-[13px] font-bold">
@@ -143,7 +143,7 @@ export default function SupplierLedger() {
             </div>
          </div>
 
-         <div className="bg-white border border-neutral-200 p-8 rounded-2xl shadow-sm">
+         <div className="print:flex-1 bg-white border border-neutral-200 p-8 rounded-2xl shadow-sm">
             <p className="text-[11px] font-bold text-neutral-400 uppercase tracking-widest mb-4">Total Paid</p>
             <h3 className="text-[32px] font-bold text-[#162839] leading-none">{formatCurrency(totalDebit, currency)}</h3>
             <div className="mt-4 flex items-center gap-1.5 text-blue-500 text-[13px] font-bold">
@@ -201,7 +201,7 @@ export default function SupplierLedger() {
       )}
 
       {/* Ledger Table */}
-      <div className="bg-white border border-neutral-200 rounded-2xl shadow-sm overflow-hidden">
+      <div className="bg-white border border-neutral-200 rounded-2xl shadow-sm overflow-hidden print:overflow-visible">
          <div className="px-8 py-6 border-b border-neutral-100 flex justify-between items-center bg-neutral-50/50">
             <h3 className="font-bold text-[#162839] flex items-center gap-3 text-[18px]">
                 <CalendarDays className="w-5 h-5 text-neutral-400" />
@@ -215,7 +215,7 @@ export default function SupplierLedger() {
             </div>
          </div>
          <div className="overflow-x-auto print:overflow-visible">
-            <table className="w-full text-left">
+            <table className="w-full text-left print:whitespace-normal">
                <thead>
                   <tr className="bg-white text-[11px] font-bold text-neutral-400 uppercase tracking-widest border-b border-neutral-100">
                      <th className="px-8 py-5">Date</th>
