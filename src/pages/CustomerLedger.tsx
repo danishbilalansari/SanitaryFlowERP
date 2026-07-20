@@ -2,44 +2,99 @@ import { useAppContext } from '../store';
 import { formatCurrency } from '../lib/currency';
 import React, { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { ArrowLeft, ArrowUpRight, ArrowDownRight, Printer } from 'lucide-react';
+import { ArrowLeft, ArrowUpRight, ArrowDownRight, Printer, Trash2, Edit2, X, Check } from 'lucide-react';
 
 export default function CustomerLedger() {
-  const { currency } = useAppContext();
+  const { currency, showToast } = useAppContext();
   const { id } = useParams<{ id: string }>();
   const [customer, setCustomer] = useState<any>(null);
   const [ledgerEntries, setLedgerEntries] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
-  
+
+  const [editingEntry, setEditingEntry] = useState<any>(null);
+  const [editForm, setEditForm] = useState({ description: '', debit: '', credit: '', reference_id: '', created_at: '' });
+
+  const fetchData = async () => {
+    try {
+      const [custRes, ledgeRes] = await Promise.all([
+        fetch(`/api/customers/${id}`),
+        fetch(`/api/ledger?customer_id=${id}`)
+      ]);
+      const cust = await custRes.json();
+      const ledge = await ledgeRes.json();
+      setCustomer(cust);
+      
+      // Sort and calculate running balance
+      let balance = 0;
+      const sortedLedger = ledge
+        .sort((a: any, b: any) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime())
+        .map((entry: any) => {
+          balance += (entry.debit || 0) - (entry.credit || 0);
+          return { ...entry, running_balance: balance };
+        });
+      
+      setLedgerEntries(sortedLedger.reverse()); // Show latest first but balanced correctly
+    } catch (error) {
+      console.error('Fetch error:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   useEffect(() => {
-    const fetchData = async () => {
-      try {
-        const [custRes, ledgeRes] = await Promise.all([
-          fetch(`/api/customers/${id}`),
-          fetch(`/api/ledger?customer_id=${id}`)
-        ]);
-        const cust = await custRes.json();
-        const ledge = await ledgeRes.json();
-        setCustomer(cust);
-        
-        // Sort and calculate running balance
-        let balance = 0;
-        const sortedLedger = ledge
-          .sort((a: any, b: any) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime())
-          .map((entry: any) => {
-            balance += (entry.debit || 0) - (entry.credit || 0);
-            return { ...entry, running_balance: balance };
-          });
-        
-        setLedgerEntries(sortedLedger.reverse()); // Show latest first but balanced correctly
-      } catch (error) {
-        console.error('Fetch error:', error);
-      } finally {
-        setLoading(false);
-      }
-    };
     fetchData();
   }, [id]);
+
+  const handleDelete = async (entryId: string) => {
+    
+    try {
+      const res = await fetch(`/api/ledger/${entryId}`, { method: 'DELETE' });
+      if (res.ok) {
+        showToast?.('Transaction deleted', 'success');
+        fetchData();
+      } else {
+        throw new Error('Failed to delete');
+      }
+    } catch (err) {
+      showToast?.('Failed to delete transaction', 'error');
+    }
+  };
+
+  const handleEditClick = (entry: any) => {
+    setEditingEntry(entry.id);
+    setEditForm({
+      description: entry.description || '',
+      debit: entry.debit || '',
+      credit: entry.credit || '',
+      reference_id: entry.reference_id || '',
+      created_at: new Date(entry.created_at).toISOString().split('T')[0]
+    });
+  };
+
+  const handleEditSave = async (entryId: string) => {
+    try {
+      const res = await fetch(`/api/ledger/${entryId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          description: editForm.description,
+          debit: parseFloat(editForm.debit) || 0,
+          credit: parseFloat(editForm.credit) || 0,
+          reference_id: editForm.reference_id,
+          created_at: new Date(editForm.created_at).toISOString()
+        })
+      });
+      if (res.ok) {
+        showToast?.('Transaction updated', 'success');
+        setEditingEntry(null);
+        fetchData();
+      } else {
+        throw new Error('Failed to update');
+      }
+    } catch (err) {
+      showToast?.('Failed to update transaction', 'error');
+    }
+  };
 
   if (loading) return <div className="p-12 text-center text-neutral-500 font-bold animate-pulse">Loading Ledger...</div>;
   if (!customer) {
@@ -114,32 +169,70 @@ export default function CustomerLedger() {
               <thead className="bg-[#f8f9fa] border-b border-neutral-100">
                 <tr>
                   <th className="w-[15%] px-6 py-3 print:px-2 print:py-2 font-bold text-neutral-500 uppercase tracking-widest text-[10px]">Date</th>
-                  <th className="w-[40%] px-6 py-3 print:px-2 print:py-2 font-bold text-neutral-500 uppercase tracking-widest text-[10px]">Description</th>
+                  <th className="w-[30%] px-6 py-3 print:px-2 print:py-2 font-bold text-neutral-500 uppercase tracking-widest text-[10px]">Description</th>
                   <th className="w-[15%] px-6 py-3 print:px-2 print:py-2 font-bold text-neutral-500 uppercase tracking-widest text-[10px] text-right">Debit / Out</th>
                   <th className="w-[15%] px-6 py-3 print:px-2 print:py-2 font-bold text-neutral-500 uppercase tracking-widest text-[10px] text-right">Credit / In</th>
                   <th className="w-[15%] px-6 py-3 print:px-2 print:py-2 font-bold text-neutral-500 uppercase tracking-widest text-[10px] text-right bg-neutral-50/50">Balance</th>
+                  <th className="w-[10%] px-6 py-3 font-bold text-neutral-500 uppercase tracking-widest text-[10px] text-right print:hidden">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-neutral-100">
                 {ledgerEntries.map((entry, idx) => (
                   <tr key={idx} className="hover:bg-neutral-50/80 transition-colors">
-                    <td className="px-6 py-4 print:px-2 print:py-2 text-neutral-500">{new Date(entry.created_at).toLocaleDateString()}</td>
-                    <td className="px-6 py-4 print:px-2 print:py-2">
-                       <span className="font-bold text-[#162839] tracking-tight block print:whitespace-normal print:break-all">{entry.reference_id}</span>
-                       <div className="flex items-center gap-2 mt-0.5">
-                         <span className="text-[10px] font-bold text-neutral-400 border border-neutral-200 px-1.5 rounded print:hidden">{entry.account_type}</span>
-                         <span className="text-[11px] text-neutral-400 truncate max-w-[200px] print:max-w-none print:whitespace-normal print:break-words">{entry.description}</span>
-                       </div>
-                    </td>
-                    <td className="px-6 py-4 print:px-2 print:py-2 text-right font-bold text-emerald-600">
-                      {entry.debit > 0 ? formatCurrency(entry.debit, currency) : '-'}
-                    </td>
-                    <td className="px-6 py-4 print:px-2 print:py-2 text-right font-bold text-red-500">
-                      {entry.credit > 0 ? formatCurrency(entry.credit, currency) : '-'}
-                    </td>
-                    <td className="px-6 py-4 print:px-2 print:py-2 text-right font-bold text-neutral-900 bg-neutral-50/50">
-                      {formatCurrency(entry.running_balance, currency)}
-                    </td>
+                    {editingEntry === entry.id ? (
+                      <>
+                        <td className="px-6 py-4 align-top">
+                          <input type="date" className="w-full min-w-[120px] p-2 border border-neutral-200 rounded text-[13px]" value={editForm.created_at} onChange={e => setEditForm({...editForm, created_at: e.target.value})} />
+                        </td>
+                        <td className="px-6 py-4 align-top">
+                          <input type="text" placeholder="Ref ID" className="w-full min-w-[150px] p-2 border border-neutral-200 rounded mb-2 text-[13px] block" value={editForm.reference_id} onChange={e => setEditForm({...editForm, reference_id: e.target.value})} />
+                          <input type="text" placeholder="Description" className="w-full min-w-[150px] p-2 border border-neutral-200 rounded text-[13px] block" value={editForm.description} onChange={e => setEditForm({...editForm, description: e.target.value})} />
+                        </td>
+                        <td className="px-6 py-4 align-top">
+                          <input type="number" placeholder="Debit" className="w-full min-w-[100px] p-2 border border-neutral-200 rounded text-right text-[13px]" value={editForm.debit} onChange={e => setEditForm({...editForm, debit: e.target.value})} />
+                        </td>
+                        <td className="px-6 py-4 align-top">
+                          <input type="number" placeholder="Credit" className="w-full min-w-[100px] p-2 border border-neutral-200 rounded text-right text-[13px]" value={editForm.credit} onChange={e => setEditForm({...editForm, credit: e.target.value})} />
+                        </td>
+                        <td className="px-6 py-4 text-right bg-neutral-50/50 text-neutral-400 align-top">-</td>
+                        <td className="px-6 py-4 text-right print:hidden align-top">
+                          <div className="flex gap-2 justify-end">
+                            <button onClick={() => handleEditSave(entry.id)} className="p-2 text-emerald-600 hover:bg-emerald-50 rounded-lg" title="Save"><Check className="w-4 h-4" /></button>
+                            <button onClick={() => setEditingEntry(null)} className="p-2 text-red-600 hover:bg-red-50 rounded-lg" title="Cancel"><X className="w-4 h-4" /></button>
+                          </div>
+                        </td>
+                      </>
+                    ) : (
+                      <>
+                        <td className="px-6 py-4 print:px-2 print:py-2 text-neutral-500">{new Date(entry.created_at).toLocaleDateString()}</td>
+                        <td className="px-6 py-4 print:px-2 print:py-2">
+                           <span className="font-bold text-[#162839] tracking-tight block print:whitespace-normal print:break-all">{entry.reference_id}</span>
+                           <div className="flex items-center gap-2 mt-0.5">
+                             <span className="text-[10px] font-bold text-neutral-400 border border-neutral-200 px-1.5 rounded print:hidden">{entry.account_type}</span>
+                             <span className="text-[11px] text-neutral-400 truncate max-w-[200px] print:max-w-none print:whitespace-normal print:break-words">{entry.description}</span>
+                           </div>
+                        </td>
+                        <td className="px-6 py-4 print:px-2 print:py-2 text-right font-bold text-emerald-600">
+                          {entry.debit > 0 ? formatCurrency(entry.debit, currency) : '-'}
+                        </td>
+                        <td className="px-6 py-4 print:px-2 print:py-2 text-right font-bold text-red-500">
+                          {entry.credit > 0 ? formatCurrency(entry.credit, currency) : '-'}
+                        </td>
+                        <td className="px-6 py-4 print:px-2 print:py-2 text-right font-bold text-neutral-900 bg-neutral-50/50">
+                          {formatCurrency(entry.running_balance, currency)}
+                        </td>
+                        <td className="px-6 py-4 text-right print:hidden">
+                          <div className="flex items-center justify-end gap-2">
+                            <button onClick={() => handleEditClick(entry)} className="p-2 text-neutral-400 hover:text-[#006397] hover:bg-neutral-100 rounded-lg transition-colors" title="Edit">
+                              <Edit2 className="w-4 h-4" />
+                            </button>
+                            <button onClick={() => handleDelete(entry.id)} className="p-2 text-neutral-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors" title="Delete">
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          </div>
+                        </td>
+                      </>
+                    )}
                   </tr>
                 ))}
               </tbody>
