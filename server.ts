@@ -1369,6 +1369,38 @@ app.use((req, res, next) => {
     }
   });
 
+  app.delete('/api/ledger/:id', checkPermission('Reports'), async (req, res) => {
+    try {
+      const { id } = req.params;
+      await db('ledger').where({ id }).del();
+      await auditLog(req, 'DELETE_LEDGER', 'Customers', { ledger_id: id });
+      res.json({ success: true });
+    } catch (error) {
+      console.error('Delete Ledger Error:', error);
+      res.status(500).json({ error: 'Failed to delete ledger entry' });
+    }
+  });
+
+  app.put('/api/ledger/:id', checkPermission('Reports'), async (req, res) => {
+    try {
+      const { id } = req.params;
+      const { debit, credit, description, created_at, reference_id } = req.body;
+      const updateData: any = {};
+      if (debit !== undefined) updateData.debit = debit;
+      if (credit !== undefined) updateData.credit = credit;
+      if (description !== undefined) updateData.description = description;
+      if (created_at !== undefined) updateData.created_at = created_at;
+      if (reference_id !== undefined) updateData.reference_id = reference_id;
+
+      await db('ledger').where({ id }).update(updateData);
+      await auditLog(req, 'UPDATE_LEDGER', 'Customers', { ledger_id: id, updateData });
+      res.json({ success: true });
+    } catch (error) {
+      console.error('Update Ledger Error:', error);
+      res.status(500).json({ error: 'Failed to update ledger entry' });
+    }
+  });
+
   // Customers (Expansion)
   app.get('/api/customers', checkPermission('Customers'), async (req, res) => {
     try {
@@ -2652,7 +2684,7 @@ app.use((req, res, next) => {
     }
   });
 
-  app.get('/api/reports/customer-summary-city-wise', checkPermission('Customers'), async (req, res) => {
+  app.get('/api/reports/customer-summary-city-wise', checkPermission('Reports'), async (req, res) => {
     const cacheKey = 'reports_customer_summary';
     const cached = getCachedValue(cacheKey);
     if (cached) return res.json(cached);
