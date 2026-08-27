@@ -1,53 +1,62 @@
 import React, { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { 
   Building2, 
   Plus, 
   Edit,
   Save, 
   Bell, 
-  ShieldAlert,
-  ChevronRight,
-  ShieldCheck,
-  UserPlus,
-  ArrowRight,
-  History,
-  Lock,
-  Factory,
-  BarChart3,
-  Users2,
-  Settings as SettingsIcon,
-  Search,
-  HelpCircle,
-  Lightbulb,
-  Check,
-  X,
-  CreditCard,
-  Cloud,
-  CheckCircle,
-  RotateCw,
-  Database,
-  AlertTriangle,
-  Download,
-  Globe,
-  PlusCircle,
-  ChevronDown,
-  Upload,
-  TrendingUp,
-  UserX,
-  FileText,
-  FilterX,
-  MoreVertical,
-  Calendar,
-  ChevronLeft,
-  RefreshCw as RefreshIcon,
-  ShieldCheck as ShieldIcon,
-  GanttChartSquare,
-  Activity
+  ShieldAlert, 
+  ChevronRight, 
+  ShieldCheck, 
+  UserPlus, 
+  ArrowRight, 
+  History, 
+  Lock, 
+  Factory, 
+  BarChart3, 
+  Users2, 
+  Settings as SettingsIcon, 
+  Search, 
+  HelpCircle, 
+  Lightbulb, 
+  Check, 
+  X, 
+  CreditCard, 
+  Cloud, 
+  CheckCircle, 
+  RotateCw, 
+  Database, 
+  AlertTriangle, 
+  Download, 
+  Globe, 
+  PlusCircle, 
+  ChevronDown, 
+  Upload, 
+  TrendingUp, 
+  UserX, 
+  FileText, 
+  FilterX, 
+  MoreVertical, 
+  Calendar, 
+  ChevronLeft, 
+  RefreshCw as RefreshIcon, 
+  ShieldCheck as ShieldIcon, 
+  GanttChartSquare, 
+  Activity,
+  KeyRound,
+  Trash2,
+  AlertCircle,
+  Loader2
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useAppContext } from '../store';
 import { CURRENCIES } from '../constants';
+import SecuritySettingsSection from '../components/SecuritySettingsSection';
+import ResetUserPasswordModal from '../components/ResetUserPasswordModal';
+import EditUserModal from '../components/EditUserModal';
+import DeleteUserModal from '../components/DeleteUserModal';
 
 interface Role {
   id: string;
@@ -158,6 +167,12 @@ export default function Settings() {
   const [loading, setLoading] = useState(true);
   const [editedPermissions, setEditedPermissions] = useState<string[]>([]);
   const [isUpdatingPermissions, setIsUpdatingPermissions] = useState(false);
+
+  // User management & password reset modal states
+  const [selectedUserForReset, setSelectedUserForReset] = useState<any | null>(null);
+  const [selectedUserForEdit, setSelectedUserForEdit] = useState<any | null>(null);
+  const [userToDelete, setUserToDelete] = useState<any | null>(null);
+  const [isDeletingUser, setIsDeletingUser] = useState(false);
 
   // Security Logs State
   const [auditLogs, setAuditLogs] = useState<any[]>([]);
@@ -294,47 +309,69 @@ export default function Settings() {
     }
   };
 
-  useEffect(() => {
-    const fetchSettingsData = async () => {
-      try {
-        const [usersRes, rolesRes] = await Promise.all([
-          fetch('/api/users'),
-          fetch('/api/roles')
-        ]);
-        
-        if (!usersRes.ok) throw new Error('Users fetch failed');
-        if (!rolesRes.ok) throw new Error('Roles fetch failed');
-        
-        const isJson = (res: Response) => {
-          const contentType = res.headers.get("content-type");
-          return contentType && contentType.indexOf("application/json") !== -1;
-        };
+  const fetchSettingsData = async () => {
+    try {
+      const [usersRes, rolesRes] = await Promise.all([
+        fetch('/api/users'),
+        fetch('/api/roles')
+      ]);
+      
+      if (!usersRes.ok) throw new Error('Users fetch failed');
+      if (!rolesRes.ok) throw new Error('Roles fetch failed');
+      
+      const isJson = (res: Response) => {
+        const contentType = res.headers.get("content-type");
+        return contentType && contentType.indexOf("application/json") !== -1;
+      };
 
-        let usersData = [];
-        if (isJson(usersRes)) {
-          usersData = await usersRes.json();
-        } else {
-          console.error('Users response is not JSON');
-        }
-
-        let rolesData = [];
-        if (isJson(rolesRes)) {
-          rolesData = await rolesRes.json();
-        } else {
-          console.error('Roles response is not JSON');
-        }
-        
-        setUsers(usersData);
-        setRoles(rolesData);
-      } catch (error) {
-        console.error('Failed to fetch settings data:', error);
-      } finally {
-        setLoading(false);
+      let usersData = [];
+      if (isJson(usersRes)) {
+        usersData = await usersRes.json();
+      } else {
+        console.error('Users response is not JSON');
       }
-    };
 
+      let rolesData = [];
+      if (isJson(rolesRes)) {
+        rolesData = await rolesRes.json();
+      } else {
+        console.error('Roles response is not JSON');
+      }
+      
+      setUsers(usersData);
+      setRoles(rolesData);
+    } catch (error) {
+      console.error('Failed to fetch settings data:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
     fetchSettingsData();
   }, []);
+
+  const handleDeleteUser = async () => {
+    if (!userToDelete) return;
+    setIsDeletingUser(true);
+    try {
+      const res = await fetch(`/api/users/${userToDelete.id}`, {
+        method: 'DELETE',
+        credentials: 'include'
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.error || 'Failed to delete user');
+      }
+      showToast?.('User removed successfully', 'success');
+      setUserToDelete(null);
+      fetchSettingsData();
+    } catch (err: any) {
+      showToast?.(err.message || 'Failed to delete user', 'error');
+    } finally {
+      setIsDeletingUser(false);
+    }
+  };
 
   useEffect(() => {
     const currentRole = roles.find(r => r.id === selectedRoleId);
@@ -459,6 +496,36 @@ export default function Settings() {
 
   const renderHeader = () => {
     switch (activeTab) {
+      case 'Security & Password':
+        return (
+          <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
+            <div>
+              <nav className="flex items-center gap-2 text-[13px] font-medium text-neutral-400 mb-2">
+                <Link to="/" className="hover:text-[#006397] transition-colors">Dashboard</Link>
+                <ChevronRight className="w-3.5 h-3.5" />
+                <span className="text-[#006397] font-bold">Security & Password</span>
+              </nav>
+              <h1 className="text-[32px] font-black text-[#001d31] tracking-tight leading-none">Security & Credentials</h1>
+              <p className="text-[15px] text-neutral-500 mt-2 font-medium">Manage your personal account password, security preferences, and team credentials.</p>
+            </div>
+            <div className="flex gap-4">
+              <button 
+                onClick={() => setActiveTab('User Rules')}
+                className="px-6 py-3 bg-white border border-[#edeeef] text-[#162839] font-bold text-[13px] rounded-xl hover:bg-neutral-50 transition-all flex items-center gap-2 shadow-sm whitespace-nowrap uppercase tracking-widest"
+              >
+                <ShieldCheck className="w-4 h-4 text-[#006397]" />
+                Access Control
+              </button>
+              <button 
+                onClick={() => navigate('/settings/users/add')}
+                className="px-6 py-3 bg-[#162839] text-white font-bold text-[13px] rounded-xl hover:opacity-90 transition-all flex items-center gap-2 shadow-lg uppercase tracking-widest whitespace-nowrap"
+              >
+                <UserPlus className="w-4 h-4" />
+                Add New User
+              </button>
+            </div>
+          </div>
+        );
       case 'User Rules':
         return (
           <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
@@ -571,6 +638,14 @@ export default function Settings() {
 
   const renderContent = () => {
     switch (activeTab) {
+      case 'Security & Password':
+        return (
+          <SecuritySettingsSection 
+            users={users} 
+            roles={roles} 
+            onReloadUsers={fetchSettingsData} 
+          />
+        );
       case 'General':
         return (
           <div className="grid grid-cols-12 gap-8">
@@ -826,12 +901,27 @@ export default function Settings() {
                             {u.last_login ? new Date(u.last_login).toLocaleDateString() : 'Never'}
                           </td>
                           <td className="px-8 py-5">
-                            <div className="flex gap-2">
-                              <button className="p-2 hover:bg-[#cce5ff] text-neutral-400 hover:text-[#006397] transition-all rounded-lg">
+                            <div className="flex items-center gap-1.5">
+                              <button 
+                                onClick={() => setSelectedUserForReset(u)}
+                                className="p-2 hover:bg-amber-50 text-neutral-400 hover:text-amber-600 transition-all rounded-lg"
+                                title="Reset User Password"
+                              >
+                                <KeyRound className="w-4 h-4" />
+                              </button>
+                              <button 
+                                onClick={() => setSelectedUserForEdit(u)}
+                                className="p-2 hover:bg-[#cce5ff] text-neutral-400 hover:text-[#006397] transition-all rounded-lg"
+                                title="Edit User Details"
+                              >
                                 <Edit className="w-4 h-4" />
                               </button>
-                              <button className="p-2 hover:bg-red-50 text-neutral-400 hover:text-red-500 transition-all rounded-lg">
-                                <UserX className="w-4 h-4" />
+                              <button 
+                                onClick={() => setUserToDelete(u)}
+                                className="p-2 hover:bg-red-50 text-neutral-400 hover:text-red-500 transition-all rounded-lg"
+                                title="Delete or Remove User"
+                              >
+                                <Trash2 className="w-4 h-4" />
                               </button>
                             </div>
                           </td>
@@ -1437,7 +1527,7 @@ export default function Settings() {
 
       {/* Tabs Navigation */}
       <div className="flex border-b border-[#edeeef] gap-10">
-        {['General', 'User Rules', 'Security Logs', 'Backup'].map((tab) => (
+        {['General', 'Security & Password', 'User Rules', 'Security Logs', 'Backup'].map((tab) => (
           <button
             key={tab}
             onClick={() => setActiveTab(tab)}
@@ -1469,77 +1559,106 @@ export default function Settings() {
         </motion.div>
       </AnimatePresence>
 
+      {/* Admin Reset User Password Modal */}
+      <ResetUserPasswordModal
+        isOpen={Boolean(selectedUserForReset)}
+        onClose={() => setSelectedUserForReset(null)}
+        user={selectedUserForReset}
+        onSuccess={fetchSettingsData}
+      />
+
+      {/* Admin Edit User Modal */}
+      <EditUserModal
+        isOpen={Boolean(selectedUserForEdit)}
+        onClose={() => setSelectedUserForEdit(null)}
+        user={selectedUserForEdit}
+        roles={roles}
+        onSuccess={fetchSettingsData}
+      />
+
+      {/* Delete User Confirmation Modal */}
+      <DeleteUserModal
+        isOpen={Boolean(userToDelete)}
+        onClose={() => setUserToDelete(null)}
+        user={userToDelete}
+        onConfirm={handleDeleteUser}
+        loading={isDeletingUser}
+      />
+
       {/* Log Detail Modal */}
-      <AnimatePresence>
-        {selectedLog && (
-          <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4">
-            <motion.div 
-              initial={{ opacity: 0 }} 
-              animate={{ opacity: 1 }} 
-              exit={{ opacity: 0 }}
-              onClick={() => setSelectedLog(null)}
-              className="absolute inset-0 bg-[#001d31]/60 backdrop-blur-sm" 
-            />
-            <motion.div 
-              initial={{ opacity: 0, scale: 0.95 }}
-              animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0, scale: 0.95 }}
-              className="relative bg-white rounded-2xl shadow-2xl w-full max-w-2xl overflow-hidden"
+      {typeof document !== 'undefined' && createPortal(
+        <AnimatePresence>
+          {selectedLog && (
+            <div 
+              id="security-log-modal-backdrop"
+              className="fixed inset-0 top-0 left-0 w-screen h-screen z-[99999] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm"
+              onClick={(e) => {
+                if (e.target === e.currentTarget) setSelectedLog(null);
+              }}
             >
-              <div className="p-6 border-b border-[#edeeef] flex justify-between items-center bg-[#f8f9fa]">
-                <h3 className="text-[18px] font-bold text-[#162839]">Security Event Details</h3>
-                <button onClick={() => setSelectedLog(null)} className="p-2 hover:bg-neutral-200 rounded-lg">
-                  <X className="w-5 h-5 text-neutral-400" />
-                </button>
-              </div>
-              <div className="p-8 space-y-6">
-                <div className="grid grid-cols-2 gap-8">
-                  <div className="space-y-1">
-                    <p className="text-[11px] font-black text-neutral-400 uppercase tracking-widest">Event ID</p>
-                    <p className="text-[14px] font-bold text-[#162839]">#{selectedLog.id}</p>
-                  </div>
-                  <div className="space-y-1">
-                    <p className="text-[11px] font-black text-neutral-400 uppercase tracking-widest">Timestamp</p>
-                    <p className="text-[14px] font-bold text-[#162839]">{new Date(selectedLog.timestamp).toLocaleString()}</p>
-                  </div>
-                  <div className="space-y-1">
-                    <p className="text-[11px] font-black text-neutral-400 uppercase tracking-widest">Acting User</p>
-                    <p className="text-[14px] font-bold text-[#162839]">{selectedLog.user || 'System'}</p>
-                  </div>
-                  <div className="space-y-1">
-                    <p className="text-[11px] font-black text-neutral-400 uppercase tracking-widest">Module</p>
-                    <p className="text-[14px] font-bold text-[#006397]">{selectedLog.module}</p>
-                  </div>
+              <motion.div 
+                initial={{ opacity: 0, scale: 0.95, y: 15 }}
+                animate={{ opacity: 1, scale: 1, y: 0 }}
+                exit={{ opacity: 0, scale: 0.95, y: 15 }}
+                transition={{ duration: 0.2 }}
+                className="bg-white rounded-2xl shadow-2xl border border-[#edeeef] w-full max-w-2xl overflow-hidden relative z-10 m-auto"
+              >
+                <div className="p-6 border-b border-[#edeeef] flex justify-between items-center bg-[#f8f9fa]">
+                  <h3 className="text-[18px] font-bold text-[#162839]">Security Event Details</h3>
+                  <button onClick={() => setSelectedLog(null)} className="p-2 hover:bg-neutral-200 rounded-lg">
+                    <X className="w-5 h-5 text-neutral-400" />
+                  </button>
                 </div>
+                <div className="p-8 space-y-6">
+                  <div className="grid grid-cols-2 gap-8">
+                    <div className="space-y-1">
+                      <p className="text-[11px] font-black text-neutral-400 uppercase tracking-widest">Event ID</p>
+                      <p className="text-[14px] font-bold text-[#162839]">#{selectedLog.id}</p>
+                    </div>
+                    <div className="space-y-1">
+                      <p className="text-[11px] font-black text-neutral-400 uppercase tracking-widest">Timestamp</p>
+                      <p className="text-[14px] font-bold text-[#162839]">{new Date(selectedLog.timestamp).toLocaleString()}</p>
+                    </div>
+                    <div className="space-y-1">
+                      <p className="text-[11px] font-black text-neutral-400 uppercase tracking-widest">Acting User</p>
+                      <p className="text-[14px] font-bold text-[#162839]">{selectedLog.user || 'System'}</p>
+                    </div>
+                    <div className="space-y-1">
+                      <p className="text-[11px] font-black text-neutral-400 uppercase tracking-widest">Module</p>
+                      <p className="text-[14px] font-bold text-[#006397]">{selectedLog.module}</p>
+                    </div>
+                  </div>
 
-                <div className="space-y-2">
-                  <p className="text-[11px] font-black text-neutral-400 uppercase tracking-widest">Action Performed</p>
-                  <div className="p-3 bg-[#f3f4f5] border border-[#edeeef] rounded-lg">
-                    <code className="text-[#162839] font-black text-[14px]">{selectedLog.action}</code>
+                  <div className="space-y-2">
+                    <p className="text-[11px] font-black text-neutral-400 uppercase tracking-widest">Action Performed</p>
+                    <div className="p-3 bg-[#f3f4f5] border border-[#edeeef] rounded-lg">
+                      <code className="text-[#162839] font-black text-[14px]">{selectedLog.action}</code>
+                    </div>
                   </div>
-                </div>
 
-                <div className="space-y-2">
-                  <p className="text-[11px] font-black text-neutral-400 uppercase tracking-widest">Log Data (JSON)</p>
-                  <div className="bg-[#162839] p-4 rounded-xl overflow-x-auto">
-                    <pre className="text-[12px] text-[#5cb8fd] font-mono whitespace-pre-wrap leading-relaxed">
-                      {JSON.stringify(typeof selectedLog.details === 'string' ? JSON.parse(selectedLog.details || '{}') : selectedLog.details, null, 2)}
-                    </pre>
+                  <div className="space-y-2">
+                    <p className="text-[11px] font-black text-neutral-400 uppercase tracking-widest">Log Data (JSON)</p>
+                    <div className="bg-[#162839] p-4 rounded-xl overflow-x-auto">
+                      <pre className="text-[12px] text-[#5cb8fd] font-mono whitespace-pre-wrap leading-relaxed">
+                        {JSON.stringify(typeof selectedLog.details === 'string' ? JSON.parse(selectedLog.details || '{}') : selectedLog.details, null, 2)}
+                      </pre>
+                    </div>
                   </div>
                 </div>
-              </div>
-              <div className="p-6 bg-neutral-50 border-t border-[#edeeef] flex justify-end">
-                <button 
-                  onClick={() => setSelectedLog(null)}
-                  className="px-6 py-2.5 bg-[#162839] text-white font-bold text-[13px] rounded-xl hover:opacity-90"
-                >
-                  Close Explorer
-                </button>
-              </div>
-            </motion.div>
-          </div>
-        )}
-      </AnimatePresence>
+                <div className="p-6 bg-neutral-50 border-t border-[#edeeef] flex justify-end">
+                  <button 
+                    onClick={() => setSelectedLog(null)}
+                    className="px-6 py-2.5 bg-[#162839] text-white font-bold text-[13px] rounded-xl hover:opacity-90"
+                  >
+                    Close Explorer
+                  </button>
+                </div>
+              </motion.div>
+            </div>
+          )}
+        </AnimatePresence>,
+        document.body
+      )}
     </div>
   );
 }
