@@ -1,6 +1,7 @@
 import React, { ReactNode, useState, useEffect } from 'react';
 import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import Toast from './Toast';
+import ChangePasswordModal from './ChangePasswordModal';
 import { useAppContext } from '../store';
 import { 
   LayoutDashboard, 
@@ -21,7 +22,8 @@ import {
   ChevronDown,
   ChevronLeft,
   ChevronRight,
-  HardHat
+  HardHat,
+  KeyRound
 } from 'lucide-react';
 
 const MENU_ITEMS = [
@@ -39,6 +41,7 @@ const MENU_ITEMS = [
 
 export default function Layout() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [isChangePasswordOpen, setIsChangePasswordOpen] = useState(false);
   const { logoUrl, companyName } = useAppContext();
   const location = useLocation();
   const navigate = useNavigate();
@@ -241,7 +244,15 @@ export default function Layout() {
                     <p className="text-sm font-bold text-[#162839] truncate">{currentUser?.name}</p>
                     <p className="text-xs text-neutral-400 truncate">{currentUser?.email}</p>
                   </div>
-                  <div className="p-2">
+                  <div className="p-2 space-y-1">
+                    <button 
+                      id="dropdown-change-password-btn"
+                      onClick={() => setIsChangePasswordOpen(true)}
+                      className="w-full flex items-center gap-2 px-3 py-2 text-sm text-[#162839] hover:bg-neutral-100 rounded-lg transition-colors font-medium"
+                    >
+                      <KeyRound className="w-4 h-4 text-[#006397]" />
+                      Change Password
+                    </button>
                     <button 
                       onClick={handleLogout}
                       className="w-full flex items-center gap-2 px-3 py-2 text-sm text-red-600 hover:bg-red-50 rounded-lg transition-colors font-medium"
@@ -261,6 +272,10 @@ export default function Layout() {
           <Outlet />
         </main>
         <Toast />
+        <ChangePasswordModal 
+          isOpen={isChangePasswordOpen} 
+          onClose={() => setIsChangePasswordOpen(false)} 
+        />
       </div>
 
       {/* Mobile Sidebar Overlay */}
