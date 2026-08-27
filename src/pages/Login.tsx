@@ -1,12 +1,13 @@
 import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { Factory, Mail, Lock, LogIn, ShieldCheck, Copyright } from 'lucide-react';
+import { useNavigate, Link } from 'react-router-dom';
+import { Factory, Mail, Lock, LogIn, ShieldCheck, Copyright, Eye, EyeOff } from 'lucide-react';
 import { useAppContext } from '../store';
 import { motion } from 'motion/react';
 
 export default function Login() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
   const { login, showToast } = useAppContext();
@@ -96,15 +97,23 @@ export default function Login() {
                   <div className="relative group">
                     <Lock className="absolute left-3 top-1/2 -translate-y-1/2 text-[#74777d] w-5 h-5 group-focus-within:text-[#006397] transition-colors" />
                     <input 
-                      className="w-full pl-10 pr-4 py-2.5 bg-[#f8f9fa] border border-[#c4c6cd] rounded focus:border-[#006397] focus:ring-2 focus:ring-[#5cb8fd] outline-none transition-all text-sm text-[#191c1d] placeholder:text-[#74777d]" 
+                      className="w-full pl-10 pr-11 py-2.5 bg-[#f8f9fa] border border-[#c4c6cd] rounded focus:border-[#006397] focus:ring-2 focus:ring-[#5cb8fd] outline-none transition-all text-sm text-[#191c1d] placeholder:text-[#74777d]" 
                       id="password" 
                       name="password" 
                       placeholder="••••••••" 
-                      type="password"
+                      type={showPassword ? "text" : "password"}
                       value={password}
                       onChange={(e) => setPassword(e.target.value)}
                       required
                     />
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword(!showPassword)}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-[#74777d] hover:text-[#191c1d] transition-colors"
+                      title={showPassword ? "Hide password" : "Show password"}
+                    >
+                      {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                    </button>
                   </div>
                 </div>
 
