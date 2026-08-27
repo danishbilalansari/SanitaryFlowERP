@@ -368,6 +368,210 @@ app.use((req, res, next) => {
     res.json(req.user);
   });
 
+  // Change Password for Authenticated User
+  app.post('/api/change-password', async (req: any, res) => {
+    try {
+      if (!req.user) {
+        return res.status(401).json({ error: 'Not authenticated. Please log in.' });
+      }
+
+      const { currentPassword, newPassword } = req.body;
+
+      if (!currentPassword || !newPassword) {
+        return res.status(400).json({ error: 'Both current password and new password are required.' });
+      }
+
+      if (typeof newPassword !== 'string' || newPassword.trim().length < 4) {
+        return res.status(400).json({ error: 'New password must be at least 4 characters long.' });
+      }
+
+      // Verify current password against database
+      const existingUser = await db('users').where({ id: req.user.id }).first();
+      if (!existingUser) {
+        return res.status(404).json({ error: 'User account not found.' });
+      }
+
+      if (existingUser.password !== currentPassword) {
+        return res.status(400).json({ error: 'Current password is incorrect.' });
+      }
+
+      // Update password
+      await db('users').where({ id: req.user.id }).update({
+        password: newPassword,
+        updated_at: db.fn.now()
+      });
+
+      await auditLog(req, 'CHANGE_PASSWORD', 'Security', { 
+        userId: req.user.id,
+        username: req.user.username,
+        email: req.user.email 
+      });
+
+      res.json({ success: true, message: 'Password has been updated successfully.' });
+    } catch (error) {
+      console.error('Change password error:', error);
+      res.status(500).json({ error: 'Failed to change password. Please try again.' });
+    }
+  });
+
+  // --- Forgot Password In-Memory Reset Store ---
+  interface ResetRecord {
+    userId: number;
+    username: string;
+    email: string;
+    code: string;
+    expiresAt: number;
+  }
+  const passwordResetStore = new Map<string, ResetRecord>();
+
+  // Forgot Password Step 1: Request Reset Code
+  app.post('/api/forgot-password/request', async (req: any, res) => {
+    try {
+      const { identifier } = req.body;
+      if (!identifier || typeof identifier !== 'string' || !identifier.trim()) {
+        return res.status(400).json({ error: 'Please enter your email or username.' });
+      }
+
+      const trimmed = identifier.trim();
+      const user = await db('users')
+        .whereRaw('LOWER(email) = ?', [trimmed.toLowerCase()])
+        .orWhereRaw('LOWER(username) = ?', [trimmed.toLowerCase()])
+        .first();
+
+      if (!user) {
+        return res.status(404).json({ 
+          error: 'No account found matching this email or username. Please check your credentials or contact an administrator.' 
+        });
+      }
+
+      // Generate a 6-digit numeric verification code
+      const code = Math.floor(100000 + Math.random() * 900000).toString();
+      const expiresAt = Date.now() + 15 * 60 * 1000; // 15 minutes validity
+
+      passwordResetStore.set(String(user.id), {
+        userId: user.id,
+        username: user.username,
+        email: user.email,
+        code,
+        expiresAt
+      });
+
+      // Mask email for security display (e.g., d***i@gmail.com)
+      const parts = user.email.split('@');
+      let maskedEmail = user.email;
+      if (parts.length === 2) {
+        const local = parts[0];
+        const domain = parts[1];
+        if (local.length <= 2) {
+          maskedEmail = `${local[0]}*@${domain}`;
+        } else {
+          maskedEmail = `${local[0]}${'*'.repeat(Math.max(3, local.length - 2))}${local[local.length - 1]}@${domain}`;
+        }
+      }
+
+      await auditLog(req, 'FORGOT_PASSWORD_REQUEST', 'Security', {
+        userId: user.id,
+        username: user.username,
+        email: user.email
+      });
+
+      res.json({
+        success: true,
+        message: 'Password reset verification code generated.',
+        userId: user.id,
+        username: user.username,
+        name: user.name,
+        emailMasked: maskedEmail,
+        verificationCode: code, // Provided directly for immediate testing & simulated verification
+        expiresInMinutes: 15
+      });
+    } catch (error) {
+      console.error('Forgot password request error:', error);
+      res.status(500).json({ error: 'Failed to initiate password reset. Please try again.' });
+    }
+  });
+
+  // Forgot Password Step 2: Verify Code
+  app.post('/api/forgot-password/verify', async (req: any, res) => {
+    try {
+      const { userId, code } = req.body;
+      if (!userId || !code) {
+        return res.status(400).json({ error: 'User ID and verification code are required.' });
+      }
+
+      const record = passwordResetStore.get(String(userId));
+      if (!record) {
+        return res.status(400).json({ error: 'No active password reset request found. Please request a new code.' });
+      }
+
+      if (Date.now() > record.expiresAt) {
+        passwordResetStore.delete(String(userId));
+        return res.status(400).json({ error: 'Verification code has expired. Please request a new code.' });
+      }
+
+      if (record.code !== String(code).trim()) {
+        return res.status(400).json({ error: 'Incorrect 6-digit verification code. Please check and try again.' });
+      }
+
+      res.json({ success: true, message: 'Verification code confirmed.' });
+    } catch (error) {
+      console.error('Forgot password verify error:', error);
+      res.status(500).json({ error: 'Failed to verify code. Please try again.' });
+    }
+  });
+
+  // Forgot Password Step 3: Complete Reset
+  app.post('/api/forgot-password/reset', async (req: any, res) => {
+    try {
+      const { userId, code, newPassword } = req.body;
+
+      if (!userId || !code || !newPassword) {
+        return res.status(400).json({ error: 'All fields are required.' });
+      }
+
+      if (typeof newPassword !== 'string' || newPassword.trim().length < 4) {
+        return res.status(400).json({ error: 'New password must be at least 4 characters long.' });
+      }
+
+      const record = passwordResetStore.get(String(userId));
+      if (!record) {
+        return res.status(400).json({ error: 'Password reset session expired. Please start over.' });
+      }
+
+      if (Date.now() > record.expiresAt) {
+        passwordResetStore.delete(String(userId));
+        return res.status(400).json({ error: 'Password reset session expired. Please request a new code.' });
+      }
+
+      if (record.code !== String(code).trim()) {
+        return res.status(400).json({ error: 'Invalid verification code.' });
+      }
+
+      // Update password in DB
+      await db('users').where({ id: userId }).update({
+        password: newPassword.trim(),
+        updated_at: db.fn.now()
+      });
+
+      // Invalidate the reset token
+      passwordResetStore.delete(String(userId));
+
+      await auditLog(req, 'FORGOT_PASSWORD_COMPLETE', 'Security', {
+        userId,
+        username: record.username,
+        email: record.email
+      });
+
+      res.json({ 
+        success: true, 
+        message: 'Your password has been reset successfully! You can now log in with your new password.' 
+      });
+    } catch (error) {
+      console.error('Forgot password reset error:', error);
+      res.status(500).json({ error: 'Failed to reset password. Please try again.' });
+    }
+  });
+
   // --- Phase 5: Action Hooking & Audit Log Helper ---
   const auditLog = async (req: any, action: string, module: string, details: any = null, trx: any = null) => {
     try {
@@ -408,6 +612,92 @@ app.use((req, res, next) => {
       res.status(201).json(user);
     } catch (error) {
       res.status(500).json({ error: 'Failed to create user' });
+    }
+  });
+
+  // Admin Reset User Password
+  app.put('/api/users/:id/password', checkPermission('Settings'), async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      const { newPassword } = req.body;
+
+      if (!newPassword || typeof newPassword !== 'string' || newPassword.trim().length < 4) {
+        return res.status(400).json({ error: 'New password must be at least 4 characters long.' });
+      }
+
+      const targetUser = await db('users').where({ id }).first();
+      if (!targetUser) {
+        return res.status(404).json({ error: 'Target user not found.' });
+      }
+
+      await db('users').where({ id }).update({
+        password: newPassword,
+        updated_at: db.fn.now()
+      });
+
+      await auditLog(req, 'RESET_USER_PASSWORD', 'Settings', { 
+        targetUserId: id,
+        targetUsername: targetUser.username,
+        resetBy: req.user?.name || 'Admin'
+      });
+
+      res.json({ success: true, message: `Password for ${targetUser.name} (${targetUser.username}) reset successfully.` });
+    } catch (error) {
+      console.error('Reset user password error:', error);
+      res.status(500).json({ error: 'Failed to reset user password' });
+    }
+  });
+
+  // Admin Edit User Details
+  app.put('/api/users/:id', checkPermission('Settings'), async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      const { name, email, username, role_id, status, password, color, initials } = req.body;
+
+      const updateData: any = { updated_at: db.fn.now() };
+      if (name) updateData.name = name;
+      if (email) updateData.email = email;
+      if (username) updateData.username = username;
+      if (role_id) updateData.role_id = role_id;
+      if (status) updateData.status = status;
+      if (color) updateData.color = color;
+      if (initials) updateData.initials = initials;
+      if (password && typeof password === 'string' && password.trim().length >= 4) {
+        updateData.password = password.trim();
+      }
+
+      await db('users').where({ id }).update(updateData);
+      const updatedUser = await db('users').where({ id }).first();
+
+      await auditLog(req, 'UPDATE_USER', 'Settings', { targetUserId: id, updatedFields: Object.keys(updateData) });
+      res.json({ success: true, user: updatedUser });
+    } catch (error) {
+      console.error('Update user error:', error);
+      res.status(500).json({ error: 'Failed to update user' });
+    }
+  });
+
+  // Admin Delete / Deactivate User
+  app.delete('/api/users/:id', checkPermission('Settings'), async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      if (req.user && String(req.user.id) === String(id)) {
+        return res.status(400).json({ error: 'You cannot delete your own account while logged in.' });
+      }
+
+      const targetUser = await db('users').where({ id }).first();
+      if (!targetUser) {
+        return res.status(404).json({ error: 'User not found.' });
+      }
+
+      // Check if user has associated audit logs or transactions; soft-deactivate or delete
+      await db('users').where({ id }).delete();
+      await auditLog(req, 'DELETE_USER', 'Settings', { deletedUserId: id, username: targetUser.username });
+
+      res.json({ success: true, message: 'User deleted successfully.' });
+    } catch (error) {
+      console.error('Delete user error:', error);
+      res.status(500).json({ error: 'Failed to delete user' });
     }
   });
 
@@ -1404,7 +1694,12 @@ app.use((req, res, next) => {
   // Customers (Expansion)
   app.get('/api/customers', checkPermission('Customers'), async (req, res) => {
     try {
-      const customers = await db('customers').select('*');
+      const customers = await db('customers')
+        .leftJoin('ledger', 'customers.id', 'ledger.customer_id')
+        .select('customers.*')
+        .sum('ledger.debit as total_sales')
+        .sum('ledger.credit as total_purchases_payments')
+        .groupBy('customers.id');
       res.json(customers);
     } catch (error) {
       res.status(500).json({ error: 'Failed to fetch customers' });
@@ -1526,12 +1821,12 @@ app.use((req, res, next) => {
 
   app.get('/api/suppliers/balances', checkPermission('Inventory'), async (req, res) => {
     try {
-      const results = await db('ledger')
-        .join('suppliers', 'ledger.supplier_id', 'suppliers.id')
-        .select('suppliers.id', 'suppliers.name', 'suppliers.phone', 'suppliers.category')
+      const results = await db('suppliers')
+        .leftJoin('ledger', 'suppliers.id', 'ledger.supplier_id')
+        .select('suppliers.*')
         .sum('ledger.debit as total_debit')
         .sum('ledger.credit as total_credit')
-        .groupBy('suppliers.id', 'suppliers.name', 'suppliers.phone', 'suppliers.category');
+        .groupBy('suppliers.id');
 
       const formatted = results.map((r: any) => ({
         ...r,
