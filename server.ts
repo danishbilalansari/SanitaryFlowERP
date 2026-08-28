@@ -323,6 +323,10 @@ app.use((req, res, next) => {
         return res.status(401).json({ error: 'Invalid credentials' });
       }
 
+      // Update last_login timestamp
+      const nowIso = new Date().toISOString();
+      await db('users').where('id', user.id).update({ last_login: nowIso });
+
       // Set cookie
       res.cookie('userId', String(user.id), { 
         httpOnly: true, 
@@ -343,6 +347,7 @@ app.use((req, res, next) => {
           'users.username', 
           'users.role_id',
           'users.status',
+          'users.last_login',
           'users.initials',
           'users.color',
           'roles.name as role_name',
