@@ -174,6 +174,34 @@ export default function Settings() {
   const [userToDelete, setUserToDelete] = useState<any | null>(null);
   const [isDeletingUser, setIsDeletingUser] = useState(false);
 
+  const formatLastLogin = (dateStr?: string | null) => {
+    if (!dateStr) return { primary: 'Never', secondary: '', full: 'No login recorded' };
+    const d = new Date(dateStr);
+    if (isNaN(d.getTime())) return { primary: 'Never', secondary: '', full: 'No login recorded' };
+    
+    const now = new Date();
+    const diffMs = now.getTime() - d.getTime();
+    const diffMins = Math.floor(diffMs / (1000 * 60));
+    const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
+    const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+
+    let primary = '';
+    if (diffMins < 2) {
+      primary = 'Just now';
+    } else if (diffMins < 60) {
+      primary = `${diffMins}m ago`;
+    } else if (diffHours < 24 && d.getDate() === now.getDate()) {
+      primary = `Today, ${d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`;
+    } else if (diffDays <= 1 || (diffHours < 48 && d.getDate() === now.getDate() - 1)) {
+      primary = `Yesterday, ${d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`;
+    } else {
+      primary = d.toLocaleDateString([], { month: 'short', day: 'numeric', year: 'numeric' });
+    }
+
+    const secondary = d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    return { primary, secondary, full: d.toLocaleString() };
+  };
+
   // Security Logs State
   const [auditLogs, setAuditLogs] = useState<any[]>([]);
   const [totalLogs, setTotalLogs] = useState(0);
@@ -859,7 +887,9 @@ export default function Settings() {
               <div className="bg-white border border-[#edeeef] rounded-2xl shadow-sm overflow-hidden">
                 <div className="p-8 border-b border-[#edeeef] flex justify-between items-center bg-[#f8f9fa]">
                   <h3 className="text-[20px] font-bold text-[#162839]">Registered System Users</h3>
-                  <span className="bg-white border border-[#edeeef] text-neutral-400 px-4 py-1.5 rounded-full text-[11px] font-black uppercase tracking-widest">Total: 13 Active</span>
+                  <span className="bg-white border border-[#edeeef] text-neutral-400 px-4 py-1.5 rounded-full text-[11px] font-black uppercase tracking-widest">
+                    Total: {users.length} User{users.length === 1 ? '' : 's'}
+                  </span>
                 </div>
                 <div className="overflow-x-auto">
                   <table className="w-full text-left">
@@ -897,8 +927,21 @@ export default function Settings() {
                               <span className="text-[13px] font-bold text-[#162839]">{u.status}</span>
                             </div>
                           </td>
-                          <td className="px-8 py-5 text-[13px] font-bold text-neutral-400">
-                            {u.last_login ? new Date(u.last_login).toLocaleDateString() : 'Never'}
+                          <td className="px-8 py-5">
+                            {(() => {
+                              const formatted = formatLastLogin(u.last_login);
+                              if (formatted.primary === 'Never') {
+                                return <span className="text-[13px] font-semibold text-neutral-400">Never</span>;
+                              }
+                              return (
+                                <div title={formatted.full} className="flex flex-col">
+                                  <span className="text-[13px] font-bold text-[#162839]">{formatted.primary}</span>
+                                  {formatted.primary.includes('ago') || formatted.primary.includes('Just now') ? (
+                                    <span className="text-[11px] text-neutral-400 font-medium">{formatted.secondary}</span>
+                                  ) : null}
+                                </div>
+                              );
+                            })()}
                           </td>
                           <td className="px-8 py-5">
                             <div className="flex items-center gap-1.5">
@@ -931,7 +974,7 @@ export default function Settings() {
                   </table>
                 </div>
                 <div className="p-6 bg-[#f8f9fa] border-t border-[#edeeef] flex justify-between items-center">
-                  <span className="text-[12px] text-neutral-400 font-bold">Showing 1 to 5 of 13 users</span>
+                  <span className="text-[12px] text-neutral-400 font-bold">Showing {users.length} registered user{users.length === 1 ? '' : 's'}</span>
                   <div className="flex gap-2">
                     <button className="w-10 h-10 border border-[#edeeef] rounded-xl flex items-center justify-center hover:bg-white transition-all opacity-50 cursor-not-allowed">
                       <ChevronLeft className="w-5 h-5" />
