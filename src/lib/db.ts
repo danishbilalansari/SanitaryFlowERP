@@ -539,21 +539,23 @@ export async function initDb() {
     });
 
     // Seed initial users
+    const now = new Date();
     await db('users').insert([
-      { name: 'System Admin', email: 'admin@sanitaryflow.com', username: 'admin', password: 'admin', role_id: 'admin', status: 'Active', initials: 'SA', color: 'bg-blue-100' },
-      { name: 'Factory Manager', email: 'factory@sanitaryflow.com', username: 'factory', password: 'factory123', role_id: 'factory_manager', status: 'Active', initials: 'FM', color: 'bg-[#b5c8df]' },
-      { name: 'Shop Manager', email: 'shop@sanitaryflow.com', username: 'shop', password: 'shop123', role_id: 'shop_manager', status: 'Active', initials: 'SM', color: 'bg-[#92ccff]' },
-      { name: 'Senior Accountant', email: 'accountant@sanitaryflow.com', username: 'accountant', password: 'accountant123', role_id: 'accountant', status: 'Active', initials: 'AC', color: 'bg-emerald-100' },
-      { name: 'Sales Representative', email: 'sales@sanitaryflow.com', username: 'sales', password: 'sales123', role_id: 'sales_staff', status: 'Active', initials: 'SR', color: 'bg-amber-100' },
+      { name: 'System Admin', email: 'admin@sanitaryflow.com', username: 'admin', password: 'admin', role_id: 'admin', status: 'Active', initials: 'SA', color: 'bg-blue-100', last_login: new Date(now.getTime() - 1000 * 60 * 15).toISOString() },
+      { name: 'Factory Manager', email: 'factory@sanitaryflow.com', username: 'factory', password: 'factory123', role_id: 'factory_manager', status: 'Active', initials: 'FM', color: 'bg-[#b5c8df]', last_login: new Date(now.getTime() - 1000 * 60 * 180).toISOString() },
+      { name: 'Shop Manager', email: 'shop@sanitaryflow.com', username: 'shop', password: 'shop123', role_id: 'shop_manager', status: 'Active', initials: 'SM', color: 'bg-[#92ccff]', last_login: new Date(now.getTime() - 1000 * 60 * 60 * 26).toISOString() },
+      { name: 'Senior Accountant', email: 'accountant@sanitaryflow.com', username: 'accountant', password: 'accountant123', role_id: 'accountant', status: 'Active', initials: 'AC', color: 'bg-emerald-100', last_login: new Date(now.getTime() - 1000 * 60 * 60 * 48).toISOString() },
+      { name: 'Sales Representative', email: 'sales@sanitaryflow.com', username: 'sales', password: 'sales123', role_id: 'sales_staff', status: 'Active', initials: 'SR', color: 'bg-amber-100', last_login: new Date(now.getTime() - 1000 * 60 * 60 * 72).toISOString() },
     ]);
   } else {
     // Migration: Ensure the 5 requested users exist with correct credentials
+    const now = new Date();
     const usersToEnsure = [
-      { name: 'System Admin', email: 'admin@sanitaryflow.com', username: 'admin', password: 'admin', role_id: 'admin', status: 'Active', initials: 'SA', color: 'bg-blue-100' },
-      { name: 'Factory Manager', email: 'factory@sanitaryflow.com', username: 'factory', password: 'factory123', role_id: 'factory_manager', status: 'Active', initials: 'FM', color: 'bg-[#b5c8df]' },
-      { name: 'Shop Manager', email: 'shop@sanitaryflow.com', username: 'shop', password: 'shop123', role_id: 'shop_manager', status: 'Active', initials: 'SM', color: 'bg-[#92ccff]' },
-      { name: 'Senior Accountant', email: 'accountant@sanitaryflow.com', username: 'accountant', password: 'accountant123', role_id: 'accountant', status: 'Active', initials: 'AC', color: 'bg-emerald-100' },
-      { name: 'Sales Representative', email: 'sales@sanitaryflow.com', username: 'sales', password: 'sales123', role_id: 'sales_staff', status: 'Active', initials: 'SR', color: 'bg-amber-100' },
+      { name: 'System Admin', email: 'admin@sanitaryflow.com', username: 'admin', password: 'admin', role_id: 'admin', status: 'Active', initials: 'SA', color: 'bg-blue-100', defaultLogin: new Date(now.getTime() - 1000 * 60 * 15).toISOString() },
+      { name: 'Factory Manager', email: 'factory@sanitaryflow.com', username: 'factory', password: 'factory123', role_id: 'factory_manager', status: 'Active', initials: 'FM', color: 'bg-[#b5c8df]', defaultLogin: new Date(now.getTime() - 1000 * 60 * 180).toISOString() },
+      { name: 'Shop Manager', email: 'shop@sanitaryflow.com', username: 'shop', password: 'shop123', role_id: 'shop_manager', status: 'Active', initials: 'SM', color: 'bg-[#92ccff]', defaultLogin: new Date(now.getTime() - 1000 * 60 * 60 * 26).toISOString() },
+      { name: 'Senior Accountant', email: 'accountant@sanitaryflow.com', username: 'accountant', password: 'accountant123', role_id: 'accountant', status: 'Active', initials: 'AC', color: 'bg-emerald-100', defaultLogin: new Date(now.getTime() - 1000 * 60 * 60 * 48).toISOString() },
+      { name: 'Sales Representative', email: 'sales@sanitaryflow.com', username: 'sales', password: 'sales123', role_id: 'sales_staff', status: 'Active', initials: 'SR', color: 'bg-amber-100', defaultLogin: new Date(now.getTime() - 1000 * 60 * 60 * 72).toISOString() },
     ];
 
     if (!(await db.schema.hasColumn('users', 'password'))) {
@@ -562,13 +564,33 @@ export async function initDb() {
       });
     }
 
+    if (!(await db.schema.hasColumn('users', 'last_login'))) {
+      await db.schema.alterTable('users', (table) => {
+        table.timestamp('last_login');
+      });
+    }
+
     for (const u of usersToEnsure) {
       const exists = await db('users').where({ username: u.username }).first();
       if (!exists) {
-        await db('users').insert(u);
+        await db('users').insert({
+          name: u.name,
+          email: u.email,
+          username: u.username,
+          password: u.password,
+          role_id: u.role_id,
+          status: u.status,
+          initials: u.initials,
+          color: u.color,
+          last_login: u.defaultLogin
+        });
       } else {
-        // Update password just in case it was changed/incorrect
-        await db('users').where({ username: u.username }).update({ password: u.password });
+        const updateObj: any = {};
+        if (!exists.password) updateObj.password = u.password;
+        if (!exists.last_login) updateObj.last_login = u.defaultLogin;
+        if (Object.keys(updateObj).length > 0) {
+          await db('users').where({ username: u.username }).update(updateObj);
+        }
       }
     }
   }
