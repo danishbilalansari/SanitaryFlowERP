@@ -2505,9 +2505,14 @@ app.use((req, res, next) => {
         efficiencyStats,
         productionStats,
         topSellers,
-        lowStock
+        lowStock,
+        categoryStock,
+        rawMaterialTotal
       ] = await Promise.all([
-        db('inventory').select(db.raw('SUM(stock * price) as total')) as Promise<any[]>,
+        db('inventory').select(
+          db.raw('SUM(stock * price) as total'),
+          db.raw('SUM(stock) as total_units')
+        ) as Promise<any[]>,
         db('production_batches')
           .where('status', 'Completed')
           .where('completed_at', '>=', new Date(Date.now() - 7 * 86400000).toISOString())
@@ -2530,7 +2535,18 @@ app.use((req, res, next) => {
         db('inventory')
           .whereRaw(isPostgres ? 'stock < "minStock"' : 'stock < minStock')
           .count('* as count')
+          .first(),
+        db('inventory')
+          .select('category')
+          .sum('stock as total_stock')
+          .groupBy('category')
+          .orderBy('total_stock', 'desc')
+          .limit(5)
+          .catch(() => []),
+        db('raw_materials')
+          .sum('stock as total_stock')
           .first()
+          .catch(() => ({ total_stock: 0 }))
       ]);
 
       const productionEfficiency = efficiencyStats && efficiencyStats.total_target > 0 
@@ -2539,6 +2555,9 @@ app.use((req, res, next) => {
 
       res.json({
         stockValue: stockValue[0]?.total || 0,
+        totalInventoryUnits: Number(stockValue[0]?.total_units || 0),
+        rawMaterialUnits: Number((rawMaterialTotal as any)?.total_stock || 0),
+        categoryStock: categoryStock || [],
         productionEfficiency,
         productionStats,
         topSellers,
