@@ -4,6 +4,7 @@ import { Link } from 'react-router-dom';
 import { useAppContext } from '../store';
 import { formatCurrency } from '../lib/currency';
 import { TableSkeletonRows, GlassEmptyState, GlassDatePicker, GlassPagination, GlassModal } from '../components/GlassUI';
+import { cachedJsonFetch, invalidateApiCache } from '../lib/apiCache';
 
 interface Labour {
   id: number;
@@ -55,17 +56,13 @@ export default function LabourPage() {
     return !match[2] ? match[1] : `${match[1]}-${match[2]}`;
   };
 
-  const fetchLabour = async () => {
-    setLoading(true);
+  const fetchLabour = async (forceRefresh = false) => {
+    if (forceRefresh) {
+      invalidateApiCache('/api/labour');
+    }
     try {
-      const res = await fetch('/api/labour');
-      if (res.ok) {
-        const contentType = res.headers.get("content-type");
-        if (contentType && contentType.indexOf("application/json") !== -1) {
-          const data = await res.json();
-          setLabour(data);
-        }
-      }
+      const data = await cachedJsonFetch<Labour[]>('/api/labour', { credentials: 'include' }, 30_000);
+      setLabour(Array.isArray(data) ? data : []);
     } catch (err) {
       console.error(err);
       showToast?.('Failed to fetch labour info', 'error');
@@ -78,14 +75,18 @@ export default function LabourPage() {
     fetchLabour();
   }, []);
 
-  const fetchAdvances = async (labourId: number) => {
+  const fetchAdvances = async (labourId: number, forceRefresh = false) => {
+    if (forceRefresh) {
+      invalidateApiCache(`/api/labour/${labourId}/advances`);
+    }
     setAdvanceLoading(true);
     try {
-      const res = await fetch(`/api/labour/${labourId}/advances`);
-      if (res.ok) {
-        const data = await res.json();
-        setAdvances(data);
-      }
+      const data = await cachedJsonFetch<Advance[]>(
+        `/api/labour/${labourId}/advances`,
+        { credentials: 'include' },
+        30_000
+      );
+      setAdvances(Array.isArray(data) ? data : []);
     } catch (err) {
       console.error(err);
       showToast?.('Failed to fetch advances', 'error');
@@ -98,6 +99,8 @@ export default function LabourPage() {
     if (expandedLabour?.id === lab.id) {
       setExpandedLabour(null);
     } else {
+      setAdvanceLoading(true);
+      setAdvances([]);
       setExpandedLabour(lab);
       fetchAdvances(lab.id);
     }
@@ -115,7 +118,7 @@ export default function LabourPage() {
       if (!res.ok) throw new Error('Failed to save advance');
       
       setAdvanceFormData({ amount: '', date_text: '', description: '' });
-      fetchAdvances(expandedLabour.id);
+      fetchAdvances(expandedLabour.id, true);
       showToast?.('Advance recorded', 'success');
     } catch (err) {
       console.error(err);
@@ -128,7 +131,7 @@ export default function LabourPage() {
     try {
       const res = await fetch(`/api/labour_advances/${id}`, { method: 'DELETE' });
       if (!res.ok) throw new Error('Failed to delete advance');
-      fetchAdvances(expandedLabour.id);
+      fetchAdvances(expandedLabour.id, true);
     } catch (err) {
       console.error(err);
       showToast?.('Failed to delete advance', 'error');
@@ -169,7 +172,7 @@ export default function LabourPage() {
       
       showToast?.(`Labour ${isEdit ? 'updated' : 'added'} successfully`, 'success');
       setShowModal(false);
-      fetchLabour();
+      fetchLabour(true);
     } catch (err) {
       console.error(err);
       showToast?.('Failed to save labour info', 'error');
@@ -186,7 +189,7 @@ export default function LabourPage() {
       const res = await fetch(`/api/labour/${deleteId}`, { method: 'DELETE' });
       if (!res.ok) throw new Error('Failed to delete');
       showToast?.('Labour record deleted', 'success');
-      fetchLabour();
+      fetchLabour(true);
     } catch (err) {
       console.error(err);
       showToast?.('Failed to delete labour', 'error');
@@ -316,7 +319,9 @@ export default function LabourPage() {
                                   </tr>
                                 </thead>
                                 <tbody className="text-[13px]">
-                                  {advances.length === 0 ? (
+                                  {advanceLoading ? (
+                                    <TableSkeletonRows columns={5} rows={2} />
+                                  ) : advances.length === 0 ? (
                                     <tr>
                                       <td colSpan={5} className="px-4 py-8 text-center text-slate-400">No advance payments recorded.</td>
                                     </tr>
@@ -386,24 +391,40 @@ export default function LabourPage() {
                             {(() => {
                               const totalAdvances = advances.reduce((sum, a) => sum + Number(a.amount), 0);
                               const remaining = Number(lab.salary) - totalAdvances;
-                              const extraAmount = totalAdvances > Number(lab.salary) ? totalAdvances - Number(lab.salary) : 0;
+                              const extraAmount = !advanceLoading && totalAdvances > Number(lab.salary) ? totalAdvances - Number(lab.salary) : 0;
                               
                               return (
                                 <div className="bg-white/85 backdrop-blur-xl border border-white rounded-2xl p-5 shadow-sm sticky top-6">
                                   <h4 className="text-xs font-bold text-slate-400 mb-4 uppercase tracking-[0.1em]">Salary Summary</h4>
-                                  <div className="grid grid-cols-2 gap-y-3 text-[13.5px]">
+                                  <div className="grid grid-cols-2 gap-y-3 text-[13.5px] items-center">
                                     <div className="text-slate-500">Total Salary:</div>
                                     <div className="text-right font-bold text-slate-900 tabular-nums">{formatCurrency(Number(lab.salary), currency)}</div>
                                     
                                     <div className="text-slate-500">Advances Count:</div>
-                                    <div className="text-right font-bold text-slate-900 tabular-nums">{advances.length}</div>
+                                    <div className="text-right font-bold text-slate-900 tabular-nums flex justify-end">
+                                      {advanceLoading ? (
+                                        <span className="h-4 w-8 rounded-full bg-slate-200/80 animate-pulse inline-block" />
+                                      ) : (
+                                        advances.length
+                                      )}
+                                    </div>
                                     
                                     <div className="text-slate-500">Total Taken:</div>
-                                    <div className="text-right font-bold text-rose-500 tabular-nums">{formatCurrency(totalAdvances, currency)}</div>
+                                    <div className="text-right font-bold text-rose-500 tabular-nums flex justify-end">
+                                      {advanceLoading ? (
+                                        <span className="h-4 w-20 rounded-full bg-slate-200/80 animate-pulse inline-block" />
+                                      ) : (
+                                        formatCurrency(totalAdvances, currency)
+                                      )}
+                                    </div>
                                     
                                     <div className="text-slate-500 border-t border-slate-200/60 pt-3 mt-1">Remaining:</div>
-                                    <div className={`text-right font-extrabold text-[15px] border-t border-slate-200/60 pt-3 mt-1 tabular-nums ${remaining < 0 ? 'text-rose-500' : 'text-emerald-600'}`}>
-                                      {formatCurrency(remaining, currency)}
+                                    <div className={`text-right font-extrabold text-[15px] border-t border-slate-200/60 pt-3 mt-1 tabular-nums flex justify-end ${remaining < 0 ? 'text-rose-500' : 'text-emerald-600'}`}>
+                                      {advanceLoading ? (
+                                        <span className="h-5 w-24 rounded-full bg-slate-200/80 animate-pulse inline-block" />
+                                      ) : (
+                                        formatCurrency(remaining, currency)
+                                      )}
                                     </div>
                                   </div>
                                   {extraAmount > 0 && (
