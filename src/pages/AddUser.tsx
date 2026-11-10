@@ -1,9 +1,5 @@
 import React, { useState, useEffect } from 'react';
 import { 
-  ArrowLeft, 
-  Search, 
-  Bell, 
-  HelpCircle, 
   UserPlus, 
   ShieldCheck,
   BadgeCheck,
@@ -12,15 +8,13 @@ import {
   Eye,
   EyeOff,
   History,
-  ToggleLeft as Toggle,
   CheckCircle2,
-  Lock,
-  Smartphone
+  Lock
 } from 'lucide-react';
 import { useNavigate, Link } from 'react-router-dom';
-import { motion } from 'motion/react';
 import { useAppContext } from '../store';
 import { GlassSelect } from '../components/GlassUI';
+import { cachedJsonFetch, peekApiCache, invalidateApiCache } from '../lib/apiCache';
 
 interface Role {
   id: string;
@@ -37,7 +31,8 @@ export default function AddUser() {
   const [selectedRolePermissions, setSelectedRolePermissions] = useState<string[]>([]);
   const [saving, setSaving] = useState(false);
   
-  const [roles, setRoles] = useState<Role[]>([]);
+  const initialRoles = peekApiCache<Role[]>('/api/roles', 60_000);
+  const [roles, setRoles] = useState<Role[]>(() => Array.isArray(initialRoles) ? initialRoles : []);
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [formData, setFormData] = useState({
@@ -48,38 +43,33 @@ export default function AddUser() {
   });
 
   useEffect(() => {
-    fetch('/api/roles')
-      .then(async res => {
-        if (!res.ok) throw new Error('Failed to fetch roles');
-        const text = await res.text();
-        return text ? JSON.parse(text) : [];
-      })
-      .then(data => setRoles(data))
+    cachedJsonFetch<Role[]>('/api/roles', undefined, 60_000)
+      .then(data => setRoles(Array.isArray(data) ? data : []))
       .catch(err => console.error(err));
   }, []);
 
   const handleCreateUser = async () => {
     if (!formData.name.trim() || !formData.email.trim() || !formData.role_id) {
-      showToast('Please fill in all required fields', 'error');
+      showToast?.('Please fill in all required fields', 'error');
       return;
     }
     
     if (!/\S+@\S+\.\S+/.test(formData.email)) {
-      showToast('Please enter a valid email address', 'error');
+      showToast?.('Please enter a valid email address', 'error');
       return;
     }
 
     if (!onboardingMethod) {
       if (!password) {
-        showToast('Please provide an initial password', 'error');
+        showToast?.('Please provide an initial password', 'error');
         return;
       }
       if (password.length < 4) {
-        showToast('Password must be at least 4 characters long', 'error');
+        showToast?.('Password must be at least 4 characters long', 'error');
         return;
       }
       if (password !== confirmPassword) {
-        showToast('Passwords do not match', 'error');
+        showToast?.('Passwords do not match', 'error');
         return;
       }
     }
@@ -99,15 +89,18 @@ export default function AddUser() {
       });
 
       if (response.ok) {
-        showToast('User created successfully!', 'success');
+        invalidateApiCache('/api/users');
+        invalidateApiCache('/api/roles');
+        invalidateApiCache('/api/audit-logs');
+        showToast?.('User created successfully!', 'success');
         navigate('/settings');
       } else {
         const errorData = await response.json();
-        showToast(errorData.error || 'Failed to create user', 'error');
+        showToast?.(errorData.error || 'Failed to create user', 'error');
       }
     } catch (error) {
       console.error('Error creating user:', error);
-      showToast('An unexpected error occurred', 'error');
+      showToast?.('An unexpected error occurred', 'error');
     } finally {
       setSaving(false);
     }
@@ -116,7 +109,7 @@ export default function AddUser() {
   const activeLogo = '/assets/aistudio/image_6670885d.png?v=2';
 
   return (
-    <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500 pb-12">
+    <div className="space-y-8 pb-12">
       {/* Breadcrumbs & Header */}
       <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
         <div className="flex items-start gap-4">

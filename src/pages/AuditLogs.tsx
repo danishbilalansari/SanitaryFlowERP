@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { ChevronRight, History, Search, Filter, Download } from 'lucide-react';
+import { ChevronRight, Search, Filter, Download } from 'lucide-react';
 import { useAppContext } from '../store';
 import { TableSkeletonRows, GlassEmptyState } from '../components/GlassUI';
+import { cachedJsonFetch, peekApiCache, invalidateApiCache } from '../lib/apiCache';
 
 interface AuditLog {
   id: number;
@@ -15,30 +16,39 @@ interface AuditLog {
 
 export default function AuditLogs() {
   const { showToast } = useAppContext();
-  const [logs, setLogs] = useState<AuditLog[]>([]);
-  const [loading, setLoading] = useState(true);
+  const initialLogsData = peekApiCache<{ logs: AuditLog[]; totalCount: number }>('/api/audit-logs?page=1&limit=10', 60_000);
+  const [logs, setLogs] = useState<AuditLog[]>(() => initialLogsData?.logs || []);
+  const [loading, setLoading] = useState(() => !initialLogsData);
   const [searchQuery, setSearchQuery] = useState('');
   const [moduleFilter, setModuleFilter] = useState('All');
   const [showModuleMenu, setShowModuleMenu] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
-  const [totalLogs, setTotalLogs] = useState(0);
+  const [totalLogs, setTotalLogs] = useState(() => Number(initialLogsData?.totalCount || 0));
   const logsPerPage = 10;
 
   useEffect(() => {
+    const queryParams = new URLSearchParams({
+      page: currentPage.toString(),
+      limit: logsPerPage.toString(),
+      ...(searchQuery && { search: searchQuery }),
+      ...(moduleFilter !== 'All' && { module: moduleFilter })
+    });
+    const url = `/api/audit-logs?${queryParams}`;
+    const cached = peekApiCache<{ logs: AuditLog[]; totalCount: number }>(url, 60_000);
+    if (cached) {
+      setLogs(cached.logs || []);
+      setTotalLogs(Number(cached.totalCount || 0));
+      setLoading(false);
+    }
+
     const fetchLogs = async (isBackground = false) => {
       if (isBackground && typeof document !== 'undefined' && document.visibilityState === 'hidden') {
         return;
       }
-      if (!isBackground) setLoading(true);
+      if (!isBackground && !cached) setLoading(true);
       try {
-        const queryParams = new URLSearchParams({
-          page: currentPage.toString(),
-          limit: logsPerPage.toString(),
-          ...(searchQuery && { search: searchQuery }),
-          ...(moduleFilter !== 'All' && { module: moduleFilter })
-        });
-        const res = await fetch(`/api/audit-logs?${queryParams}`);
-        const data = await res.json();
+        if (isBackground) invalidateApiCache(url);
+        const data = await cachedJsonFetch<{ logs: AuditLog[]; totalCount: number }>(url, undefined, 60_000);
         setLogs(data.logs || []);
         setTotalLogs(Number(data.totalCount || 0));
       } catch (err) {
@@ -55,7 +65,7 @@ export default function AuditLogs() {
 
   const handleExport = async () => {
     try {
-      const res = await fetch('/api/audit-logs?limit=1000'); // Fetch more for export
+      const res = await fetch('/api/audit-logs?limit=1000');
       const data = await res.json();
       const allLogs = data.logs || [];
 
@@ -95,7 +105,7 @@ export default function AuditLogs() {
   };
 
   const totalPages = Math.max(1, Math.ceil(totalLogs / logsPerPage));
-  const availableModules = ['All', 'Inventory', 'Production', 'Security', 'Sales', 'Customers', 'Suppliers']; // Simplified list for now based on screenshot
+  const availableModules = ['All', 'Inventory', 'Production', 'Security', 'Sales', 'Customers', 'Suppliers'];
 
   return (
     <div className="space-y-6 pb-12">
@@ -142,6 +152,7 @@ export default function AuditLogs() {
             onClick={async () => {
               if (confirm('Are you sure you want to clear all audit logs?')) {
                 await fetch('/api/audit-logs', { method: 'DELETE' });
+                invalidateApiCache('/api/audit-logs');
                 setLogs([]);
                 setTotalLogs(0);
               }

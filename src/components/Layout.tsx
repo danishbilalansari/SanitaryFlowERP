@@ -53,7 +53,11 @@ export default function Layout() {
       '/api/labour',
       '/api/shop/dashboard',
       '/api/inventory?category=Shop',
-      '/api/inventory/transfers'
+      '/api/inventory/transfers',
+      '/api/users',
+      '/api/roles',
+      '/api/audit-logs?page=1&limit=10',
+      '/api/backups'
     ];
     warmEndpoints.forEach(url => {
       cachedJsonFetch(url, { credentials: 'include' }, 60_000).catch(() => {});

@@ -7,10 +7,7 @@ import {
   ShieldCheck, 
   ShieldAlert, 
   CheckCircle2, 
-  XCircle, 
   AlertCircle, 
-  Users, 
-  RefreshCw, 
   Loader2, 
   Search,
   Check,
@@ -18,14 +15,16 @@ import {
 } from 'lucide-react';
 import { useAppContext } from '../store';
 import ResetUserPasswordModal from './ResetUserPasswordModal';
+import { TableSkeletonRows } from './GlassUI';
 
 interface SecuritySettingsSectionProps {
   users: any[];
   roles: any[];
+  loading?: boolean;
   onReloadUsers?: () => void;
 }
 
-export default function SecuritySettingsSection({ users, roles, onReloadUsers }: SecuritySettingsSectionProps) {
+export default function SecuritySettingsSection({ users, roles, loading = false, onReloadUsers }: SecuritySettingsSectionProps) {
   const { currentUser, showToast } = useAppContext();
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
@@ -375,7 +374,9 @@ export default function SecuritySettingsSection({ users, roles, onReloadUsers }:
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-200/50">
-              {filteredUsers.length === 0 ? (
+              {loading && users.length === 0 ? (
+                <TableSkeletonRows columns={5} rows={4} />
+              ) : filteredUsers.length === 0 ? (
                 <tr>
                   <td colSpan={5} className="px-6 py-8 text-center text-slate-400 text-[13px] font-medium">
                     No users found matching your search.

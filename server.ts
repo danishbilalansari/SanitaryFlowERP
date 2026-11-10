@@ -2439,21 +2439,26 @@ app.use((req, res, next) => {
       const offset = (Number(page) - 1) * Number(limit);
       
       let query = db('audit_logs');
+      let countQuery = db('audit_logs');
       
       if (search) {
-        query = query.where(builder => 
+        const applySearch = (builder: any) => 
           builder.where('user', 'like', `%${search}%`)
             .orWhere('action', 'like', `%${search}%`)
-            .orWhere('module', 'like', `%${search}%`)
-        );
+            .orWhere('module', 'like', `%${search}%`);
+        query = query.where(applySearch);
+        countQuery = countQuery.where(applySearch);
       }
       
       if (module && module !== 'All') {
         query = query.where('module', module);
+        countQuery = countQuery.where('module', module);
       }
       
-      const totalCount = await db('audit_logs').count('id as count').first();
-      const logs = await query.orderBy('timestamp', 'desc').limit(Number(limit)).offset(offset);
+      const [totalCount, logs] = await Promise.all([
+        countQuery.count('id as count').first(),
+        query.orderBy('timestamp', 'desc').limit(Number(limit)).offset(offset)
+      ]);
       
       res.json({ logs, totalCount: totalCount?.count || 0 });
     } catch (error) {

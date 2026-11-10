@@ -1,16 +1,14 @@
-import React, { useState, useEffect, Suspense, lazy } from 'react';
+import React, { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { 
   Building2, 
   Plus, 
   Edit,
   Save, 
-  Bell, 
   ShieldAlert, 
   ChevronRight, 
   ShieldCheck, 
   UserPlus, 
-  ArrowRight, 
   History, 
   Lock, 
   Factory, 
@@ -18,12 +16,9 @@ import {
   Users2, 
   Settings as SettingsIcon, 
   Search, 
-  HelpCircle, 
-  Lightbulb, 
   Check, 
   X, 
   CreditCard, 
-  Cloud, 
   CheckCircle, 
   RotateCw, 
   Database, 
@@ -36,30 +31,24 @@ import {
   TrendingUp, 
   UserX, 
   FileText, 
-  FilterX, 
   MoreVertical, 
-  Calendar, 
   ChevronLeft, 
   RefreshCw as RefreshIcon, 
   ShieldCheck as ShieldIcon, 
-  GanttChartSquare, 
   Activity,
   KeyRound,
-  Trash2,
-  AlertCircle,
-  Loader2
+  Trash2
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useAppContext } from '../store';
 import { CURRENCIES } from '../constants';
-import { GlassSelect, GlassCapsuleBar } from '../components/GlassUI';
-import { cachedJsonFetch, invalidateApiCache } from '../lib/apiCache';
-
-const SecuritySettingsSection = lazy(() => import('../components/SecuritySettingsSection'));
-const ResetUserPasswordModal = lazy(() => import('../components/ResetUserPasswordModal'));
-const EditUserModal = lazy(() => import('../components/EditUserModal'));
-const DeleteUserModal = lazy(() => import('../components/DeleteUserModal'));
+import { GlassSelect, GlassCapsuleBar, TableSkeletonRows } from '../components/GlassUI';
+import { cachedJsonFetch, peekApiCache, invalidateApiCache } from '../lib/apiCache';
+import SecuritySettingsSection from '../components/SecuritySettingsSection';
+import ResetUserPasswordModal from '../components/ResetUserPasswordModal';
+import EditUserModal from '../components/EditUserModal';
+import DeleteUserModal from '../components/DeleteUserModal';
 
 interface Role {
   id: string;
@@ -83,56 +72,15 @@ interface User {
   role_name: string;
 }
 
-const ROLES = [
-  { 
-    id: 'admin',
-    name: 'System Administrator', 
-    desc: 'Full unrestricted system access', 
-    icon: ShieldCheck, 
-    active: true,
-    color: '#006397'
-  },
-  { 
-    id: 'manager',
-    name: 'Factory Manager', 
-    desc: 'Production & Inventory control', 
-    icon: Factory, 
-    active: false,
-    color: '#162839'
-  },
-  { 
-    id: 'accountant',
-    name: 'Chief Accountant', 
-    desc: 'Sales & Financial reporting', 
-    icon: CreditCard, 
-    active: false,
-    color: '#162839'
-  },
-  { 
-    id: 'operator',
-    name: 'Shop Operator', 
-    desc: 'Retail sales & inventory lookup', 
-    icon: Users2, 
-    active: false,
-    color: '#162839'
-  },
-  { 
-    id: 'viewer',
-    name: 'Read-Only Analyst', 
-    desc: 'Data viewing across modules', 
-    icon: ShieldAlert, 
-    active: false,
-    color: '#162839'
-  },
-];
-
-const PERMISSIONS = [
-  { module: 'Inventory Management', desc: 'Stock levels, tracking, and SKU management.', icon: PlusCircle }, 
-  { module: 'Production Lines', desc: 'Machine schedules, output logs, and maintenance.', icon: Factory },
-  { module: 'Sales & Billing', desc: 'Invoice generation and transaction records.', icon: BarChart3 },
-  { module: 'CRM & Customer Data', desc: 'Account management and contact details.', icon: Users2 },
-  { module: 'Global System Settings', desc: 'API keys, user management, and system logs.', icon: SettingsIcon },
-];
+const parseRolePermissions = (role?: Role | null): string[] => {
+  if (!role || !role.permissions) return [];
+  try {
+    const parsed = JSON.parse(role.permissions);
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return [];
+  }
+};
 
 export default function Settings() {
   const navigate = useNavigate();
@@ -164,11 +112,20 @@ export default function Settings() {
       reader.readAsDataURL(file);
     }
   };
+
+  const initialUsers = peekApiCache<User[]>('/api/users', 60_000);
+  const initialRoles = peekApiCache<Role[]>('/api/roles', 60_000);
+  const initialLogsData = peekApiCache<{ logs: any[]; totalCount: number }>('/api/audit-logs?page=1&limit=10', 60_000);
+  const initialBackups = peekApiCache<any[]>('/api/backups', 60_000);
+
   const [selectedRoleId, setSelectedRoleId] = useState('admin');
-  const [users, setUsers] = useState<User[]>([]);
-  const [roles, setRoles] = useState<Role[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [editedPermissions, setEditedPermissions] = useState<string[]>([]);
+  const [users, setUsers] = useState<User[]>(() => Array.isArray(initialUsers) ? initialUsers : []);
+  const [roles, setRoles] = useState<Role[]>(() => Array.isArray(initialRoles) ? initialRoles : []);
+  const [loading, setLoading] = useState(() => !initialUsers || !initialRoles);
+  const [editedPermissions, setEditedPermissions] = useState<string[]>(() => {
+    const adminRole = Array.isArray(initialRoles) ? initialRoles.find(r => r.id === 'admin') : null;
+    return parseRolePermissions(adminRole);
+  });
   const [isUpdatingPermissions, setIsUpdatingPermissions] = useState(false);
 
   // User management & password reset modal states
@@ -206,51 +163,65 @@ export default function Settings() {
   };
 
   // Security Logs State
-  const [auditLogs, setAuditLogs] = useState<any[]>([]);
-  const [totalLogs, setTotalLogs] = useState(0);
-  const [logsLoading, setLogsLoading] = useState(true);
+  const [auditLogs, setAuditLogs] = useState<any[]>(() => initialLogsData?.logs || []);
+  const [totalLogs, setTotalLogs] = useState(() => Number(initialLogsData?.totalCount || 0));
+  const [logsLoading, setLogsLoading] = useState(() => !initialLogsData);
   const [logSearchQuery, setLogSearchQuery] = useState('');
   const [logModuleFilter, setLogModuleFilter] = useState('All');
   const [logCurrentPage, setLogCurrentPage] = useState(1);
   const [selectedLog, setSelectedLog] = useState<any>(null);
   const logsPerPage = 10;
 
-  useEffect(() => {
-    if (activeTab !== 'Security Logs') return;
-    const fetchLogs = async (isBackground = false) => {
-      if (isBackground && typeof document !== 'undefined' && document.visibilityState === 'hidden') {
-        return;
-      }
-      if (!isBackground) setLogsLoading(true);
-      try {
-        const queryParams = new URLSearchParams({
-          page: logCurrentPage.toString(),
-          limit: logsPerPage.toString(),
-          ...(logSearchQuery && { search: logSearchQuery }),
-          ...(logModuleFilter !== 'All' && { module: logModuleFilter })
-        });
-        const res = await fetch(`/api/audit-logs?${queryParams}`);
-        const data = await res.json();
-        setAuditLogs(data.logs || []);
-        setTotalLogs(Number(data.totalCount || 0));
-      } catch (err) {
-        console.error('Error fetching logs:', err);
-      } finally {
-        if (!isBackground) setLogsLoading(false);
-      }
-    };
+  const fetchAuditLogs = async (isBackground = false, forceRefresh = false) => {
+    if (isBackground && typeof document !== 'undefined' && document.visibilityState === 'hidden') {
+      return;
+    }
+    const queryParams = new URLSearchParams({
+      page: logCurrentPage.toString(),
+      limit: logsPerPage.toString(),
+      ...(logSearchQuery && { search: logSearchQuery }),
+      ...(logModuleFilter !== 'All' && { module: logModuleFilter })
+    });
+    const url = `/api/audit-logs?${queryParams}`;
+    if (forceRefresh || isBackground) {
+      invalidateApiCache(url);
+    }
+    const cached = !forceRefresh ? peekApiCache<{ logs: any[]; totalCount: number }>(url, 60_000) : null;
+    if (cached) {
+      setAuditLogs(cached.logs || []);
+      setTotalLogs(Number(cached.totalCount || 0));
+      setLogsLoading(false);
+    } else if (!isBackground) {
+      setLogsLoading(true);
+    }
 
-    fetchLogs(false);
-    const interval = setInterval(() => fetchLogs(true), 30_000);
+    try {
+      const data = await cachedJsonFetch<{ logs: any[]; totalCount: number }>(url, undefined, 60_000);
+      setAuditLogs(data.logs || []);
+      setTotalLogs(Number(data.totalCount || 0));
+    } catch (err) {
+      console.error('Error fetching logs:', err);
+    } finally {
+      if (!isBackground) setLogsLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchAuditLogs(false);
+    const interval = setInterval(() => {
+      if (activeTab === 'Security Logs') {
+        fetchAuditLogs(true);
+      }
+    }, 30_000);
     return () => clearInterval(interval);
-  }, [activeTab, logCurrentPage, logSearchQuery, logModuleFilter]);
+  }, [logCurrentPage, logSearchQuery, logModuleFilter]);
 
   const totalLogPages = Math.max(1, Math.ceil(totalLogs / logsPerPage));
   const availableLogModules = ['All', 'Inventory', 'Production', 'Security', 'Sales', 'Core', 'Settings', 'Customers', 'Suppliers'];
 
   // Backups State
-  const [backups, setBackups] = useState<any[]>([]);
-  const [backupsLoading, setBackupsLoading] = useState(true);
+  const [backups, setBackups] = useState<any[]>(() => Array.isArray(initialBackups) ? initialBackups : []);
+  const [backupsLoading, setBackupsLoading] = useState(() => !initialBackups);
   const [isCreatingBackup, setIsCreatingBackup] = useState(false);
   
   // Backup Schedules State
@@ -265,27 +236,21 @@ export default function Settings() {
 
   const lastSuccessfulBackup = React.useMemo(() => backups.find(b => b.status === 'Successful'), [backups]);
 
-  useEffect(() => {
-    if (activeTab !== 'Backup') return;
-    const fetchBackups = async () => {
-      try {
-        const res = await fetch('/api/backups');
-        if (!res.ok) throw new Error('Backups fetch failed');
-        const contentType = res.headers.get("content-type");
-        if (contentType && contentType.indexOf("application/json") !== -1) {
-          const data = await res.json();
-          setBackups(data);
-        } else {
-          console.error('Backups response is not JSON');
-        }
-      } catch (err) {
-        console.error('Error fetching backups:', err);
-      } finally {
-        setBackupsLoading(false);
+  const fetchBackups = async (forceRefresh = false) => {
+    try {
+      if (forceRefresh) {
+        invalidateApiCache('/api/backups');
       }
-    };
-    fetchBackups();
-  }, [activeTab]);
+      const data = await cachedJsonFetch<any[]>('/api/backups', undefined, 60_000);
+      if (Array.isArray(data)) {
+        setBackups(data);
+      }
+    } catch (err) {
+      console.error('Error fetching backups:', err);
+    } finally {
+      setBackupsLoading(false);
+    }
+  };
 
   const handleCreateBackup = async () => {
     if (isCreatingBackup) return;
@@ -293,6 +258,7 @@ export default function Settings() {
     try {
       const res = await fetch('/api/backups', { method: 'POST' });
       const newBackup = await res.json();
+      invalidateApiCache('/api/backups');
       setBackups([newBackup, ...backups]);
     } catch (err) {
       console.error('Failed to create backup:', err);
@@ -313,11 +279,9 @@ export default function Settings() {
         body: JSON.stringify({ action })
       });
       if (action === 'retry') {
-        const res = await fetch('/api/backups');
-        const data = await res.json();
-        setBackups(data);
+        await fetchBackups(true);
       } else if (action === 'restore') {
-        alert('Backup restored successfully!');
+        showToast?.('Backup restored successfully!', 'success');
       }
     } catch (err) {
       console.error(`Failed to ${action} backup:`, err);
@@ -334,14 +298,12 @@ export default function Settings() {
       });
       const data = await res.json();
       if (data.success) {
-        alert('File uploaded and prepared for restore.');
-        const backupsRes = await fetch('/api/backups');
-        const backupsData = await backupsRes.json();
-        setBackups(backupsData);
+        showToast?.('File uploaded and prepared for restore.', 'success');
+        await fetchBackups(true);
       }
     } catch (err) {
       console.error('Failed to upload backup:', err);
-      alert('Upload failed');
+      showToast?.('Upload failed', 'error');
     }
   };
 
@@ -352,7 +314,7 @@ export default function Settings() {
         invalidateApiCache('/api/roles');
       }
       const [usersData, rolesData] = await Promise.all([
-        cachedJsonFetch('/api/users', undefined, 30_000),
+        cachedJsonFetch('/api/users', undefined, 60_000),
         cachedJsonFetch('/api/roles', undefined, 60_000)
       ]);
       setUsers(Array.isArray(usersData) ? usersData : []);
@@ -366,6 +328,7 @@ export default function Settings() {
 
   useEffect(() => {
     fetchSettingsData();
+    fetchBackups();
   }, []);
 
   const handleDeleteUser = async () => {
@@ -382,7 +345,7 @@ export default function Settings() {
       }
       showToast?.('User removed successfully', 'success');
       setUserToDelete(null);
-      fetchSettingsData();
+      fetchSettingsData(true);
     } catch (err: any) {
       showToast?.(err.message || 'Failed to delete user', 'error');
     } finally {
@@ -392,15 +355,7 @@ export default function Settings() {
 
   useEffect(() => {
     const currentRole = roles.find(r => r.id === selectedRoleId);
-    if (currentRole && currentRole.permissions) {
-      try {
-        setEditedPermissions(JSON.parse(currentRole.permissions));
-      } catch (e) {
-        setEditedPermissions([]);
-      }
-    } else {
-      setEditedPermissions([]);
-    }
+    setEditedPermissions(parseRolePermissions(currentRole));
   }, [selectedRoleId, roles]);
 
   const handleUpdateRole = async () => {
@@ -413,18 +368,16 @@ export default function Settings() {
         body: JSON.stringify({ permissions: editedPermissions }),
       });
       if (response.ok) {
-        // Refresh roles
-        const rolesRes = await fetch('/api/roles');
-        if (!rolesRes.ok) throw new Error('Roles refresh failed');
-        const rolesText = await rolesRes.text();
-        const rolesData = rolesText ? JSON.parse(rolesText) : [];
-        setRoles(rolesData);
+        invalidateApiCache('/api/roles');
+        const rolesData = await cachedJsonFetch<Role[]>('/api/roles', undefined, 60_000);
+        setRoles(Array.isArray(rolesData) ? rolesData : []);
+        showToast?.('Role permissions updated!', 'success');
       } else {
-        alert('Failed to update role permissions');
+        showToast?.('Failed to update role permissions', 'error');
       }
     } catch (e) {
       console.error(e);
-      alert('Failed to update role permissions');
+      showToast?.('Failed to update role permissions', 'error');
     } finally {
       setIsUpdatingPermissions(false);
     }
@@ -432,13 +385,7 @@ export default function Settings() {
 
   const handleResetRole = () => {
     const currentRole = roles.find(r => r.id === selectedRoleId);
-    if (currentRole && currentRole.permissions) {
-      try {
-        setEditedPermissions(JSON.parse(currentRole.permissions));
-      } catch (e) {
-        setEditedPermissions([]);
-      }
-    }
+    setEditedPermissions(parseRolePermissions(currentRole));
   };
 
   const ALL_MODULES = [
@@ -459,7 +406,7 @@ export default function Settings() {
 
   const handleExportAuditLogs = async () => {
     try {
-      const res = await fetch('/api/audit-logs?limit=5000'); // Fetch a large batch for CSV
+      const res = await fetch('/api/audit-logs?limit=5000');
       const data = await res.json();
       const logsToExport = data.logs || [];
 
@@ -501,9 +448,7 @@ export default function Settings() {
   const handleSyncNow = async () => {
     showToast?.('Syncing backup state...', 'info');
     try {
-      const res = await fetch('/api/backups');
-      const data = await res.json();
-      setBackups(data);
+      await fetchBackups(true);
       showToast?.('Backup state synchronized', 'success');
     } catch (err) {
       console.error('Sync failed:', err);
@@ -601,7 +546,7 @@ export default function Settings() {
                 <span>Export CSV</span>
               </button>
               <button 
-                onClick={fetchSettingsData}
+                onClick={() => fetchAuditLogs(false, true)}
                 className="px-6 py-2.5 bg-gradient-to-r from-[#0284c7] to-sky-500 text-white font-semibold text-[13px] rounded-full hover:brightness-105 transition-all flex items-center gap-2 shadow-[0_6px_20px_rgba(2,132,199,0.28)] whitespace-nowrap cursor-pointer"
               >
                 <RefreshIcon className="w-4 h-4" />
@@ -662,8 +607,9 @@ export default function Settings() {
         return (
           <SecuritySettingsSection 
             users={users} 
-            roles={roles} 
-            onReloadUsers={fetchSettingsData} 
+            roles={roles}
+            loading={loading}
+            onReloadUsers={() => fetchSettingsData(true)} 
           />
         );
       case 'General':
@@ -805,7 +751,17 @@ export default function Settings() {
                   </div>
                 </div>
                 <div className="space-y-3 relative z-10">
-                  {roles.map((role) => {
+                  {loading && roles.length === 0 ? (
+                    [1, 2, 3, 4].map((idx) => (
+                      <div key={idx} className="p-4 rounded-2xl bg-white/60 border border-white/90 animate-pulse flex justify-between items-center">
+                        <div className="space-y-2">
+                          <div className="h-4 w-32 bg-slate-200/70 rounded-lg" />
+                          <div className="h-3 w-44 bg-slate-100/80 rounded-lg" />
+                        </div>
+                        <div className="h-6 w-16 bg-slate-200/60 rounded-full" />
+                      </div>
+                    ))
+                  ) : roles.map((role) => {
                     const isSelected = selectedRoleId === role.id;
                     return (
                       <div 
@@ -838,7 +794,6 @@ export default function Settings() {
 
               {/* Role Permissions — Apple iOS 26 Liquid Glass */}
               <div className="rounded-[30px] bg-white/[0.74] backdrop-blur-3xl border-[1.5px] border-white/95 p-7 shadow-[0_16px_44px_-8px_rgba(15,23,42,0.065),inset_0_1px_2px_rgba(255,255,255,1)] relative overflow-hidden">
-                {/* Soft ambient colorful glass blobs */}
                 <div className="absolute -top-16 -right-12 w-48 h-48 rounded-full bg-gradient-to-br from-sky-400/25 via-indigo-400/15 to-transparent blur-2xl pointer-events-none" />
                 <div className="absolute -bottom-16 -left-12 w-48 h-48 rounded-full bg-gradient-to-tr from-purple-300/20 via-cyan-300/15 to-transparent blur-2xl pointer-events-none" />
 
@@ -861,6 +816,7 @@ export default function Settings() {
                 <div className="space-y-2.5 mt-6 relative z-10">
                   {ALL_MODULES.map((module, i) => {
                     const isChecked = editedPermissions.includes(module.value);
+                    const isInitialLoading = loading && roles.length === 0;
                     return (
                       <label 
                         key={i} 
@@ -874,27 +830,34 @@ export default function Settings() {
                           type="checkbox"
                           className="hidden" 
                           checked={isChecked}
+                          disabled={isInitialLoading}
                           onChange={() => handleTogglePermission(module.value)}
                         />
                         <div className="flex items-center gap-3.5">
                           <div className={`w-6 h-6 rounded-full flex items-center justify-center transition-all ${
-                            isChecked 
-                              ? 'bg-gradient-to-br from-[#0284c7] to-sky-400 text-white shadow-[0_3px_10px_rgba(2,132,199,0.3)] border border-white/60' 
-                              : 'bg-white/90 border border-slate-200/90 shadow-inner group-hover:border-sky-300'
+                            isInitialLoading
+                              ? 'bg-slate-200/70 animate-pulse'
+                              : isChecked 
+                                ? 'bg-gradient-to-br from-[#0284c7] to-sky-400 text-white shadow-[0_3px_10px_rgba(2,132,199,0.3)] border border-white/60' 
+                                : 'bg-white/90 border border-slate-200/90 shadow-inner group-hover:border-sky-300'
                           }`}>
-                            {isChecked && <Check className="w-3.5 h-3.5 text-white" strokeWidth={3} />}
+                            {!isInitialLoading && isChecked && <Check className="w-3.5 h-3.5 text-white" strokeWidth={3} />}
                           </div>
                           <span className={`text-[14px] font-semibold transition-colors ${isChecked ? 'text-slate-900' : 'text-slate-500 group-hover:text-slate-800'}`}>
                             {module.label}
                           </span>
                         </div>
-                        <span className={`text-[10.5px] font-bold px-2.5 py-0.5 rounded-full border transition-all ${
-                          isChecked
-                            ? 'bg-emerald-50/90 text-emerald-600 border-emerald-200/70'
-                            : 'bg-slate-100/70 text-slate-400 border-white'
-                        }`}>
-                          {isChecked ? 'Allowed' : 'Not Allowed'}
-                        </span>
+                        {isInitialLoading ? (
+                          <div className="h-5 w-16 rounded-full bg-slate-200/70 animate-pulse" />
+                        ) : (
+                          <span className={`text-[10.5px] font-bold px-2.5 py-0.5 rounded-full border transition-all ${
+                            isChecked
+                              ? 'bg-emerald-50/90 text-emerald-600 border-emerald-200/70'
+                              : 'bg-slate-100/70 text-slate-400 border-white'
+                          }`}>
+                            {isChecked ? 'Allowed' : 'Not Allowed'}
+                          </span>
+                        )}
                       </label>
                     );
                   })}
@@ -903,7 +866,7 @@ export default function Settings() {
                 <div className="mt-7 pt-5 border-t border-slate-200/50 flex gap-3 relative z-10">
                   <button 
                     onClick={handleUpdateRole} 
-                    disabled={isUpdatingPermissions}
+                    disabled={isUpdatingPermissions || (loading && roles.length === 0)}
                     className="flex-1 py-3 bg-gradient-to-r from-[#0284c7] to-sky-500 text-white font-semibold rounded-full text-[13.5px] hover:brightness-105 shadow-[0_6px_20px_rgba(2,132,199,0.28)] hover:-translate-y-0.5 active:translate-y-0 transition-all disabled:opacity-50 cursor-pointer"
                   >
                     {isUpdatingPermissions ? 'Updating...' : 'Update Role'}
@@ -924,9 +887,13 @@ export default function Settings() {
               <div className="glass-table-container overflow-hidden">
                 <div className="p-8 border-b border-slate-200/60 flex justify-between items-center bg-white/40">
                   <h3 className="text-[20px] font-bold text-slate-900">Registered System Users</h3>
-                  <span className="bg-white/90 border border-white text-slate-600 px-4 py-1.5 rounded-full text-[11px] font-bold uppercase tracking-widest shadow-2xs">
-                    Total: {users.length} User{users.length === 1 ? '' : 's'}
-                  </span>
+                  {loading && users.length === 0 ? (
+                    <div className="h-7 w-28 rounded-full bg-slate-200/70 animate-pulse" />
+                  ) : (
+                    <span className="bg-white/90 border border-white text-slate-600 px-4 py-1.5 rounded-full text-[11px] font-bold uppercase tracking-widest shadow-2xs">
+                      Total: {users.length} User{users.length === 1 ? '' : 's'}
+                    </span>
+                  )}
                 </div>
                 <div className="overflow-x-auto">
                   <table className="w-full text-left">
@@ -940,7 +907,9 @@ export default function Settings() {
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-200/50">
-                      {users.map((u, i) => (
+                      {loading && users.length === 0 ? (
+                        <TableSkeletonRows columns={5} rows={4} />
+                      ) : users.map((u) => (
                         <tr key={u.id} className="transition-colors">
                           <td className="px-8 py-5">
                             <div className="flex items-center gap-4">
@@ -1011,7 +980,11 @@ export default function Settings() {
                   </table>
                 </div>
                 <div className="p-6 bg-white/40 border-t border-slate-200/60 flex justify-between items-center">
-                  <span className="text-[12px] text-slate-500 font-medium">Showing {users.length} registered user{users.length === 1 ? '' : 's'}</span>
+                  {loading && users.length === 0 ? (
+                    <div className="h-4 w-40 rounded-lg bg-slate-200/70 animate-pulse" />
+                  ) : (
+                    <span className="text-[12px] text-slate-500 font-medium">Showing {users.length} registered user{users.length === 1 ? '' : 's'}</span>
+                  )}
                   <div className="flex gap-2">
                     <button className="w-9 h-9 rounded-full bg-white/80 border border-white flex items-center justify-center transition-all opacity-50 cursor-not-allowed shadow-2xs">
                       <ChevronLeft className="w-4 h-4" />
@@ -1200,6 +1173,7 @@ export default function Settings() {
                     onClick={async () => {
                       if (confirm('Clear ALL system audit logs permanently?')) {
                         await fetch('/api/audit-logs', { method: 'DELETE' });
+                        invalidateApiCache('/api/audit-logs');
                         setAuditLogs([]);
                         setTotalLogs(0);
                       }
@@ -1226,8 +1200,8 @@ export default function Settings() {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-200/50">
-                    {logsLoading ? (
-                      <tr><td colSpan={7} className="px-8 py-12 text-center text-slate-400 font-semibold">Loading logs...</td></tr>
+                    {logsLoading && auditLogs.length === 0 ? (
+                      <TableSkeletonRows columns={7} rows={6} />
                     ) : auditLogs.length === 0 ? (
                       <tr><td colSpan={7} className="px-8 py-12 text-center text-slate-400 font-semibold">No logs found.</td></tr>
                     ) : auditLogs.map((log, i) => {
@@ -1304,7 +1278,11 @@ export default function Settings() {
 
               {/* Pagination */}
               <div className="p-6 border-t border-slate-200/60 flex justify-between items-center bg-white/40">
-                <span className="text-[13px] text-slate-500 font-medium">Showing {totalLogs === 0 ? 0 : ((logCurrentPage - 1) * logsPerPage) + 1} to {Math.min(logCurrentPage * logsPerPage, totalLogs)} of {totalLogs.toLocaleString()} entries</span>
+                {logsLoading && auditLogs.length === 0 ? (
+                  <div className="h-4 w-48 rounded-lg bg-slate-200/70 animate-pulse" />
+                ) : (
+                  <span className="text-[13px] text-slate-500 font-medium">Showing {totalLogs === 0 ? 0 : ((logCurrentPage - 1) * logsPerPage) + 1} to {Math.min(logCurrentPage * logsPerPage, totalLogs)} of {totalLogs.toLocaleString()} entries</span>
+                )}
                 <div className="flex gap-2">
                   <button 
                     disabled={logCurrentPage === 1}
@@ -1363,8 +1341,6 @@ export default function Settings() {
                 </div>
               </div>
             </div>
-
-
           </div>
         );
       case 'Backup':
@@ -1384,13 +1360,26 @@ export default function Settings() {
                       <CheckCircle className="w-5 h-5" />
                     </div>
                   </div>
-                  <h3 className="text-[20px] font-extrabold text-slate-900 leading-tight">Last Backup {lastSuccessfulBackup ? 'Successful' : 'Unavailable'}</h3>
-                  <p className="text-[13.5px] text-slate-500 font-medium mt-1.5">{lastSuccessfulBackup ? `${new Date(lastSuccessfulBackup.date).toLocaleString()} (Scheduled)` : 'No successful backups found'}</p>
+                  {backupsLoading && backups.length === 0 ? (
+                    <div className="space-y-2.5 animate-pulse">
+                      <div className="h-6 w-48 bg-slate-200/70 rounded-xl" />
+                      <div className="h-4 w-56 bg-slate-100/80 rounded-lg" />
+                    </div>
+                  ) : (
+                    <>
+                      <h3 className="text-[20px] font-extrabold text-slate-900 leading-tight">Last Backup {lastSuccessfulBackup ? 'Successful' : 'Unavailable'}</h3>
+                      <p className="text-[13.5px] text-slate-500 font-medium mt-1.5">{lastSuccessfulBackup ? `${new Date(lastSuccessfulBackup.date).toLocaleString()} (Scheduled)` : 'No successful backups found'}</p>
+                    </>
+                  )}
                   
                   <div className="mt-7 space-y-2.5">
                     <div className="flex justify-between items-center px-4 py-3 rounded-2xl bg-white/80 border border-white shadow-2xs">
                       <span className="text-[13px] text-slate-500 font-medium">Total Data Size</span>
-                      <span className="text-[13.5px] font-bold text-slate-900">{lastSuccessfulBackup ? lastSuccessfulBackup.size : '--'}</span>
+                      {backupsLoading && backups.length === 0 ? (
+                        <div className="h-4 w-16 rounded-lg bg-slate-200/70 animate-pulse" />
+                      ) : (
+                        <span className="text-[13.5px] font-bold text-slate-900">{lastSuccessfulBackup ? lastSuccessfulBackup.size : '--'}</span>
+                      )}
                     </div>
                     <div className="flex justify-between items-center px-4 py-3 rounded-2xl bg-white/80 border border-white shadow-2xs">
                       <span className="text-[13px] text-slate-500 font-medium">Encryption</span>
@@ -1633,8 +1622,8 @@ export default function Settings() {
                       </tr>
                     </thead>
                     <tbody className="text-[14px] divide-y divide-slate-200/50">
-                      {backupsLoading ? (
-                        <tr><td colSpan={5} className="px-8 py-12 text-center text-slate-400 font-semibold">Loading backups...</td></tr>
+                      {backupsLoading && backups.length === 0 ? (
+                        <TableSkeletonRows columns={5} rows={4} />
                       ) : backups.length === 0 ? (
                         <tr><td colSpan={5} className="px-8 py-12 text-center text-slate-400 font-semibold">No backups found.</td></tr>
                       ) : backups.map((backup, i) => (
@@ -1702,7 +1691,6 @@ export default function Settings() {
                   className="rounded-[30px] bg-white/[0.74] backdrop-blur-3xl border-[1.5px] border-white/95 p-7 shadow-[0_16px_44px_-8px_rgba(15,23,42,0.065),inset_0_1px_2px_rgba(255,255,255,1)] relative overflow-hidden"
                   onMouseLeave={() => setShowRetentionMenu(false)}
                 >
-                  {/* Soft colorful ambient glass glow blobs */}
                   <div className="absolute -top-14 -right-14 w-44 h-44 rounded-full bg-gradient-to-br from-sky-400/25 via-indigo-400/15 to-transparent blur-2xl pointer-events-none" />
                   <div className="absolute -bottom-14 -left-14 w-44 h-44 rounded-full bg-gradient-to-tr from-cyan-300/20 via-purple-300/15 to-transparent blur-2xl pointer-events-none" />
 
@@ -1797,7 +1785,7 @@ export default function Settings() {
   };
 
   return (
-    <div className="space-y-8 animate-in fade-in duration-500 pb-12 overflow-x-hidden">
+    <div className="space-y-8 pb-12 overflow-x-hidden">
       {/* Dynamic Header */}
       {renderHeader()}
 
@@ -1819,53 +1807,41 @@ export default function Settings() {
       </div>
 
       {/* Dynamic Content */}
-      <AnimatePresence mode="wait">
-        <motion.div
-          key={activeTab}
-          initial={{ opacity: 0, y: 10 }}
-          animate={{ opacity: 1, y: 0 }}
-          exit={{ opacity: 0, y: -10 }}
-          transition={{ duration: 0.3 }}
-        >
-          <Suspense fallback={<div className="py-12 flex justify-center"><div className="animate-spin rounded-full h-7 w-7 border-b-2 border-[#0284c7]" /></div>}>
-            {renderContent()}
-          </Suspense>
-        </motion.div>
-      </AnimatePresence>
+      <div key={activeTab}>
+        {renderContent()}
+      </div>
 
-      <Suspense fallback={null}>
-        {/* Admin Reset User Password Modal */}
-        {selectedUserForReset && (
-          <ResetUserPasswordModal
-            isOpen={Boolean(selectedUserForReset)}
-            onClose={() => setSelectedUserForReset(null)}
-            user={selectedUserForReset}
-            onSuccess={() => fetchSettingsData(true)}
-          />
-        )}
+      {/* Admin Reset User Password Modal */}
+      {selectedUserForReset && (
+        <ResetUserPasswordModal
+          isOpen={Boolean(selectedUserForReset)}
+          onClose={() => setSelectedUserForReset(null)}
+          user={selectedUserForReset}
+          onSuccess={() => fetchSettingsData(true)}
+        />
+      )}
 
-        {/* Admin Edit User Modal */}
-        {selectedUserForEdit && (
-          <EditUserModal
-            isOpen={Boolean(selectedUserForEdit)}
-            onClose={() => setSelectedUserForEdit(null)}
-            user={selectedUserForEdit}
-            roles={roles}
-            onSuccess={() => fetchSettingsData(true)}
-          />
-        )}
+      {/* Admin Edit User Modal */}
+      {selectedUserForEdit && (
+        <EditUserModal
+          isOpen={Boolean(selectedUserForEdit)}
+          onClose={() => setSelectedUserForEdit(null)}
+          user={selectedUserForEdit}
+          roles={roles}
+          onSuccess={() => fetchSettingsData(true)}
+        />
+      )}
 
-        {/* Delete User Confirmation Modal */}
-        {userToDelete && (
-          <DeleteUserModal
-            isOpen={Boolean(userToDelete)}
-            onClose={() => setUserToDelete(null)}
-            user={userToDelete}
-            onConfirm={handleDeleteUser}
-            loading={isDeletingUser}
-          />
-        )}
-      </Suspense>
+      {/* Delete User Confirmation Modal */}
+      {userToDelete && (
+        <DeleteUserModal
+          isOpen={Boolean(userToDelete)}
+          onClose={() => setUserToDelete(null)}
+          user={userToDelete}
+          onConfirm={handleDeleteUser}
+          loading={isDeletingUser}
+        />
+      )}
 
       {/* Log Detail Modal */}
       {typeof document !== 'undefined' && createPortal(
