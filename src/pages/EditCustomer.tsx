@@ -52,8 +52,19 @@ export default function EditCustomer() {
         .then(data => {
           setFormData({
             ...data,
+            name: data.name ?? '',
+            business_type: data.business_type ?? 'Retailer',
+            city: data.city ?? '',
+            tax_id: data.tax_id ?? '',
+            opening_balance: parseFloat(data.opening_balance) || 0,
             credit_limit: parseFloat(data.credit_limit) || 0,
-            sameAsBilling: data.billing_address === data.shipping_address
+            payment_terms: data.payment_terms ?? 'Net 30',
+            contact_person: data.contact_person ?? '',
+            email: data.email ?? '',
+            phone: data.phone ?? '',
+            billing_address: data.billing_address ?? '',
+            shipping_address: data.shipping_address ?? '',
+            sameAsBilling: (data.billing_address ?? '') === (data.shipping_address ?? '')
           });
           setLoading(false);
         })

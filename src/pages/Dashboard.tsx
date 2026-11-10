@@ -10,7 +10,7 @@ import {
   Sparkles, Hash, RotateCw, BookOpen, Feather, Flame
 } from 'lucide-react';
 import { motion } from 'motion/react';
-import { DashboardSkeleton, GlassEmptyState, GlossyChartCard } from '../components/GlassUI';
+import { DashboardSkeleton, GlassEmptyState, GlossyChartCard, GlassCapsuleBar } from '../components/GlassUI';
 import { cachedJsonFetch, invalidateApiCache } from '../lib/apiCache';
 
 export default function Dashboard() {
@@ -254,30 +254,28 @@ export default function Dashboard() {
               </div>
             </div>
 
-            <div className="space-y-4">
+            <div className="space-y-3.5">
               {rawTopSellers.slice(0, 4).map((p: any, i: number) => {
                 const qty = Number(p.total_qty) || 0;
                 const pct = Math.max(12, Math.round((qty / maxSellerQty) * 100));
                 const badgeClass = pillStyles[i % pillStyles.length];
                 return (
-                  <div key={i} className="space-y-2">
+                  <div
+                    key={i}
+                    className="p-3.5 rounded-2xl bg-white/65 border border-white/85 shadow-[0_2px_8px_rgba(15,23,42,0.02)] space-y-2.5"
+                  >
                     <div className="flex items-center justify-between gap-2">
                       <span
-                        className={`inline-flex items-center gap-1 px-3 py-1 rounded-full text-[12px] font-semibold border truncate max-w-[200px] ${badgeClass}`}
+                        className={`inline-flex items-center gap-1 px-3 py-1 rounded-full text-[12px] font-semibold border truncate max-w-[210px] shadow-[inset_0_1px_1px_rgba(255,255,255,0.9)] ${badgeClass}`}
                       >
                         <span className="opacity-60">#</span>
                         <span className="truncate">{p.name || 'Sanitary Unit'}</span>
                       </span>
-                      <span className="text-[12.5px] font-medium text-slate-600 tabular-nums shrink-0">
+                      <span className="text-[13px] font-bold text-slate-900 tabular-nums shrink-0">
                         {qty} units
                       </span>
                     </div>
-                    <div className="w-full h-2 rounded-full bg-slate-200/70 overflow-hidden">
-                      <div
-                        className="h-full rounded-full bg-indigo-400/85 transition-all duration-500"
-                        style={{ width: `${pct}%` }}
-                      />
-                    </div>
+                    <GlassCapsuleBar percentage={pct} darkMode={false} heightClass="h-4" />
                   </div>
                 );
               })}

@@ -63,6 +63,8 @@ export default function AddInventory() {
         .then(data => {
           setFormData({
             ...data,
+            name: data.name || '',
+            sku: data.sku || '',
             stock: data.stock || 0,
             price: data.price || 0,
             minStock: data.minStock || 10,

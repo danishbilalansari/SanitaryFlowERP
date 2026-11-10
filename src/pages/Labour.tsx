@@ -137,7 +137,15 @@ export default function LabourPage() {
 
   const handleOpenModal = (lab: Labour | null = null) => {
     if (lab) {
-      setFormData({ ...lab });
+      setFormData({
+        id: lab.id,
+        name: lab.name ?? '',
+        cnic: lab.cnic ?? '',
+        address: lab.address ?? '',
+        mobile_no: lab.mobile_no ?? '',
+        designation: lab.designation ?? '',
+        salary: Number(lab.salary) || 0
+      });
     } else {
       setFormData({ id: 0, name: '', cnic: '', address: '', mobile_no: '', designation: '', salary: 0 });
     }
