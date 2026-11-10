@@ -7,7 +7,8 @@ import {
   Hammer,
   Plus, ChevronRight,
   ShoppingCart, Download,
-  Sparkles, Hash, RotateCw, BookOpen, Feather, Flame, BarChart3, TrendingUp
+  Sparkles, Hash, RotateCw, BookOpen, Feather, Flame, BarChart3, TrendingUp,
+  Moon, Sun
 } from 'lucide-react';
 import { motion } from 'motion/react';
 import {
@@ -31,6 +32,25 @@ export default function Dashboard() {
   const [loading, setLoading] = useState<boolean>(() => !cachedStats);
   const [refreshing, setRefreshing] = useState(false);
   const [summaryChartStyle, setSummaryChartStyle] = useState<'glossy-bars' | 'area'>('glossy-bars');
+
+  // Top Selling Products theme switcher ('frosted' | 'black')
+  const [topSellingTheme, setTopSellingTheme] = useState<'frosted' | 'black'>(() => {
+    try {
+      const saved = localStorage.getItem('dashboard_top_selling_theme');
+      return saved === 'black' ? 'black' : 'frosted';
+    } catch {
+      return 'frosted';
+    }
+  });
+
+  const handleTopSellingThemeChange = (theme: 'frosted' | 'black') => {
+    setTopSellingTheme(theme);
+    try {
+      localStorage.setItem('dashboard_top_selling_theme', theme);
+    } catch {
+      // ignore
+    }
+  };
 
   const fetchDashboardStats = useCallback((isRefresh = false) => {
     if (isRefresh) {
@@ -165,6 +185,16 @@ export default function Dashboard() {
     'bg-indigo-100/85 text-indigo-800 border-indigo-200/80'
   ];
 
+  const darkPillStyles = [
+    'bg-sky-950/80 text-sky-300 border-sky-800/70',
+    'bg-teal-950/80 text-teal-300 border-teal-800/70',
+    'bg-fuchsia-950/80 text-fuchsia-300 border-fuchsia-800/70',
+    'bg-amber-950/80 text-amber-300 border-amber-800/70',
+    'bg-indigo-950/80 text-indigo-300 border-indigo-800/70'
+  ];
+
+  const isTopSellingBlack = topSellingTheme === 'black';
+
   const currentMonthYear = new Date().toLocaleDateString('en-US', {
     month: 'long',
     year: 'numeric'
@@ -267,131 +297,49 @@ export default function Dashboard() {
         />
       )}
 
-      {/* Bottom 3-Column Bento Cards (Three Separate Tabs/Cards) */}
+      {/* Bottom 3 Bento Cards in order requested:
+          1. Production & Inventory Summary (left, width a little less: col-span-3)
+          2. Stock & Category Volume (middle: col-span-5)
+          3. Top Selling Products (right: col-span-4, with black theme switcher)
+      */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-        {/* Card 1 (Left): Top Selling Products */}
+        {/* Card 1 (Left): Production & Inventory Summary (Width a little less: lg:col-span-3) */}
         <motion.div
           initial={{ opacity: 0, y: 14 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.4, delay: 0.12 }}
-          className="lg:col-span-4 rounded-[32px] bg-white/[0.74] backdrop-blur-3xl border border-white/95 p-6 sm:p-7 shadow-[0_14px_40px_-8px_rgba(15,23,42,0.05),inset_0_1px_2px_rgba(255,255,255,1)] flex flex-col justify-between"
+          className="lg:col-span-3 rounded-[32px] bg-white/[0.74] backdrop-blur-3xl border border-white/95 p-5 sm:p-6 shadow-[0_14px_40px_-8px_rgba(15,23,42,0.05),inset_0_1px_2px_rgba(255,255,255,1)] flex flex-col justify-between"
         >
           <div>
-            <div className="flex items-start gap-3.5 mb-6">
-              <div className="w-10 h-10 rounded-2xl bg-white/90 border border-white shadow-[0_4px_12px_rgba(15,23,42,0.05)] flex items-center justify-center text-[#0284c7] shrink-0">
-                <Hash className="w-4 h-4 stroke-[2.2]" />
-              </div>
-              <div>
-                <h3 className="text-[18px] font-bold text-slate-900 tracking-tight leading-snug">
-                  Top Selling Products
-                </h3>
-                <p className="text-[13px] text-slate-500">
-                  Items moving fastest across channels
-                </p>
-              </div>
-            </div>
-
-            <div className="space-y-3.5">
-              {loading ? (
-                Array.from({ length: 4 }).map((_, i) => (
-                  <div
-                    key={i}
-                    className="p-3.5 rounded-2xl bg-white/65 border border-white/85 space-y-2.5"
-                  >
-                    <div className="flex items-center justify-between gap-2">
-                      <div className="h-6 w-36 rounded-full bg-slate-200/80 animate-pulse" />
-                      <div className="h-4 w-16 rounded-full bg-slate-200/70 animate-pulse" />
-                    </div>
-                    <div className="h-4 w-full rounded-full bg-slate-200/60 animate-pulse" />
-                  </div>
-                ))
-              ) : (
-                <>
-                  {rawTopSellers.slice(0, 4).map((p: any, i: number) => {
-                    const qty = Number(p.total_qty) || 0;
-                    const pct = Math.max(12, Math.round((qty / maxSellerQty) * 100));
-                    const badgeClass = pillStyles[i % pillStyles.length];
-                    return (
-                      <div
-                        key={i}
-                        className="p-3.5 rounded-2xl bg-white/65 border border-white/85 shadow-[0_2px_8px_rgba(15,23,42,0.02)] space-y-2.5"
-                      >
-                        <div className="flex items-center justify-between gap-2">
-                          <span
-                            className={`inline-flex items-center gap-1 px-3 py-1 rounded-full text-[12px] font-semibold border truncate max-w-[180px] shadow-[inset_0_1px_1px_rgba(255,255,255,0.9)] ${badgeClass}`}
-                          >
-                            <span className="opacity-60">#</span>
-                            <span className="truncate">{p.name || 'Sanitary Unit'}</span>
-                          </span>
-                          <span className="text-[13px] font-bold text-slate-900 tabular-nums shrink-0">
-                            {qty} units
-                          </span>
-                        </div>
-                        <GlassCapsuleBar percentage={pct} darkMode={false} heightClass="h-4" />
-                      </div>
-                    );
-                  })}
-
-                  {rawTopSellers.length === 0 && (
-                    <GlassEmptyState
-                      title="No sales volume yet"
-                      description="Top-selling sanitaryware products will appear here once invoices are recorded."
-                    />
-                  )}
-                </>
-              )}
-            </div>
-          </div>
-
-          <div className="pt-5 mt-5 border-t border-slate-200/50 flex items-center justify-between">
-            <span className="text-xs text-slate-400 font-medium">Updated from live ledger</span>
-            <Link
-              to="/inventory"
-              className="text-xs font-semibold text-[#0284c7] hover:underline inline-flex items-center gap-1"
-            >
-              <span>View all stock</span>
-              <ChevronRight className="w-3.5 h-3.5" />
-            </Link>
-          </div>
-        </motion.div>
-
-        {/* Card 2 (Middle): Production & Inventory Summary (Vertical Layout) */}
-        <motion.div
-          initial={{ opacity: 0, y: 14 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.4, delay: 0.18 }}
-          className="lg:col-span-4 rounded-[32px] bg-white/[0.74] backdrop-blur-3xl border border-white/95 p-6 sm:p-7 shadow-[0_14px_40px_-8px_rgba(15,23,42,0.05),inset_0_1px_2px_rgba(255,255,255,1)] flex flex-col justify-between"
-        >
-          <div>
-            <div className="flex items-center justify-between gap-3 mb-6">
-              <div className="flex items-center gap-3.5 min-w-0">
+            <div className="flex items-center justify-between gap-2.5 mb-5">
+              <div className="flex items-center gap-3 min-w-0">
                 <div className="w-10 h-10 rounded-2xl bg-white/90 border border-white shadow-[0_4px_12px_rgba(15,23,42,0.05)] flex items-center justify-center text-[#0284c7] shrink-0">
                   <Sparkles className="w-4 h-4 stroke-[2.1]" />
                 </div>
                 <div className="min-w-0">
-                  <h3 className="text-[18px] font-bold text-slate-900 tracking-tight leading-snug truncate">
-                    Production &amp; Inventory Summary
+                  <h3 className="text-[16px] font-bold text-slate-900 tracking-tight leading-snug truncate">
+                    Production &amp; Inventory
                   </h3>
-                  <p className="text-[13px] text-slate-500">{currentMonthYear}</p>
+                  <p className="text-[12px] text-slate-500 truncate">{currentMonthYear}</p>
                 </div>
               </div>
 
               <button
                 type="button"
                 onClick={() => fetchDashboardStats(true)}
-                className="glass-pill-button px-3.5 py-2 text-[12px] font-semibold text-slate-600 inline-flex items-center gap-1.5 cursor-pointer shrink-0"
+                title="Refresh stats"
+                className="glass-pill-button p-2 text-slate-600 inline-flex items-center justify-center cursor-pointer shrink-0"
               >
                 <RotateCw className={`w-3.5 h-3.5 text-slate-500 ${refreshing ? 'animate-spin' : ''}`} />
-                <span>Refresh</span>
               </button>
             </div>
 
-            <div className="flex flex-col gap-3">
+            <div className="flex flex-col gap-2.5">
               {loading ? (
                 Array.from({ length: 4 }).map((_, i) => (
                   <div
                     key={i}
-                    className="h-[64px] rounded-2xl bg-slate-200/70 animate-pulse"
+                    className="h-[60px] rounded-2xl bg-slate-200/70 animate-pulse"
                   />
                 ))
               ) : (
@@ -402,13 +350,13 @@ export default function Dashboard() {
                   ).slice(0, 2).map((p: any, i: number) => (
                     <div
                       key={i}
-                      className="flex items-center justify-between px-4 py-3.5 rounded-2xl bg-white/85 border border-white shadow-[0_2px_10px_rgba(15,23,42,0.03)]"
+                      className="flex items-center justify-between px-3.5 py-3 rounded-2xl bg-white/85 border border-white shadow-[0_2px_10px_rgba(15,23,42,0.03)]"
                     >
-                      <div className="flex items-center gap-2.5">
-                        <span className="w-2.5 h-2.5 rounded-full bg-[#0284c7]" />
-                        <span className="text-[13.5px] font-semibold text-slate-800">{p.status}</span>
+                      <div className="flex items-center gap-2 min-w-0">
+                        <span className="w-2 h-2 rounded-full bg-[#0284c7] shrink-0" />
+                        <span className="text-[13px] font-semibold text-slate-800 truncate">{p.status}</span>
                       </div>
-                      <span className="px-3 py-0.5 rounded-full bg-sky-100/80 text-sky-800 text-[12px] font-bold tabular-nums">
+                      <span className="px-2.5 py-0.5 rounded-full bg-sky-100/80 text-sky-800 text-[11.5px] font-bold tabular-nums shrink-0">
                         {p.count} batches
                       </span>
                     </div>
@@ -416,74 +364,74 @@ export default function Dashboard() {
 
                   <Link
                     to="/inventory"
-                    className="p-3.5 rounded-2xl bg-white/85 hover:bg-white border border-white shadow-[0_2px_10px_rgba(15,23,42,0.03)] transition-all group flex items-center justify-between"
+                    className="p-3 rounded-2xl bg-white/85 hover:bg-white border border-white shadow-[0_2px_10px_rgba(15,23,42,0.03)] transition-all group flex items-center justify-between"
                   >
-                    <div className="flex items-center gap-3 min-w-0">
-                      <div className="w-9 h-9 rounded-xl bg-sky-100/80 text-[#0284c7] flex items-center justify-center shrink-0">
-                        <Package className="w-4 h-4" />
+                    <div className="flex items-center gap-2.5 min-w-0">
+                      <div className="w-8 h-8 rounded-xl bg-sky-100/80 text-[#0284c7] flex items-center justify-center shrink-0">
+                        <Package className="w-3.5 h-3.5" />
                       </div>
                       <div className="min-w-0">
-                        <p className="text-[13px] font-bold text-slate-900 truncate">Finished Goods</p>
-                        <p className="text-[11.5px] text-slate-400 truncate">Main Warehouse</p>
+                        <p className="text-[12.5px] font-bold text-slate-900 truncate">Finished Goods</p>
+                        <p className="text-[11px] text-slate-400 truncate">Main Warehouse</p>
                       </div>
                     </div>
-                    <ChevronRight className="w-4 h-4 text-slate-400 shrink-0 group-hover:translate-x-0.5 transition-transform" />
+                    <ChevronRight className="w-3.5 h-3.5 text-slate-400 shrink-0 group-hover:translate-x-0.5 transition-transform" />
                   </Link>
 
                   <Link
                     to="/purchases/raw-materials"
-                    className="p-3.5 rounded-2xl bg-white/85 hover:bg-white border border-white shadow-[0_2px_10px_rgba(15,23,42,0.03)] transition-all group flex items-center justify-between"
+                    className="p-3 rounded-2xl bg-white/85 hover:bg-white border border-white shadow-[0_2px_10px_rgba(15,23,42,0.03)] transition-all group flex items-center justify-between"
                   >
-                    <div className="flex items-center gap-3 min-w-0">
-                      <div className="w-9 h-9 rounded-xl bg-emerald-100/80 text-emerald-600 flex items-center justify-center shrink-0">
-                        <Hammer className="w-4 h-4" />
+                    <div className="flex items-center gap-2.5 min-w-0">
+                      <div className="w-8 h-8 rounded-xl bg-emerald-100/80 text-emerald-600 flex items-center justify-center shrink-0">
+                        <Hammer className="w-3.5 h-3.5" />
                       </div>
                       <div className="min-w-0">
-                        <p className="text-[13px] font-bold text-slate-900 truncate">Raw Materials</p>
-                        <p className="text-[11.5px] text-slate-400 truncate">Clay &amp; Glaze</p>
+                        <p className="text-[12.5px] font-bold text-slate-900 truncate">Raw Materials</p>
+                        <p className="text-[11px] text-slate-400 truncate">Clay &amp; Glaze</p>
                       </div>
                     </div>
-                    <ChevronRight className="w-4 h-4 text-slate-400 shrink-0 group-hover:translate-x-0.5 transition-transform" />
+                    <ChevronRight className="w-3.5 h-3.5 text-slate-400 shrink-0 group-hover:translate-x-0.5 transition-transform" />
                   </Link>
 
                   <Link
                     to="/inventory/shop"
-                    className="p-3.5 rounded-2xl bg-white/85 hover:bg-white border border-white shadow-[0_2px_10px_rgba(15,23,42,0.03)] transition-all group flex items-center justify-between"
+                    className="p-3 rounded-2xl bg-white/85 hover:bg-white border border-white shadow-[0_2px_10px_rgba(15,23,42,0.03)] transition-all group flex items-center justify-between"
                   >
-                    <div className="flex items-center gap-3 min-w-0">
-                      <div className="w-9 h-9 rounded-xl bg-amber-100/80 text-amber-600 flex items-center justify-center shrink-0">
-                        <ShoppingCart className="w-4 h-4" />
+                    <div className="flex items-center gap-2.5 min-w-0">
+                      <div className="w-8 h-8 rounded-xl bg-amber-100/80 text-amber-600 flex items-center justify-center shrink-0">
+                        <ShoppingCart className="w-3.5 h-3.5" />
                       </div>
                       <div className="min-w-0">
-                        <p className="text-[13px] font-bold text-slate-900 truncate">Showroom</p>
-                        <p className="text-[11.5px] text-slate-400 truncate">Retail Units</p>
+                        <p className="text-[12.5px] font-bold text-slate-900 truncate">Showroom</p>
+                        <p className="text-[11px] text-slate-400 truncate">Retail Units</p>
                       </div>
                     </div>
-                    <ChevronRight className="w-4 h-4 text-slate-400 shrink-0 group-hover:translate-x-0.5 transition-transform" />
+                    <ChevronRight className="w-3.5 h-3.5 text-slate-400 shrink-0 group-hover:translate-x-0.5 transition-transform" />
                   </Link>
                 </>
               )}
             </div>
           </div>
 
-          <div className="pt-5 mt-5 border-t border-slate-200/50 flex items-center justify-between">
-            <span className="text-xs text-slate-400 font-medium">Real-time factory telemetry</span>
+          <div className="pt-4 mt-4 border-t border-slate-200/50 flex items-center justify-between">
+            <span className="text-[11.5px] text-slate-400 font-medium truncate">Telemetry Live</span>
             <Link
               to="/factory"
-              className="text-xs font-semibold text-[#0284c7] hover:underline inline-flex items-center gap-1"
+              className="text-[11.5px] font-semibold text-[#0284c7] hover:underline inline-flex items-center gap-1 shrink-0"
             >
-              <span>Open Production Hub</span>
-              <ChevronRight className="w-3.5 h-3.5" />
+              <span>Production</span>
+              <ChevronRight className="w-3 h-3" />
             </Link>
           </div>
         </motion.div>
 
-        {/* Card 3 (Right): Stock & Category Volume Graph Card */}
+        {/* Card 2 (Middle): Stock & Category Volume Graph Card (lg:col-span-5) */}
         <motion.div
           initial={{ opacity: 0, y: 14 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.4, delay: 0.24 }}
-          className="lg:col-span-4 rounded-[32px] bg-white/[0.74] backdrop-blur-3xl border border-white/95 p-6 sm:p-7 shadow-[0_14px_40px_-8px_rgba(15,23,42,0.05),inset_0_1px_2px_rgba(255,255,255,1)] flex flex-col justify-between relative overflow-hidden"
+          transition={{ duration: 0.4, delay: 0.18 }}
+          className="lg:col-span-5 rounded-[32px] bg-white/[0.74] backdrop-blur-3xl border border-white/95 p-6 sm:p-7 shadow-[0_14px_40px_-8px_rgba(15,23,42,0.05),inset_0_1px_2px_rgba(255,255,255,1)] flex flex-col justify-between relative overflow-hidden"
         >
           <div className="pointer-events-none absolute -bottom-20 left-1/2 -translate-x-1/2 w-64 h-48 rounded-full bg-gradient-to-r from-sky-300/25 via-pink-300/20 to-indigo-300/25 blur-3xl" />
 
@@ -588,7 +536,7 @@ export default function Dashboard() {
                       <Tooltip
                         cursor={{ fill: 'rgba(14,165,233,0.04)', radius: 14 }}
                         contentStyle={{
-                          backgroundColor: 'rgba(255, 255, 255, 0.94)',
+                              backgroundColor: 'rgba(255, 255, 255, 0.94)',
                           backdropFilter: 'blur(20px)',
                           borderRadius: '16px',
                           border: '1px solid rgba(255, 255, 255, 1)',
@@ -667,6 +615,178 @@ export default function Dashboard() {
               className="text-xs font-semibold text-[#0284c7] hover:underline inline-flex items-center gap-1"
             >
               <span>Manage Inventory</span>
+              <ChevronRight className="w-3.5 h-3.5" />
+            </Link>
+          </div>
+        </motion.div>
+
+        {/* Card 3 (Right): Top Selling Products with Black Theme Switcher (lg:col-span-4) */}
+        <motion.div
+          initial={{ opacity: 0, y: 14 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.4, delay: 0.24 }}
+          className={`lg:col-span-4 rounded-[32px] p-6 sm:p-7 transition-colors duration-500 flex flex-col justify-between relative overflow-hidden ${
+            isTopSellingBlack
+              ? 'bg-gradient-to-b from-[#0b0f19] via-[#111827] to-[#030712] border border-slate-800/80 shadow-[0_20px_50px_-10px_rgba(0,0,0,0.7),inset_0_1.5px_2px_rgba(255,255,255,0.12)] text-white'
+              : 'bg-white/[0.74] backdrop-blur-3xl border border-white/95 shadow-[0_14px_40px_-8px_rgba(15,23,42,0.05),inset_0_1px_2px_rgba(255,255,255,1)] text-slate-900'
+          }`}
+        >
+          {/* Ambient Glow */}
+          <div
+            className={`pointer-events-none absolute -bottom-20 right-0 w-64 h-64 rounded-full blur-3xl transition-opacity duration-500 ${
+              isTopSellingBlack
+                ? 'bg-indigo-600/20 opacity-80'
+                : 'bg-sky-400/15 opacity-70'
+            }`}
+          />
+
+          <div className="relative z-10">
+            <div className="flex items-start justify-between gap-3 mb-6">
+              <div className="flex items-start gap-3 min-w-0">
+                <div
+                  className={`w-10 h-10 rounded-2xl flex items-center justify-center shrink-0 transition-all ${
+                    isTopSellingBlack
+                      ? 'bg-white/10 border border-white/20 text-sky-400 shadow-[inset_0_1px_1px_rgba(255,255,255,0.2)]'
+                      : 'bg-white/90 border border-white shadow-[0_4px_12px_rgba(15,23,42,0.05)] text-[#0284c7]'
+                  }`}
+                >
+                  <Hash className="w-4 h-4 stroke-[2.2]" />
+                </div>
+                <div className="min-w-0">
+                  <h3
+                    className={`text-[18px] font-bold tracking-tight leading-snug truncate ${
+                      isTopSellingBlack ? 'text-white' : 'text-slate-900'
+                    }`}
+                  >
+                    Top Selling Products
+                  </h3>
+                  <p
+                    className={`text-[13px] truncate ${
+                      isTopSellingBlack ? 'text-slate-400' : 'text-slate-500'
+                    }`}
+                  >
+                    Items moving fastest
+                  </p>
+                </div>
+              </div>
+
+              {/* Black / Frosted Theme Toggle */}
+              <div
+                className={`inline-flex items-center gap-1 p-1 rounded-full border backdrop-blur-xl shrink-0 transition-all ${
+                  isTopSellingBlack
+                    ? 'bg-white/10 border-white/20 shadow-inner'
+                    : 'bg-white/80 border-white shadow-[0_2px_10px_rgba(15,23,42,0.04)]'
+                }`}
+              >
+                <button
+                  type="button"
+                  onClick={() => handleTopSellingThemeChange('frosted')}
+                  title="Frosted Light Theme"
+                  className={`px-2 py-1 rounded-full text-[11px] font-semibold flex items-center gap-1 transition-all cursor-pointer ${
+                    !isTopSellingBlack
+                      ? 'bg-white text-slate-900 shadow-xs'
+                      : 'text-white/60 hover:text-white'
+                  }`}
+                >
+                  <Sun className="w-3 h-3 text-amber-500" />
+                  <span>Light</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleTopSellingThemeChange('black')}
+                  title="Black Theme"
+                  className={`px-2 py-1 rounded-full text-[11px] font-semibold flex items-center gap-1 transition-all cursor-pointer ${
+                    isTopSellingBlack
+                      ? 'bg-gradient-to-r from-sky-500 to-indigo-600 text-white shadow-xs'
+                      : 'text-slate-500 hover:text-slate-900'
+                  }`}
+                >
+                  <Moon className="w-3 h-3" />
+                  <span>Black</span>
+                </button>
+              </div>
+            </div>
+
+            <div className="space-y-3.5">
+              {loading ? (
+                Array.from({ length: 4 }).map((_, i) => (
+                  <div
+                    key={i}
+                    className={`p-3.5 rounded-2xl space-y-2.5 ${
+                      isTopSellingBlack ? 'bg-white/5 border border-white/10' : 'bg-white/65 border border-white/85'
+                    }`}
+                  >
+                    <div className="flex items-center justify-between gap-2">
+                      <div className={`h-6 w-36 rounded-full animate-pulse ${isTopSellingBlack ? 'bg-white/20' : 'bg-slate-200/80'}`} />
+                      <div className={`h-4 w-16 rounded-full animate-pulse ${isTopSellingBlack ? 'bg-white/15' : 'bg-slate-200/70'}`} />
+                    </div>
+                    <div className={`h-4 w-full rounded-full animate-pulse ${isTopSellingBlack ? 'bg-white/10' : 'bg-slate-200/60'}`} />
+                  </div>
+                ))
+              ) : (
+                <>
+                  {rawTopSellers.slice(0, 4).map((p: any, i: number) => {
+                    const qty = Number(p.total_qty) || 0;
+                    const pct = Math.max(12, Math.round((qty / maxSellerQty) * 100));
+                    const badgeClass = isTopSellingBlack
+                      ? darkPillStyles[i % darkPillStyles.length]
+                      : pillStyles[i % pillStyles.length];
+
+                    return (
+                      <div
+                        key={i}
+                        className={`p-3.5 rounded-2xl transition-all space-y-2.5 ${
+                          isTopSellingBlack
+                            ? 'bg-white/[0.05] hover:bg-white/[0.08] border border-white/10 shadow-[0_2px_8px_rgba(0,0,0,0.3)]'
+                            : 'bg-white/65 hover:bg-white/85 border border-white/85 shadow-[0_2px_8px_rgba(15,23,42,0.02)]'
+                        }`}
+                      >
+                        <div className="flex items-center justify-between gap-2">
+                          <span
+                            className={`inline-flex items-center gap-1 px-3 py-1 rounded-full text-[12px] font-semibold border truncate max-w-[180px] shadow-[inset_0_1px_1px_rgba(255,255,255,0.3)] ${badgeClass}`}
+                          >
+                            <span className="opacity-60">#</span>
+                            <span className="truncate">{p.name || 'Sanitary Unit'}</span>
+                          </span>
+                          <span
+                            className={`text-[13px] font-bold tabular-nums shrink-0 ${
+                              isTopSellingBlack ? 'text-white' : 'text-slate-900'
+                            }`}
+                          >
+                            {qty} units
+                          </span>
+                        </div>
+                        <GlassCapsuleBar percentage={pct} darkMode={isTopSellingBlack} heightClass="h-4" />
+                      </div>
+                    );
+                  })}
+
+                  {rawTopSellers.length === 0 && (
+                    <GlassEmptyState
+                      title="No sales volume yet"
+                      description="Top-selling sanitaryware products will appear here once invoices are recorded."
+                    />
+                  )}
+                </>
+              )}
+            </div>
+          </div>
+
+          <div
+            className={`relative z-10 pt-5 mt-5 border-t flex items-center justify-between ${
+              isTopSellingBlack ? 'border-slate-800 text-slate-400' : 'border-slate-200/50 text-slate-400'
+            }`}
+          >
+            <span className="text-xs font-medium">Updated from live ledger</span>
+            <Link
+              to="/inventory"
+              className={`text-xs font-semibold inline-flex items-center gap-1 transition-colors ${
+                isTopSellingBlack
+                  ? 'text-sky-400 hover:text-sky-300'
+                  : 'text-[#0284c7] hover:underline'
+              }`}
+            >
+              <span>View all stock</span>
               <ChevronRight className="w-3.5 h-3.5" />
             </Link>
           </div>
