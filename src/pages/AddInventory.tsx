@@ -21,8 +21,31 @@ import {
 } from 'lucide-react';
 import { useAppContext } from '../store';
 import { formatCurrency } from '../lib/currency';
-import { GlassSelect } from '../components/GlassUI';
-import { invalidateApiCache } from '../lib/apiCache';
+import { GlassSelect, DashboardSkeleton } from '../components/GlassUI';
+import { ItemImage } from '../components/ItemImage';
+import { cachedJsonFetch, peekApiCache, invalidateApiCache } from '../lib/apiCache';
+
+function mapInventoryToForm(data: any) {
+  return {
+    ...data,
+    name: data.name || '',
+    sku: data.sku || '',
+    stock: data.stock || 0,
+    price: data.price || 0,
+    minStock: data.minStock || 10,
+    category: data.category || 'uPVC Pipes',
+    status: data.status || 'IN STOCK',
+    description: data.description || '',
+    brand: data.brand || '',
+    product_line: data.product_line || '',
+    size: data.size || '',
+    packing: data.packing || '',
+    unit: data.unit || 'Piece',
+    color: data.color || '',
+    image: data.image || '',
+    warehouse: data.warehouse || 'Central WH'
+  };
+}
 
 export default function AddInventory() {
   const { id } = useParams();
@@ -30,56 +53,38 @@ export default function AddInventory() {
   const { showToast, currency } = useAppContext();
   const navigate = useNavigate();
 
-  const [formData, setFormData] = useState({
-    name: '',
-    sku: '',
-    category: 'uPVC Pipes',
-    stock: 0,
-    minStock: 10,
-    price: 0,
-    status: 'IN STOCK',
-    description: '',
-    brand: '',
-    product_line: '',
-    size: '',
-    packing: '',
-    unit: 'Piece',
-    color: '',
-    image: '',
-    warehouse: 'Central WH'
-  });
+  const cachedItem = isEdit && id ? peekApiCache<any>(`/api/inventory/${id}`, 60_000) : undefined;
+  const [formData, setFormData] = useState(() =>
+    cachedItem
+      ? mapInventoryToForm(cachedItem)
+      : {
+          name: '',
+          sku: '',
+          category: 'uPVC Pipes',
+          stock: 0,
+          minStock: 10,
+          price: 0,
+          status: 'IN STOCK',
+          description: '',
+          brand: '',
+          product_line: '',
+          size: '',
+          packing: '',
+          unit: 'Piece',
+          color: '',
+          image: '',
+          warehouse: 'Central WH'
+        }
+  );
 
-  const [loading, setLoading] = useState(isEdit);
+  const [loading, setLoading] = useState<boolean>(() => isEdit && !cachedItem);
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
-    if (isEdit) {
-      fetch(`/api/inventory/${id}`)
-        .then(async res => {
-          if (!res.ok) throw new Error('Failed to fetch item');
-          const text = await res.text();
-          return text ? JSON.parse(text) : {};
-        })
+    if (isEdit && id) {
+      cachedJsonFetch<any>(`/api/inventory/${id}`, { credentials: 'include' }, 60_000)
         .then(data => {
-          setFormData({
-            ...data,
-            name: data.name || '',
-            sku: data.sku || '',
-            stock: data.stock || 0,
-            price: data.price || 0,
-            minStock: data.minStock || 10,
-            category: data.category || 'uPVC Pipes',
-            status: data.status || 'IN STOCK',
-            description: data.description || '',
-            brand: data.brand || '',
-            product_line: data.product_line || '',
-            size: data.size || '',
-            packing: data.packing || '',
-            unit: data.unit || 'Piece',
-            color: data.color || '',
-            image: data.image || '',
-            warehouse: data.warehouse || 'Central WH'
-          });
+          setFormData(mapInventoryToForm(data || {}));
           setLoading(false);
         })
         .catch(err => {
@@ -88,7 +93,7 @@ export default function AddInventory() {
           showToast('Failed to load item.', 'error');
         });
     }
-  }, [id]);
+  }, [id, isEdit]);
 
   const [newCategory, setNewCategory] = useState('');
   const [showNewCategoryInput, setShowNewCategoryInput] = useState(false);
@@ -161,7 +166,7 @@ export default function AddInventory() {
     reader.readAsDataURL(file);
   };
 
-  if (loading) return <div className="p-8">Loading item...</div>;
+  if (loading) return <DashboardSkeleton />;
 
   return (
     <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500 pb-12">
@@ -390,21 +395,28 @@ export default function AddInventory() {
                 className="w-full aspect-square bg-white/60 rounded-2xl border-2 border-dashed border-slate-200/80 flex flex-col items-center justify-center relative overflow-hidden group cursor-pointer hover:border-[#38bdf8] transition-all"
                 onClick={() => document.getElementById('image-upload')?.click()}
               >
-                {formData.image ? (
+                {formData.image || isEdit ? (
                   <>
-                    <img src={formData.image} alt="Preview" className="w-full h-full object-cover" />
+                    <ItemImage
+                      src={formData.image}
+                      name={formData.name}
+                      className="w-full h-full object-cover text-5xl rounded-2xl"
+                    />
                     <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-                      <p className="text-white text-[13px] font-bold">Change Image</p>
+                      <p className="text-white text-[13px] font-bold">{formData.image ? 'Change Image' : 'Upload Image'}</p>
                     </div>
-                    <button 
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setFormData({ ...formData, image: '' });
-                      }}
-                      className="absolute top-4 right-4 p-2 bg-white/90 rounded-full text-red-600 hover:bg-red-50 transition-colors shadow-sm"
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </button>
+                    {formData.image && (
+                      <button 
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setFormData({ ...formData, image: '' });
+                        }}
+                        className="absolute top-4 right-4 p-2 bg-white/90 rounded-full text-red-600 hover:bg-red-50 transition-colors shadow-sm"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    )}
                   </>
                 ) : (
                   <>

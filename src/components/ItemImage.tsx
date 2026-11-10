@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 
 interface ItemImageProps {
   src?: string | null;
@@ -18,9 +18,16 @@ const getInitials = (name?: string) => {
 export const ItemImage: React.FC<ItemImageProps> = ({ src, name, className }) => {
   const [hasError, setHasError] = useState(false);
 
+  useEffect(() => {
+    setHasError(false);
+  }, [src]);
+
   if (!src || hasError) {
     return (
-      <div className={`w-full h-full flex items-center justify-center bg-[#f3f4f5] text-neutral-500 font-bold ${className || ''}`} style={{ objectFit: 'cover' }}>
+      <div
+        className={`w-full h-full flex items-center justify-center bg-[#f3f4f5] text-neutral-500 font-bold select-none ${className || ''}`}
+        style={{ objectFit: 'cover' }}
+      >
         {getInitials(name)}
       </div>
     );
