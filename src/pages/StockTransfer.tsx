@@ -9,6 +9,7 @@ import { ItemImage } from '../components/ItemImage';
 import { GlassSelect, GlassDatePicker, GlassModal } from '../components/GlassUI';
 import { motion, AnimatePresence } from 'motion/react';
 import { useAppContext } from '../store';
+import { cachedJsonFetch, invalidateApiCache } from '../lib/apiCache';
 
 const steps = [
   { id: 1, label: 'DRAFT', status: 'active' },
@@ -41,19 +42,14 @@ export default function StockTransfer() {
   useEffect(() => {
     if (showProductSelector) {
       setLoadingInventory(true);
-      fetch(`/api/inventory?warehouse=${encodeURIComponent(sourceWarehouse)}`)
-        .then(async res => {
-          if (!res.ok) throw new Error('Failed to fetch');
-          const text = await res.text();
-          return text ? JSON.parse(text) : [];
-        })
+      cachedJsonFetch<any[]>(`/api/inventory?warehouse=${encodeURIComponent(sourceWarehouse)}`, { credentials: 'include' }, 30_000)
         .then(data => {
-          setInventory(data);
+          setInventory(Array.isArray(data) ? data : []);
           setLoadingInventory(false);
         })
         .catch(() => setLoadingInventory(false));
     }
-  }, [showProductSelector]);
+  }, [showProductSelector, sourceWarehouse]);
 
   const removeItem = (id: string) => {
     setItems(items.filter(item => item.id !== id));
@@ -115,6 +111,9 @@ export default function StockTransfer() {
       });
 
       if (res.ok) {
+        invalidateApiCache('/api/inventory/transfers');
+        invalidateApiCache('/api/inventory');
+        invalidateApiCache('/api/shop/dashboard');
         showToast(isDraft ? 'Draft saved successfully' : 'Transfer request submitted', 'success');
         navigate('/inventory/transfer/history');
       } else {

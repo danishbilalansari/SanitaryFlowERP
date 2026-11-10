@@ -8,6 +8,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { motion } from 'motion/react';
 import { useAppContext } from '../store';
 import { CardListSkeleton, GlassEmptyState, GlassModal } from '../components/GlassUI';
+import { cachedJsonFetch, invalidateApiCache } from '../lib/apiCache';
 
 interface Transfer {
   id: number;
@@ -50,14 +51,9 @@ export default function TransferHistory() {
   }, []);
 
   useEffect(() => {
-    fetch('/api/inventory/transfers')
-      .then(async res => {
-        if (!res.ok) throw new Error('Failed to fetch');
-        const text = await res.text();
-        return text ? JSON.parse(text) : [];
-      })
+    cachedJsonFetch<Transfer[]>('/api/inventory/transfers', { credentials: 'include' }, 30_000)
       .then(data => {
-        setTransfers(data);
+        setTransfers(Array.isArray(data) ? data : []);
         setLoading(false);
       })
       .catch(err => {
@@ -74,6 +70,9 @@ export default function TransferHistory() {
         body: JSON.stringify({ status: newStatus })
       });
       if (res.ok) {
+        invalidateApiCache('/api/inventory/transfers');
+        invalidateApiCache('/api/inventory');
+        invalidateApiCache('/api/shop/dashboard');
         setTransfers(transfers.map(t => t.id === id ? { ...t, status: newStatus } : t));
       }
     } catch (err) {
@@ -203,14 +202,10 @@ export default function TransferHistory() {
           <button 
             onClick={() => {
               setLoading(true);
-              fetch('/api/inventory/transfers')
-                .then(async res => {
-                  if (!res.ok) throw new Error('Failed to fetch');
-                  const text = await res.text();
-                  return text ? JSON.parse(text) : [];
-                })
+              invalidateApiCache('/api/inventory/transfers');
+              cachedJsonFetch<Transfer[]>('/api/inventory/transfers', { credentials: 'include' }, 30_000)
                 .then(data => {
-                  setTransfers(data);
+                  setTransfers(Array.isArray(data) ? data : []);
                   setLoading(false);
                 })
                 .catch(err => {

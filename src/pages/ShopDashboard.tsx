@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { UserPlus, ShoppingCart, Banknote, Package, BarChart3, AlertTriangle, ArrowRight, PackageOpen, ChevronRight } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { DashboardSkeleton, TableSkeletonRows, GlassEmptyState } from '../components/GlassUI';
+import { cachedJsonFetch } from '../lib/apiCache';
 
 interface DashboardData {
   dailyRevenue: number;
@@ -18,25 +19,20 @@ export default function ShopDashboard() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Fetch dashboard stats
-    fetch('/api/shop/dashboard', { credentials: 'include' })
-      .then(async res => {
-        if (!res.ok) throw new Error('Dashboard fetch failed');
-        const text = await res.text();
-        return text ? JSON.parse(text) : {};
-      })
-      .then(d => setData(d))
-      .catch(console.error);
-    
-    // Fetch full shop inventory items
-    fetch('/api/inventory?category=Shop', { credentials: 'include' }) // Assuming shop items are filtered
-      .then(async res => {
-        if (!res.ok) throw new Error('Inventory fetch failed');
-        const text = await res.text();
-        return text ? JSON.parse(text) : [];
-      })
-      .then(items => {
-        setInventory(items);
+    Promise.all([
+      cachedJsonFetch<DashboardData>('/api/shop/dashboard', { credentials: 'include' }, 30_000),
+      cachedJsonFetch<any[]>('/api/inventory?category=Shop', { credentials: 'include' }, 30_000)
+    ])
+      .then(([dashData, items]) => {
+        setData(dashData || {
+          dailyRevenue: 0,
+          unitsSold: 0,
+          avgTransaction: 0,
+          topProducts: [],
+          todayTransactions: [],
+          stockAlerts: []
+        });
+        setInventory(Array.isArray(items) ? items : []);
         setLoading(false);
       })
       .catch(err => {
@@ -45,7 +41,7 @@ export default function ShopDashboard() {
       });
   }, []);
 
-  if (!data) return <DashboardSkeleton />;
+  if (loading || !data) return <DashboardSkeleton />;
 
   const totalDisplay = inventory.reduce((acc, item) => acc + (item.display_stock || 0), 0);
   const totalWarehouse = inventory.reduce((acc, item) => acc + (item.warehouse_stock || 0), 0);

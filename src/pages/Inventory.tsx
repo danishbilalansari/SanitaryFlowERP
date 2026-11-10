@@ -11,6 +11,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { ItemImage } from '../components/ItemImage';
 import { motion } from 'motion/react';
 import { TableSkeletonRows, GlassEmptyState, GlassCapsuleBar } from '../components/GlassUI';
+import { cachedJsonFetch } from '../lib/apiCache';
 
 interface InventoryItem {
   id: number;
@@ -41,14 +42,9 @@ export default function Inventory() {
   const itemsPerPage = 10;
 
   useEffect(() => {
-    fetch('/api/inventory', { credentials: 'include' })
-      .then(async res => {
-        if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
-        const text = await res.text();
-        return text ? JSON.parse(text) : [];
-      })
+    cachedJsonFetch<InventoryItem[]>('/api/inventory', { credentials: 'include' }, 30_000)
       .then(data => {
-        setInventory(data);
+        setInventory(Array.isArray(data) ? data : []);
         setLoading(false);
       })
       .catch(err => {
@@ -203,9 +199,13 @@ export default function Inventory() {
             </div>
           </div>
           <div className="relative z-10">
-            <h3 className="text-2xl sm:text-[28px] font-extrabold text-slate-900 tracking-tight leading-none mb-3 tabular-nums">
-              {formatCurrency(totalValue, currency)}
-            </h3>
+            {loading ? (
+              <div className="h-8 w-36 rounded-full bg-slate-200/80 animate-pulse mb-3" />
+            ) : (
+              <h3 className="text-2xl sm:text-[28px] font-extrabold text-slate-900 tracking-tight leading-none mb-3 tabular-nums">
+                {formatCurrency(totalValue, currency)}
+              </h3>
+            )}
             <span className="inline-flex items-center px-3 py-1 rounded-full bg-sky-50/90 border border-sky-200/70 text-[11.5px] text-[#0284c7] font-semibold shadow-2xs">
               Calculated asset value
             </span>
@@ -225,9 +225,13 @@ export default function Inventory() {
             </div>
           </div>
           <div className="relative z-10">
-            <h3 className="text-2xl sm:text-[28px] font-extrabold text-slate-900 tracking-tight leading-none mb-3 tabular-nums">
-              {lowStockCount} <span className="text-[13.5px] font-semibold text-slate-500">SKUs below min</span>
-            </h3>
+            {loading ? (
+              <div className="h-8 w-32 rounded-full bg-slate-200/80 animate-pulse mb-3" />
+            ) : (
+              <h3 className="text-2xl sm:text-[28px] font-extrabold text-slate-900 tracking-tight leading-none mb-3 tabular-nums">
+                {lowStockCount} <span className="text-[13.5px] font-semibold text-slate-500">SKUs below min</span>
+              </h3>
+            )}
             <span className="inline-flex items-center px-3 py-1 rounded-full bg-rose-50/90 border border-rose-200/80 text-[11.5px] text-rose-600 font-semibold shadow-2xs">
               Immediate reorder suggested
             </span>
@@ -247,9 +251,13 @@ export default function Inventory() {
             </div>
           </div>
           <div className="relative z-10">
-            <h3 className="text-2xl sm:text-[28px] font-extrabold text-slate-900 tracking-tight leading-none mb-3 tabular-nums">
-              {inventory.length} <span className="text-[13.5px] font-semibold text-slate-500">Products</span>
-            </h3>
+            {loading ? (
+              <div className="h-8 w-28 rounded-full bg-slate-200/80 animate-pulse mb-3" />
+            ) : (
+              <h3 className="text-2xl sm:text-[28px] font-extrabold text-slate-900 tracking-tight leading-none mb-3 tabular-nums">
+                {inventory.length} <span className="text-[13.5px] font-semibold text-slate-500">Products</span>
+              </h3>
+            )}
             <span className="inline-flex items-center px-3 py-1 rounded-full bg-cyan-50/90 border border-cyan-200/70 text-[11.5px] text-cyan-700 font-semibold shadow-2xs">
               Synchronized in real-time
             </span>

@@ -4,6 +4,7 @@ import { Download, ShoppingCart, Truck, Package, ChevronRight, AlertTriangle } f
 import { Link } from 'react-router-dom';
 import { useAppContext } from '../store';
 import { TableSkeletonRows, GlassEmptyState, GlassPagination } from '../components/GlassUI';
+import { cachedJsonFetch } from '../lib/apiCache';
 
 export default function RawMaterials() {
   const { showToast, currency } = useAppContext();
@@ -13,18 +14,12 @@ export default function RawMaterials() {
   const itemsPerPage = 8;
 
   useEffect(() => {
-    fetch('/api/inventory')
-      .then(async res => {
-        if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
-        const text = await res.text();
-        return text ? JSON.parse(text) : [];
-      })
+    cachedJsonFetch<any[]>('/api/inventory', { credentials: 'include' }, 30_000)
       .then(data => {
-        // Filter for items that likely are raw materials 
-        // (You could use a specific category if programmed in the DB)
-        const filtered = data.filter((item: any) => 
+        const list = Array.isArray(data) ? data : [];
+        const filtered = list.filter((item: any) => 
           (item.category || '').toLowerCase().includes('raw') || 
-          ['powder', 'compound', 'fittings', 'kaolin', 'glaze'].some(token => item.name.toLowerCase().includes(token))
+          ['powder', 'compound', 'fittings', 'kaolin', 'glaze'].some(token => (item.name || '').toLowerCase().includes(token))
         );
         setInventory(filtered);
         setLoading(false);
@@ -109,7 +104,11 @@ export default function RawMaterials() {
           </div>
           <div>
             <p className="text-[11px] font-bold text-slate-400 uppercase tracking-[0.08em] mb-1">Raw Material SKUs</p>
-            <h3 className="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight tabular-nums">{inventory.length} <span className="text-sm font-medium text-slate-400">Categories</span></h3>
+            {loading ? (
+              <div className="h-8 w-28 rounded-full bg-slate-200/80 animate-pulse mt-1" />
+            ) : (
+              <h3 className="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight tabular-nums">{inventory.length} <span className="text-sm font-medium text-slate-400">Categories</span></h3>
+            )}
           </div>
         </div>
 
@@ -122,7 +121,11 @@ export default function RawMaterials() {
           </div>
           <div>
             <p className="text-[11px] font-bold text-rose-500 uppercase tracking-[0.08em] mb-1">Low Stock Materials</p>
-            <h3 className="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight tabular-nums">{lowStockCount} <span className="text-sm font-medium text-slate-400">Items</span></h3>
+            {loading ? (
+              <div className="h-8 w-24 rounded-full bg-slate-200/80 animate-pulse mt-1" />
+            ) : (
+              <h3 className="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight tabular-nums">{lowStockCount} <span className="text-sm font-medium text-slate-400">Items</span></h3>
+            )}
           </div>
         </div>
       </div>
