@@ -16,15 +16,17 @@ import {
 } from 'lucide-react';
 import { useAppContext } from '../store';
 import { GlassSelect } from '../components/GlassUI';
-import { cachedJsonFetch } from '../lib/apiCache';
+import { cachedJsonFetch, peekApiCache, invalidateApiCache } from '../lib/apiCache';
 
 export default function AddPurchase() {
   const { showToast, currency } = useAppContext();
   const navigate = useNavigate();
 
-  const [inventory, setInventory] = useState<any[]>([]);
-  const [suppliers, setSuppliers] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
+  const cachedInv = peekApiCache<any[]>('/api/inventory', 60_000);
+  const cachedSup = peekApiCache<any[]>('/api/suppliers', 60_000);
+  const [inventory, setInventory] = useState<any[]>(() => Array.isArray(cachedInv) ? cachedInv : []);
+  const [suppliers, setSuppliers] = useState<any[]>(() => Array.isArray(cachedSup) ? cachedSup : []);
+  const [loading, setLoading] = useState<boolean>(() => !(Array.isArray(cachedInv) && Array.isArray(cachedSup)));
   const [selectedItems, setSelectedItems] = useState<any[]>([]);
   const [selectedSupplierId, setSelectedSupplierId] = useState<number | ''>('');
   const [searchQuery, setSearchQuery] = useState('');
@@ -149,6 +151,10 @@ export default function AddPurchase() {
       });
 
       if (response.ok) {
+        invalidateApiCache('/api/purchases');
+        invalidateApiCache('/api/suppliers');
+        invalidateApiCache('/api/inventory');
+        invalidateApiCache('/api/ledger');
         showToast('Purchase order created!', 'success');
         navigate('/purchases');
       } else {

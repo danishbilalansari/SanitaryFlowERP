@@ -20,11 +20,13 @@ import {
 } from 'lucide-react';
 import { useAppContext } from '../store';
 import { TableSkeletonRows, GlassEmptyState } from '../components/GlassUI';
+import { cachedJsonFetch, peekApiCache } from '../lib/apiCache';
 
 export default function Suppliers() {
   const { showToast, currency } = useAppContext();
-  const [suppliers, setSuppliers] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
+  const cachedSuppliers = peekApiCache<any[]>('/api/suppliers/balances', 60_000);
+  const [suppliers, setSuppliers] = useState<any[]>(() => Array.isArray(cachedSuppliers) ? cachedSuppliers : []);
+  const [loading, setLoading] = useState<boolean>(() => !Array.isArray(cachedSuppliers));
   const [searchQuery, setSearchQuery] = useState('');
   const [categoryFilter, setCategoryFilter] = useState('All');
   const [showCategoryMenu, setShowCategoryMenu] = useState(false);
@@ -34,19 +36,9 @@ export default function Suppliers() {
   const categories = ['All', ...Array.from(new Set(suppliers.map(s => s.category).filter(Boolean)))];
 
   useEffect(() => {
-    fetch('/api/suppliers/balances')
-      .then(async res => {
-        if (!res.ok) throw new Error(`HTTP ${res.status}`);
-        const contentType = res.headers.get('content-type');
-        if (!contentType || !contentType.includes('application/json')) {
-          const text = await res.text();
-          console.error('Non-JSON response from /api/suppliers/balances:', text.substring(0, 500));
-          throw new Error('Server returned non-JSON response');
-        }
-        return res.json();
-      })
+    cachedJsonFetch<any[]>('/api/suppliers/balances', { credentials: 'include' }, 60_000)
       .then(data => {
-        setSuppliers(data);
+        setSuppliers(Array.isArray(data) ? data : []);
         setLoading(false);
       })
       .catch(err => {
@@ -131,17 +123,29 @@ export default function Suppliers() {
       <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
         <div className="glass-card p-6">
            <p className="text-[11px] font-bold text-slate-400 uppercase tracking-[0.08em] mb-1.5">Total Suppliers</p>
-           <h3 className="text-2xl sm:text-3xl font-extrabold text-slate-900 tabular-nums">{suppliers.length}</h3>
+           {loading ? (
+             <div className="h-8 w-20 rounded-full bg-slate-200/80 animate-pulse mt-1" />
+           ) : (
+             <h3 className="text-2xl sm:text-3xl font-extrabold text-slate-900 tabular-nums">{suppliers.length}</h3>
+           )}
         </div>
         <div className="glass-card p-6">
            <p className="text-[11px] font-bold text-slate-400 uppercase tracking-[0.08em] mb-1.5">Total Outstanding</p>
-           <h3 className="text-2xl sm:text-3xl font-extrabold text-rose-500 tabular-nums">
-             {currency}{suppliers.reduce((acc, s) => acc + (s.balance > 0 ? s.balance : 0), 0).toLocaleString()}
-           </h3>
+           {loading ? (
+             <div className="h-8 w-36 rounded-full bg-slate-200/80 animate-pulse mt-1" />
+           ) : (
+             <h3 className="text-2xl sm:text-3xl font-extrabold text-rose-500 tabular-nums">
+               {currency}{suppliers.reduce((acc, s) => acc + (s.balance > 0 ? s.balance : 0), 0).toLocaleString()}
+             </h3>
+           )}
         </div>
         <div className="glass-card p-6">
            <p className="text-[#0284c7] text-[11px] font-bold uppercase tracking-[0.08em] mb-1.5">Active Orders</p>
-           <h3 className="text-2xl sm:text-3xl font-extrabold text-slate-900 tabular-nums">12</h3>
+           {loading ? (
+             <div className="h-8 w-16 rounded-full bg-slate-200/80 animate-pulse mt-1" />
+           ) : (
+             <h3 className="text-2xl sm:text-3xl font-extrabold text-slate-900 tabular-nums">12</h3>
+           )}
         </div>
       </div>
 

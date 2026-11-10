@@ -4,7 +4,7 @@ import { Link } from 'react-router-dom';
 import { useAppContext } from '../store';
 import { formatCurrency } from '../lib/currency';
 import { TableSkeletonRows, GlassEmptyState, GlassDatePicker, GlassPagination, GlassModal } from '../components/GlassUI';
-import { cachedJsonFetch, invalidateApiCache } from '../lib/apiCache';
+import { cachedJsonFetch, peekApiCache, invalidateApiCache } from '../lib/apiCache';
 
 interface Labour {
   id: number;
@@ -26,8 +26,9 @@ interface Advance {
 }
 
 export default function LabourPage() {
-  const [labour, setLabour] = useState<Labour[]>([]);
-  const [loading, setLoading] = useState(true);
+  const cachedLabour = peekApiCache<Labour[]>('/api/labour', 60_000);
+  const [labour, setLabour] = useState<Labour[]>(() => Array.isArray(cachedLabour) ? cachedLabour : []);
+  const [loading, setLoading] = useState<boolean>(() => !Array.isArray(cachedLabour));
   const [searchQuery, setSearchQuery] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 8;
@@ -61,7 +62,7 @@ export default function LabourPage() {
       invalidateApiCache('/api/labour');
     }
     try {
-      const data = await cachedJsonFetch<Labour[]>('/api/labour', { credentials: 'include' }, 30_000);
+      const data = await cachedJsonFetch<Labour[]>('/api/labour', { credentials: 'include' }, 60_000);
       setLabour(Array.isArray(data) ? data : []);
     } catch (err) {
       console.error(err);
@@ -79,12 +80,18 @@ export default function LabourPage() {
     if (forceRefresh) {
       invalidateApiCache(`/api/labour/${labourId}/advances`);
     }
+    const cached = !forceRefresh ? peekApiCache<Advance[]>(`/api/labour/${labourId}/advances`, 60_000) : undefined;
+    if (Array.isArray(cached)) {
+      setAdvances(cached);
+      setAdvanceLoading(false);
+      return;
+    }
     setAdvanceLoading(true);
     try {
       const data = await cachedJsonFetch<Advance[]>(
         `/api/labour/${labourId}/advances`,
         { credentials: 'include' },
-        30_000
+        60_000
       );
       setAdvances(Array.isArray(data) ? data : []);
     } catch (err) {
@@ -99,8 +106,14 @@ export default function LabourPage() {
     if (expandedLabour?.id === lab.id) {
       setExpandedLabour(null);
     } else {
-      setAdvanceLoading(true);
-      setAdvances([]);
+      const cached = peekApiCache<Advance[]>(`/api/labour/${lab.id}/advances`, 60_000);
+      if (Array.isArray(cached)) {
+        setAdvances(cached);
+        setAdvanceLoading(false);
+      } else {
+        setAdvanceLoading(true);
+        setAdvances([]);
+      }
       setExpandedLabour(lab);
       fetchAdvances(lab.id);
     }

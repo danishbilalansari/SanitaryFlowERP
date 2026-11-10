@@ -19,11 +19,13 @@ import {
 } from 'lucide-react';
 import { useAppContext } from '../store';
 import { TableSkeletonRows, GlassEmptyState } from '../components/GlassUI';
+import { cachedJsonFetch, peekApiCache, invalidateApiCache } from '../lib/apiCache';
 
 export default function Purchases() {
   const { showToast, currentUser, currency } = useAppContext();
-  const [purchaseOrders, setPurchaseOrders] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
+  const cachedPurchases = peekApiCache<any[]>('/api/purchases', 60_000);
+  const [purchaseOrders, setPurchaseOrders] = useState<any[]>(() => Array.isArray(cachedPurchases) ? cachedPurchases : []);
+  const [loading, setLoading] = useState<boolean>(() => !Array.isArray(cachedPurchases));
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 8;
   const [statusFilter, setStatusFilter] = useState('All Statuses');
@@ -32,16 +34,13 @@ export default function Purchases() {
   const [showStatusMenu, setShowStatusMenu] = useState(false);
   const [showDateMenu, setShowDateMenu] = useState(false);
 
-  useEffect(() => {
-    fetch('/api/purchases', { credentials: 'include' })
-      .then(async res => {
-        if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
-        const contentType = res.headers.get('content-type');
-        if (!contentType || !contentType.includes('application/json')) throw new Error('Not JSON response');
-        return res.json();
-      })
+  const fetchPurchases = (forceRefresh = false) => {
+    if (forceRefresh) {
+      invalidateApiCache('/api/purchases');
+    }
+    cachedJsonFetch<any[]>('/api/purchases', { credentials: 'include' }, 60_000)
       .then(data => {
-        setPurchaseOrders(data);
+        setPurchaseOrders(Array.isArray(data) ? data : []);
         setLoading(false);
       })
       .catch(err => {
@@ -49,6 +48,10 @@ export default function Purchases() {
         showToast('Failed to fetch purchase orders', 'error');
         setLoading(false);
       });
+  };
+
+  useEffect(() => {
+    fetchPurchases();
   }, []);
 
   const getStatusStyles = (status: string) => {
@@ -183,7 +186,11 @@ export default function Purchases() {
             <span className="text-[11px] font-bold text-[#0284c7] uppercase tracking-[0.08em]">Net Procurement</span>
             <div className="w-10 h-10 rounded-2xl bg-sky-50 border border-white flex items-center justify-center text-[#0284c7] shadow-2xs"><CreditCard className="w-4 h-4" /></div>
           </div>
-          <div className="text-2xl sm:text-3xl font-extrabold text-slate-900 leading-none tabular-nums">{formatCurrency(totalSpend, currency)}</div>
+          {loading ? (
+            <div className="h-8 w-36 rounded-full bg-slate-200/80 animate-pulse" />
+          ) : (
+            <div className="text-2xl sm:text-3xl font-extrabold text-slate-900 leading-none tabular-nums">{formatCurrency(totalSpend, currency)}</div>
+          )}
           <p className="mt-2 text-xs text-slate-500 font-medium">Total value of all purchase orders</p>
         </div>
 
@@ -192,7 +199,11 @@ export default function Purchases() {
             <span className="text-[11px] font-bold text-indigo-600 uppercase tracking-[0.08em]">Active Invoices</span>
             <div className="w-10 h-10 rounded-2xl bg-indigo-50 border border-white flex items-center justify-center text-indigo-600 shadow-2xs"><Clock className="w-4 h-4" /></div>
           </div>
-          <div className="text-2xl sm:text-3xl font-extrabold text-slate-900 leading-none tabular-nums">{pendingOrders}</div>
+          {loading ? (
+            <div className="h-8 w-16 rounded-full bg-slate-200/80 animate-pulse" />
+          ) : (
+            <div className="text-2xl sm:text-3xl font-extrabold text-slate-900 leading-none tabular-nums">{pendingOrders}</div>
+          )}
           <p className="mt-2 text-xs text-slate-500 font-medium">Orders awaiting delivery or payment</p>
         </div>
 
@@ -372,8 +383,12 @@ export default function Purchases() {
                                 credentials: 'include'
                               }).then(async res => {
                                 if (res.ok) { 
+                                  invalidateApiCache('/api/purchases');
+                                  invalidateApiCache('/api/suppliers');
+                                  invalidateApiCache('/api/inventory');
+                                  invalidateApiCache('/api/ledger');
                                   showToast('Purchase settled successfully!', 'success');
-                                  setTimeout(() => window.location.reload(), 500);
+                                  fetchPurchases(true);
                                 } else {
                                   const err = await res.json();
                                   showToast(err.error || 'Failed to record payment', 'error');

@@ -20,52 +20,64 @@ import {
 } from 'lucide-react';
 import { motion } from 'motion/react';
 import { useAppContext } from '../store';
-import { GlassSelect, GlassToggle } from '../components/GlassUI';
+import { GlassSelect, GlassToggle, DashboardSkeleton } from '../components/GlassUI';
+import { cachedJsonFetch, peekApiCache, invalidateApiCache } from '../lib/apiCache';
+
+function mapCustomerToForm(data: any) {
+  return {
+    ...data,
+    name: data.name ?? '',
+    company: data.company ?? '',
+    business_type: data.business_type ?? 'Retailer',
+    city: data.city ?? '',
+    tax_id: data.tax_id ?? '',
+    opening_balance: parseFloat(data.opening_balance) || 0,
+    credit_limit: parseFloat(data.credit_limit) || 0,
+    payment_terms: data.payment_terms ?? 'Net 30',
+    contact_person: data.contact_person ?? '',
+    email: data.email ?? '',
+    phone: data.phone ?? '',
+    billing_address: data.billing_address ?? '',
+    shipping_address: data.shipping_address ?? '',
+    sameAsBilling: (data.billing_address ?? '') === (data.shipping_address ?? '')
+  };
+}
 
 export default function EditCustomer() {
   const { id } = useParams();
   const { showToast, currency } = useAppContext();
   const navigate = useNavigate();
 
-  const [formData, setFormData] = useState({
-    name: '',
-    company: '',
-    business_type: 'Retailer',
-    tax_id: '',
-    credit_limit: 0,
-    payment_terms: 'Net 15',
-    contact_person: '',
-    email: '',
-    phone: '',
-    billing_address: '',
-    shipping_address: '',
-    sameAsBilling: false
-  });
+  const cachedCust = id ? peekApiCache<any>(`/api/customers/${id}`, 60_000) : undefined;
+  const [formData, setFormData] = useState(() =>
+    cachedCust
+      ? mapCustomerToForm(cachedCust)
+      : {
+          name: '',
+          company: '',
+          business_type: 'Retailer',
+          city: '',
+          tax_id: '',
+          opening_balance: 0,
+          credit_limit: 0,
+          payment_terms: 'Net 15',
+          contact_person: '',
+          email: '',
+          phone: '',
+          billing_address: '',
+          shipping_address: '',
+          sameAsBilling: false
+        }
+  );
 
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState<boolean>(() => !cachedCust);
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
     if (id) {
-      fetch(`/api/customers/${id}`)
-        .then(res => res.json())
+      cachedJsonFetch<any>(`/api/customers/${id}`, { credentials: 'include' }, 60_000)
         .then(data => {
-          setFormData({
-            ...data,
-            name: data.name ?? '',
-            business_type: data.business_type ?? 'Retailer',
-            city: data.city ?? '',
-            tax_id: data.tax_id ?? '',
-            opening_balance: parseFloat(data.opening_balance) || 0,
-            credit_limit: parseFloat(data.credit_limit) || 0,
-            payment_terms: data.payment_terms ?? 'Net 30',
-            contact_person: data.contact_person ?? '',
-            email: data.email ?? '',
-            phone: data.phone ?? '',
-            billing_address: data.billing_address ?? '',
-            shipping_address: data.shipping_address ?? '',
-            sameAsBilling: (data.billing_address ?? '') === (data.shipping_address ?? '')
-          });
+          setFormData(mapCustomerToForm(data));
           setLoading(false);
         })
         .catch(err => {
@@ -104,7 +116,7 @@ export default function EditCustomer() {
     
     setSaving(true);
     try {
-      const { sameAsBilling, created_at, ...payload } = formData;
+      const { sameAsBilling, created_at, ...payload } = formData as any;
       const response = await fetch(`/api/customers/${id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
@@ -116,6 +128,8 @@ export default function EditCustomer() {
       });
 
       if (response.ok) {
+        invalidateApiCache('/api/customers');
+        invalidateApiCache('/api/reports/customer-summary-city-wise');
         showToast('Customer profile updated successfully!', 'success');
         navigate('/customers');
       } else {
@@ -131,7 +145,7 @@ export default function EditCustomer() {
   };
 
   if (loading) {
-    return <div className="p-8 text-center text-neutral-500">Loading customer details...</div>;
+    return <DashboardSkeleton />;
   }
 
   return (

@@ -4,24 +4,30 @@ import { Download, ShoppingCart, Truck, Package, ChevronRight, AlertTriangle } f
 import { Link } from 'react-router-dom';
 import { useAppContext } from '../store';
 import { TableSkeletonRows, GlassEmptyState, GlassPagination } from '../components/GlassUI';
-import { cachedJsonFetch } from '../lib/apiCache';
+import { cachedJsonFetch, peekApiCache } from '../lib/apiCache';
+
+function filterRawMaterials(list: any[]) {
+  return list.filter((item: any) =>
+    (item.category || '').toLowerCase().includes('raw') ||
+    ['powder', 'compound', 'fittings', 'kaolin', 'glaze'].some(token => (item.name || '').toLowerCase().includes(token))
+  );
+}
 
 export default function RawMaterials() {
   const { showToast, currency } = useAppContext();
-  const [inventory, setInventory] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
+  const cachedInventory = peekApiCache<any[]>('/api/inventory', 60_000);
+  const [inventory, setInventory] = useState<any[]>(() =>
+    Array.isArray(cachedInventory) ? filterRawMaterials(cachedInventory) : []
+  );
+  const [loading, setLoading] = useState<boolean>(() => !Array.isArray(cachedInventory));
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 8;
 
   useEffect(() => {
-    cachedJsonFetch<any[]>('/api/inventory', { credentials: 'include' }, 30_000)
+    cachedJsonFetch<any[]>('/api/inventory', { credentials: 'include' }, 60_000)
       .then(data => {
         const list = Array.isArray(data) ? data : [];
-        const filtered = list.filter((item: any) => 
-          (item.category || '').toLowerCase().includes('raw') || 
-          ['powder', 'compound', 'fittings', 'kaolin', 'glaze'].some(token => (item.name || '').toLowerCase().includes(token))
-        );
-        setInventory(filtered);
+        setInventory(filterRawMaterials(list));
         setLoading(false);
       })
       .catch(err => {

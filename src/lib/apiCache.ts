@@ -7,6 +7,18 @@ const responseCache = new Map<string, CacheEntry>();
 const inflightRequests = new Map<string, Promise<any>>();
 
 /**
+ * Synchronously reads a cached GET response if present and within `ttlMs`.
+ * Allows React components to initialize state on the very first render without a loading flash.
+ */
+export function peekApiCache<T = any>(url: string, ttlMs = 60_000): T | undefined {
+  const cached = responseCache.get(url);
+  if (cached && Date.now() - cached.timestamp < ttlMs) {
+    return cached.data as T;
+  }
+  return undefined;
+}
+
+/**
  * Deduplicates concurrent GET requests to the same URL and caches JSON responses
  * for `ttlMs` milliseconds (default: 60 seconds).
  */

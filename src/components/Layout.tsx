@@ -4,6 +4,7 @@ import { motion } from 'motion/react';
 import Toast from './Toast';
 import ChangePasswordModal from './ChangePasswordModal';
 import { useAppContext } from '../store';
+import { cachedJsonFetch } from '../lib/apiCache';
 import { 
   Home,
   Package, 
@@ -34,6 +35,27 @@ export default function Layout() {
   const location = useLocation();
 
   const [expandedMenus, setExpandedMenus] = useState<Record<string, boolean>>({});
+
+  useEffect(() => {
+    if (!currentUser) return;
+    const warmEndpoints = [
+      '/api/inventory',
+      '/api/customers',
+      '/api/reports/customer-summary-city-wise',
+      '/api/purchases',
+      '/api/suppliers/balances',
+      '/api/suppliers',
+      '/api/labour',
+      '/api/production',
+      '/api/factory/dashboard',
+      '/api/shop/dashboard',
+      '/api/inventory?category=Shop',
+      '/api/inventory/transfers'
+    ];
+    warmEndpoints.forEach(url => {
+      cachedJsonFetch(url, { credentials: 'include' }, 60_000).catch(() => {});
+    });
+  }, [currentUser?.id]);
 
   const handleLogout = async () => {
     try {

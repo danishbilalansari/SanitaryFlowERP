@@ -29,13 +29,15 @@ import {
 } from 'recharts';
 import { Link } from 'react-router-dom';
 import { GlossyChartCard, GlassModal, GlassCircularGauge, GlassCapsuleBar, DashboardSkeleton } from '../components/GlassUI';
-import { cachedJsonFetch, invalidateApiCache } from '../lib/apiCache';
+import { cachedJsonFetch, peekApiCache, invalidateApiCache } from '../lib/apiCache';
 
 export default function Factory() {
-  const [batches, setBatches] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
+  const cachedBatches = peekApiCache<any[]>('/api/production', 60_000);
+  const cachedDash = peekApiCache<any>('/api/factory/dashboard', 60_000);
+  const [batches, setBatches] = useState<any[]>(() => Array.isArray(cachedBatches) ? cachedBatches : []);
+  const [loading, setLoading] = useState<boolean>(() => !(Array.isArray(cachedBatches) && cachedDash));
   const [refreshing, setRefreshing] = useState(false);
-  const [dashboardData, setDashboardData] = useState<any>(null);
+  const [dashboardData, setDashboardData] = useState<any>(() => cachedDash ?? null);
   const [currentPage, setCurrentPage] = useState(1);
   const [gaugeDarkTheme, setGaugeDarkThemeState] = useState<boolean>(() => {
     try {

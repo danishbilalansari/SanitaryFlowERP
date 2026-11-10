@@ -11,7 +11,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { ItemImage } from '../components/ItemImage';
 import { motion } from 'motion/react';
 import { TableSkeletonRows, GlassEmptyState, GlassCapsuleBar } from '../components/GlassUI';
-import { cachedJsonFetch } from '../lib/apiCache';
+import { cachedJsonFetch, peekApiCache } from '../lib/apiCache';
 
 interface InventoryItem {
   id: number;
@@ -31,8 +31,9 @@ interface InventoryItem {
 export default function Inventory() {
   const { currency } = useAppContext();
   const navigate = useNavigate();
-  const [inventory, setInventory] = useState<InventoryItem[]>([]);
-  const [loading, setLoading] = useState(true);
+  const cachedInventory = peekApiCache<InventoryItem[]>('/api/inventory', 60_000);
+  const [inventory, setInventory] = useState<InventoryItem[]>(() => Array.isArray(cachedInventory) ? cachedInventory : []);
+  const [loading, setLoading] = useState<boolean>(() => !Array.isArray(cachedInventory));
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('');
   const [selectedColor, setSelectedColor] = useState('');
@@ -42,7 +43,7 @@ export default function Inventory() {
   const itemsPerPage = 10;
 
   useEffect(() => {
-    cachedJsonFetch<InventoryItem[]>('/api/inventory', { credentials: 'include' }, 30_000)
+    cachedJsonFetch<InventoryItem[]>('/api/inventory', { credentials: 'include' }, 60_000)
       .then(data => {
         setInventory(Array.isArray(data) ? data : []);
         setLoading(false);

@@ -16,32 +16,39 @@ import {
   Trash
 } from 'lucide-react';
 import { useAppContext } from '../store';
-import { GlassSelect, GlassDatePicker } from '../components/GlassUI';
-import { cachedJsonFetch } from '../lib/apiCache';
+import { GlassSelect, GlassDatePicker, DashboardSkeleton } from '../components/GlassUI';
+import { cachedJsonFetch, peekApiCache, invalidateApiCache } from '../lib/apiCache';
 
 export default function EditPurchase() {
   const { id } = useParams();
   const { showToast, currency } = useAppContext();
   const navigate = useNavigate();
 
-  const [order, setOrder] = useState<any>(null);
-  const [items, setItems] = useState<any[]>([]);
-  const [inventory, setInventory] = useState<any[]>([]);
-  const [suppliers, setSuppliers] = useState<any[]>([]);
+  const cachedOrder = id ? peekApiCache<any>(`/api/purchases/${id}`, 60_000) : undefined;
+  const cachedInv = peekApiCache<any[]>('/api/inventory', 60_000);
+  const cachedSup = peekApiCache<any[]>('/api/suppliers', 60_000);
+
+  const [order, setOrder] = useState<any>(() => cachedOrder ?? null);
+  const [items, setItems] = useState<any[]>(() => Array.isArray(cachedOrder?.items) ? cachedOrder.items : []);
+  const [inventory, setInventory] = useState<any[]>(() => Array.isArray(cachedInv) ? cachedInv : []);
+  const [suppliers, setSuppliers] = useState<any[]>(() => Array.isArray(cachedSup) ? cachedSup : []);
   const [showItemSelect, setShowItemSelect] = useState(false);
   const [selectedProduct, setSelectedProduct] = useState<string>('');
   const [updating, setUpdating] = useState(false);
   const [cancelling, setCancelling] = useState(false);
 
-  const fetchOrderData = () => {
-    fetch(`/api/purchases/${id}`, { credentials: 'include' })
-      .then(res => res.json())
+  const fetchOrderData = (forceRefresh = false) => {
+    if (!id) return;
+    if (forceRefresh) {
+      invalidateApiCache(`/api/purchases/${id}`);
+    }
+    cachedJsonFetch<any>(`/api/purchases/${id}`, { credentials: 'include' }, 60_000)
       .then(data => {
-        if (!data.error) {
+        if (data && !data.error) {
           setOrder(data);
           setItems(data.items || []);
-        } else {
-          showToast(data.error);
+        } else if (data?.error) {
+          showToast(data.error, 'error');
         }
       })
       .catch(err => console.error('Error fetching order', err));
@@ -65,7 +72,7 @@ export default function EditPurchase() {
 
     // Check if already in items
     if (items.some(i => i.product_id === product.id)) {
-      showToast('Item already in the order');
+      showToast('Item already in the order', 'info');
       return;
     }
 
@@ -105,14 +112,18 @@ export default function EditPurchase() {
       });
 
       if (response.ok) {
-        showToast('Purchase order updated successfully');
+        invalidateApiCache('/api/purchases');
+        invalidateApiCache('/api/suppliers');
+        invalidateApiCache('/api/inventory');
+        invalidateApiCache('/api/ledger');
+        showToast('Purchase order updated successfully', 'success');
         navigate('/purchases');
       } else {
-        showToast('Failed to update purchase order');
+        showToast('Failed to update purchase order', 'error');
       }
     } catch (error) {
       console.error('Update error:', error);
-      showToast('An error occurred');
+      showToast('An error occurred', 'error');
     } finally {
       setUpdating(false);
     }
@@ -132,20 +143,24 @@ export default function EditPurchase() {
       });
 
       if (response.ok) {
-        showToast('Purchase order cancelled successfully');
+        invalidateApiCache('/api/purchases');
+        invalidateApiCache('/api/suppliers');
+        invalidateApiCache('/api/inventory');
+        invalidateApiCache('/api/ledger');
+        showToast('Purchase order cancelled successfully', 'success');
         navigate('/purchases');
       } else {
-        showToast('Failed to cancel purchase order');
+        showToast('Failed to cancel purchase order', 'error');
       }
     } catch (error) {
       console.error('Cancel error:', error);
-      showToast('An error occurred');
+      showToast('An error occurred', 'error');
     } finally {
       setCancelling(false);
     }
   };
 
-  if (!order) return <div>Loading...</div>;
+  if (!order) return <DashboardSkeleton />;
   return (
     <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500 pb-12">
       {/* Breadcrumbs & Status Header */}

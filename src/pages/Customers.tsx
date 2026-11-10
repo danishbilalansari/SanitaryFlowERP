@@ -20,12 +20,15 @@ import {
 } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
 import { TableSkeletonRows, GlassEmptyState, GlassCapsuleBar } from '../components/GlassUI';
+import { cachedJsonFetch, peekApiCache } from '../lib/apiCache';
 
 export default function Customers() {
   const { currency } = useAppContext();
   const navigate = useNavigate();
-  const [customers, setCustomers] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
+  const cachedCustomers = peekApiCache<any[]>('/api/customers', 60_000);
+  const cachedCityData = peekApiCache<any[]>('/api/reports/customer-summary-city-wise', 60_000);
+  const [customers, setCustomers] = useState<any[]>(() => Array.isArray(cachedCustomers) ? cachedCustomers : []);
+  const [loading, setLoading] = useState<boolean>(() => !Array.isArray(cachedCustomers));
   const [searchQuery, setSearchQuery] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 8;
@@ -35,22 +38,13 @@ export default function Customers() {
   const [statusFilter, setStatusFilter] = useState('All');
 
   const [viewMode, setViewMode] = useState<'list' | 'city'>('list');
-  const [cityData, setCityData] = useState<any[]>([]);
+  const [cityData, setCityData] = useState<any[]>(() => Array.isArray(cachedCityData) ? cachedCityData : []);
+  const [cityLoading, setCityLoading] = useState<boolean>(() => !Array.isArray(cachedCityData));
 
   useEffect(() => {
-    fetch('/api/customers')
-      .then(async res => {
-        if (!res.ok) throw new Error(`HTTP ${res.status}`);
-        const contentType = res.headers.get('content-type');
-        if (!contentType || !contentType.includes('application/json')) {
-          const text = await res.text();
-          console.error('Non-JSON response from /api/customers:', text.substring(0, 500));
-          throw new Error('Server returned non-JSON response');
-        }
-        return res.json();
-      })
+    cachedJsonFetch<any[]>('/api/customers', { credentials: 'include' }, 60_000)
       .then(data => {
-        setCustomers(data);
+        setCustomers(Array.isArray(data) ? data : []);
         setLoading(false);
       })
       .catch(err => {
@@ -58,21 +52,15 @@ export default function Customers() {
         setLoading(false);
       });
 
-    fetch('/api/reports/customer-summary-city-wise')
-      .then(async res => {
-        if (!res.ok) throw new Error(`HTTP ${res.status}`);
-        const contentType = res.headers.get('content-type');
-        if (!contentType || !contentType.includes('application/json')) {
-          const text = await res.text();
-          console.error('Non-JSON response from /api/reports/customer-summary-city-wise:', text.substring(0, 500));
-          throw new Error('Server returned non-JSON response');
-        }
-        return res.json();
-      })
+    cachedJsonFetch<any[]>('/api/reports/customer-summary-city-wise', { credentials: 'include' }, 60_000)
       .then(data => {
-        setCityData(data);
+        setCityData(Array.isArray(data) ? data : []);
+        setCityLoading(false);
       })
-      .catch(err => console.error('Error fetching city data:', err));
+      .catch(err => {
+        console.error('Error fetching city data:', err);
+        setCityLoading(false);
+      });
   }, []);
 
   let totalOutstanding = 0;
@@ -89,10 +77,10 @@ export default function Customers() {
   });
 
   const stats = [
-    { label: 'Total Customers', value: customers.length.toString(), trend: 'Active baseline', trendColor: 'text-[#006397]' },
-    { label: 'Active Orders', value: '42', trend: '8 pending shipment', trendColor: 'text-[#006397]' },
-    { label: 'Outstanding Total', value: formatCurrency(totalOutstanding, currency), trend: `Across ${outstandingCount} customers`, trendColor: 'text-neutral-500' },
-    { label: 'Collection Rate', value: '94.2%', trend: '94.2%', progress: true },
+    { label: 'Total Customers', value: customers.length.toString(), trend: 'Active baseline', trendColor: 'text-[#006397]', isLoading: loading },
+    { label: 'Active Orders', value: '42', trend: '8 pending shipment', trendColor: 'text-[#006397]', isLoading: loading },
+    { label: 'Outstanding Total', value: formatCurrency(totalOutstanding, currency), trend: `Across ${outstandingCount} customers`, trendColor: 'text-neutral-500', isLoading: cityLoading },
+    { label: 'Collection Rate', value: '94.2%', trend: '94.2%', progress: true, isLoading: false },
   ];
 
   const filteredCustomers = customers.filter(c => {
@@ -198,17 +186,26 @@ export default function Customers() {
         {stats.map((stat, i) => (
           <div key={i} className="glass-card p-6 flex flex-col gap-1.5">
             <span className="text-[11px] font-bold text-slate-400 uppercase tracking-[0.08em] leading-none">{stat.label}</span>
-            <span className={`text-2xl font-extrabold tabular-nums ${stat.label === 'Outstanding Total' ? 'text-rose-500' : 'text-slate-900'}`}>{stat.value}</span>
-            {stat.progress ? (
-              <div className="mt-2.5">
-                <GlassCapsuleBar pct={parseFloat(stat.trend) || 0} mode="light" height={12} />
-              </div>
+            {stat.isLoading ? (
+              <>
+                <div className="h-8 w-28 rounded-full bg-slate-200/80 animate-pulse mt-0.5" />
+                <div className="h-4 w-32 rounded-full bg-slate-100 animate-pulse mt-1" />
+              </>
             ) : (
-              <span className={`text-xs font-semibold flex items-center gap-1 mt-1 ${stat.trendColor}`}>
-                {stat.label === 'Total Customers' && <TrendingUp className="w-3 h-3" />}
-                {stat.label === 'Active Orders' && <Clock className="w-3 h-3" />}
-                {stat.trend}
-              </span>
+              <>
+                <span className={`text-2xl font-extrabold tabular-nums ${stat.label === 'Outstanding Total' ? 'text-rose-500' : 'text-slate-900'}`}>{stat.value}</span>
+                {stat.progress ? (
+                  <div className="mt-2.5">
+                    <GlassCapsuleBar pct={parseFloat(stat.trend) || 0} mode="light" height={12} />
+                  </div>
+                ) : (
+                  <span className={`text-xs font-semibold flex items-center gap-1 mt-1 ${stat.trendColor}`}>
+                    {stat.label === 'Total Customers' && <TrendingUp className="w-3 h-3" />}
+                    {stat.label === 'Active Orders' && <Clock className="w-3 h-3" />}
+                    {stat.trend}
+                  </span>
+                )}
+              </>
             )}
           </div>
         ))}
@@ -312,7 +309,17 @@ export default function Customers() {
 
       {viewMode === 'city' ? (
         <div className="space-y-6">
-          {Object.entries(
+          {cityLoading ? (
+            <div className="glass-table-container">
+              <div className="overflow-x-auto">
+                <table className="w-full text-left">
+                  <tbody className="text-[13.5px]">
+                    <TableSkeletonRows columns={4} rows={5} />
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          ) : Object.entries(
             cityData.reduce((acc, curr) => {
               const city = curr.city || 'Unknown City';
               if (!acc[city]) acc[city] = [];
@@ -366,7 +373,7 @@ export default function Customers() {
               </div>
             </div>
           ))}
-          {cityData.length === 0 && (
+          {!cityLoading && cityData.length === 0 && (
              <div className="glass-card rounded-[28px]">
                <GlassEmptyState
                  title="No city-grouped customer data"

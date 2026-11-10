@@ -20,6 +20,7 @@ import {
 import { motion } from 'motion/react';
 import { useAppContext } from '../store';
 import { GlassSelect, GlassToggle } from '../components/GlassUI';
+import { invalidateApiCache } from '../lib/apiCache';
 
 export default function AddCustomer() {
   const { showToast, currency } = useAppContext();
@@ -82,6 +83,8 @@ export default function AddCustomer() {
       });
 
       if (response.ok) {
+        invalidateApiCache('/api/customers');
+        invalidateApiCache('/api/reports/customer-summary-city-wise');
         showToast('Customer profile created successfully!', 'success');
         navigate('/customers');
       } else {

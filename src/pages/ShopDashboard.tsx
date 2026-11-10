@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { UserPlus, ShoppingCart, Banknote, Package, BarChart3, AlertTriangle, ArrowRight, PackageOpen, ChevronRight } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { DashboardSkeleton, TableSkeletonRows, GlassEmptyState } from '../components/GlassUI';
-import { cachedJsonFetch } from '../lib/apiCache';
+import { cachedJsonFetch, peekApiCache } from '../lib/apiCache';
 
 interface DashboardData {
   dailyRevenue: number;
@@ -14,14 +14,16 @@ interface DashboardData {
 }
 
 export default function ShopDashboard() {
-  const [data, setData] = useState<DashboardData | null>(null);
-  const [inventory, setInventory] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
+  const cachedDash = peekApiCache<DashboardData>('/api/shop/dashboard', 60_000);
+  const cachedItems = peekApiCache<any[]>('/api/inventory?category=Shop', 60_000);
+  const [data, setData] = useState<DashboardData | null>(() => cachedDash ?? null);
+  const [inventory, setInventory] = useState<any[]>(() => Array.isArray(cachedItems) ? cachedItems : []);
+  const [loading, setLoading] = useState<boolean>(() => !(cachedDash && Array.isArray(cachedItems)));
 
   useEffect(() => {
     Promise.all([
-      cachedJsonFetch<DashboardData>('/api/shop/dashboard', { credentials: 'include' }, 30_000),
-      cachedJsonFetch<any[]>('/api/inventory?category=Shop', { credentials: 'include' }, 30_000)
+      cachedJsonFetch<DashboardData>('/api/shop/dashboard', { credentials: 'include' }, 60_000),
+      cachedJsonFetch<any[]>('/api/inventory?category=Shop', { credentials: 'include' }, 60_000)
     ])
       .then(([dashData, items]) => {
         setData(dashData || {

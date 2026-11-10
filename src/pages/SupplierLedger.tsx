@@ -19,33 +19,41 @@ import {
   X
 } from 'lucide-react';
 import { useAppContext } from '../store';
-import { GlassDatePicker, GlassPagination, GlassModal } from '../components/GlassUI';
+import { GlassDatePicker, GlassPagination, GlassModal, DashboardSkeleton } from '../components/GlassUI';
+import { cachedJsonFetch, peekApiCache, invalidateApiCache } from '../lib/apiCache';
 
 export default function SupplierLedger() {
   const { id } = useParams();
   const { showToast, currency } = useAppContext();
-  const [supplier, setSupplier] = useState<any>(null);
-  const [ledger, setLedger] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
+  const cachedSuppliers = peekApiCache<any[]>('/api/suppliers', 60_000);
+  const cachedLedger = id ? peekApiCache<any[]>(`/api/ledger?supplier_id=${id}`, 60_000) : undefined;
+  const [supplier, setSupplier] = useState<any>(() =>
+    Array.isArray(cachedSuppliers) ? cachedSuppliers.find((s: any) => s.id === Number(id)) ?? null : null
+  );
+  const [ledger, setLedger] = useState<any[]>(() => Array.isArray(cachedLedger) ? cachedLedger : []);
+  const [loading, setLoading] = useState<boolean>(() => !(Array.isArray(cachedSuppliers) && Array.isArray(cachedLedger)));
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 8;
 
   const [editingEntry, setEditingEntry] = useState<any>(null);
   const [editForm, setEditForm] = useState({ description: '', debit: '', credit: '', reference_id: '', created_at: '' });
 
-  const fetchData = async () => {
+  const fetchData = async (forceRefresh = false) => {
+    if (!id) return;
+    if (forceRefresh) {
+      invalidateApiCache('/api/suppliers');
+      invalidateApiCache(`/api/ledger?supplier_id=${id}`);
+      invalidateApiCache('/api/ledger');
+    }
     try {
-      const [supRes, ledRes] = await Promise.all([
-        fetch(`/api/suppliers`),
-        fetch(`/api/ledger?supplier_id=${id}`)
+      const [suppliers, ledgerData] = await Promise.all([
+        cachedJsonFetch<any[]>('/api/suppliers', { credentials: 'include' }, 60_000),
+        cachedJsonFetch<any[]>(`/api/ledger?supplier_id=${id}`, { credentials: 'include' }, 60_000)
       ]);
       
-      const suppliers = await supRes.json();
-      const ledgerData = await ledRes.json();
-      
-      const currentSupplier = suppliers.find((s: any) => s.id === Number(id));
+      const currentSupplier = Array.isArray(suppliers) ? suppliers.find((s: any) => s.id === Number(id)) : null;
       setSupplier(currentSupplier);
-      setLedger(ledgerData);
+      setLedger(Array.isArray(ledgerData) ? ledgerData : []);
       setLoading(false);
     } catch (err) {
       console.error(err);
@@ -64,7 +72,7 @@ export default function SupplierLedger() {
       const res = await fetch(`/api/ledger/${entryId}`, { method: 'DELETE' });
       if (res.ok) {
         showToast?.('Transaction deleted', 'success');
-        fetchData();
+        fetchData(true);
       } else {
         throw new Error('Failed to delete');
       }
@@ -100,7 +108,7 @@ export default function SupplierLedger() {
       if (res.ok) {
         showToast?.('Transaction updated', 'success');
         setEditingEntry(null);
-        fetchData();
+        fetchData(true);
       } else {
         throw new Error('Failed to update');
       }
@@ -132,8 +140,7 @@ export default function SupplierLedger() {
         setShowPaymentModal(false);
         setPaymentAmount('');
         setPaymentDesc('');
-        // Refresh data
-        window.location.reload();
+        fetchData(true);
       } else {
         throw new Error('Payment failed');
       }
@@ -142,7 +149,7 @@ export default function SupplierLedger() {
     }
   };
 
-  if (loading) return <div className="p-20 text-center text-neutral-400">Loading ledger...</div>;
+  if (loading) return <DashboardSkeleton />;
   if (!supplier) return <div className="p-20 text-center text-red-500">Supplier not found.</div>;
 
   let runningBalance = 0;

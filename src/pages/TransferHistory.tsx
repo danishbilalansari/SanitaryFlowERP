@@ -8,7 +8,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { motion } from 'motion/react';
 import { useAppContext } from '../store';
 import { CardListSkeleton, GlassEmptyState, GlassModal } from '../components/GlassUI';
-import { cachedJsonFetch, invalidateApiCache } from '../lib/apiCache';
+import { cachedJsonFetch, peekApiCache, invalidateApiCache } from '../lib/apiCache';
 
 interface Transfer {
   id: number;
@@ -27,8 +27,9 @@ interface Transfer {
 
 export default function TransferHistory() {
   const navigate = useNavigate();
-  const [transfers, setTransfers] = useState<Transfer[]>([]);
-  const [loading, setLoading] = useState(true);
+  const cachedTransfers = peekApiCache<Transfer[]>('/api/inventory/transfers', 60_000);
+  const [transfers, setTransfers] = useState<Transfer[]>(() => Array.isArray(cachedTransfers) ? cachedTransfers : []);
+  const [loading, setLoading] = useState<boolean>(() => !Array.isArray(cachedTransfers));
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState('All');
   const [dateFilter, setDateFilter] = useState('All Time');
@@ -51,7 +52,7 @@ export default function TransferHistory() {
   }, []);
 
   useEffect(() => {
-    cachedJsonFetch<Transfer[]>('/api/inventory/transfers', { credentials: 'include' }, 30_000)
+    cachedJsonFetch<Transfer[]>('/api/inventory/transfers', { credentials: 'include' }, 60_000)
       .then(data => {
         setTransfers(Array.isArray(data) ? data : []);
         setLoading(false);

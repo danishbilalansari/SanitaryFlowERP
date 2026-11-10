@@ -3,40 +3,51 @@ import { formatCurrency } from '../lib/currency';
 import React, { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { ArrowLeft, ArrowUpRight, ArrowDownRight, Printer, Trash2, Edit2, X, Check } from 'lucide-react';
-import { GlassDatePicker, GlassPagination } from '../components/GlassUI';
+import { GlassDatePicker, GlassPagination, DashboardSkeleton } from '../components/GlassUI';
+import { cachedJsonFetch, peekApiCache, invalidateApiCache } from '../lib/apiCache';
+
+function computeRunningLedger(ledge: any[]) {
+  let balance = 0;
+  return [...ledge]
+    .sort((a: any, b: any) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime())
+    .map((entry: any) => {
+      balance += (entry.debit || 0) - (entry.credit || 0);
+      return { ...entry, running_balance: balance };
+    })
+    .reverse();
+}
 
 export default function CustomerLedger() {
   const { currency, showToast } = useAppContext();
   const { id } = useParams<{ id: string }>();
-  const [customer, setCustomer] = useState<any>(null);
-  const [ledgerEntries, setLedgerEntries] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
+  const cachedCust = id ? peekApiCache<any>(`/api/customers/${id}`, 60_000) : undefined;
+  const cachedLedge = id ? peekApiCache<any[]>(`/api/ledger?customer_id=${id}`, 60_000) : undefined;
+  const [customer, setCustomer] = useState<any>(() => cachedCust ?? null);
+  const [ledgerEntries, setLedgerEntries] = useState<any[]>(() =>
+    Array.isArray(cachedLedge) ? computeRunningLedger(cachedLedge) : []
+  );
+  const [loading, setLoading] = useState<boolean>(() => !(cachedCust && Array.isArray(cachedLedge)));
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 8;
 
   const [editingEntry, setEditingEntry] = useState<any>(null);
   const [editForm, setEditForm] = useState({ description: '', debit: '', credit: '', reference_id: '', created_at: '' });
 
-  const fetchData = async () => {
+  const fetchData = async (forceRefresh = false) => {
+    if (!id) return;
+    if (forceRefresh) {
+      invalidateApiCache(`/api/customers/${id}`);
+      invalidateApiCache(`/api/ledger?customer_id=${id}`);
+      invalidateApiCache('/api/customers');
+      invalidateApiCache('/api/reports/customer-summary-city-wise');
+    }
     try {
-      const [custRes, ledgeRes] = await Promise.all([
-        fetch(`/api/customers/${id}`),
-        fetch(`/api/ledger?customer_id=${id}`)
+      const [cust, ledge] = await Promise.all([
+        cachedJsonFetch<any>(`/api/customers/${id}`, { credentials: 'include' }, 60_000),
+        cachedJsonFetch<any[]>(`/api/ledger?customer_id=${id}`, { credentials: 'include' }, 60_000)
       ]);
-      const cust = await custRes.json();
-      const ledge = await ledgeRes.json();
       setCustomer(cust);
-      
-      // Sort and calculate running balance
-      let balance = 0;
-      const sortedLedger = ledge
-        .sort((a: any, b: any) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime())
-        .map((entry: any) => {
-          balance += (entry.debit || 0) - (entry.credit || 0);
-          return { ...entry, running_balance: balance };
-        });
-      
-      setLedgerEntries(sortedLedger.reverse()); // Show latest first but balanced correctly
+      setLedgerEntries(Array.isArray(ledge) ? computeRunningLedger(ledge) : []);
     } catch (error) {
       console.error('Fetch error:', error);
     } finally {
@@ -54,7 +65,7 @@ export default function CustomerLedger() {
       const res = await fetch(`/api/ledger/${entryId}`, { method: 'DELETE' });
       if (res.ok) {
         showToast?.('Transaction deleted', 'success');
-        fetchData();
+        fetchData(true);
       } else {
         throw new Error('Failed to delete');
       }
@@ -90,7 +101,7 @@ export default function CustomerLedger() {
       if (res.ok) {
         showToast?.('Transaction updated', 'success');
         setEditingEntry(null);
-        fetchData();
+        fetchData(true);
       } else {
         throw new Error('Failed to update');
       }
@@ -99,7 +110,7 @@ export default function CustomerLedger() {
     }
   };
 
-  if (loading) return <div className="p-12 text-center text-neutral-500 font-bold animate-pulse">Loading Ledger...</div>;
+  if (loading) return <DashboardSkeleton />;
   if (!customer) {
     return (
       <div className="flex flex-col items-center justify-center p-12 text-center text-neutral-500">

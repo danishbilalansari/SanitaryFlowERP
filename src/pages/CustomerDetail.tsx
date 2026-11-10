@@ -23,15 +23,18 @@ import {
   Calendar,
   DollarSign
 } from 'lucide-react';
-import { GlassDatePicker, GlassModal } from '../components/GlassUI';
+import { GlassDatePicker, GlassModal, DashboardSkeleton } from '../components/GlassUI';
+import { cachedJsonFetch, peekApiCache, invalidateApiCache } from '../lib/apiCache';
 
 export default function CustomerDetail() {
   const { currency } = useAppContext();
   const { id } = useParams();
   const navigate = useNavigate();
-  const [customer, setCustomer] = useState<any>(null);
-  const [ledger, setLedger] = useState<any[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const cachedCust = id ? peekApiCache<any>(`/api/customers/${id}`, 60_000) : undefined;
+  const cachedLedge = id ? peekApiCache<any[]>(`/api/ledger?customer_id=${id}`, 60_000) : undefined;
+  const [customer, setCustomer] = useState<any>(() => cachedCust ?? null);
+  const [ledger, setLedger] = useState<any[]>(() => Array.isArray(cachedLedge) ? cachedLedge : []);
+  const [isLoading, setIsLoading] = useState<boolean>(() => !(cachedCust && Array.isArray(cachedLedge)));
   const [showPaymentModal, setShowPaymentModal] = useState(false);
   const [paymentData, setPaymentData] = useState({
     amount: '',
@@ -41,16 +44,21 @@ export default function CustomerDetail() {
     reference_id: ''
   });
 
-  const fetchData = async () => {
+  const fetchData = async (forceRefresh = false) => {
+    if (!id) return;
+    if (forceRefresh) {
+      invalidateApiCache(`/api/customers/${id}`);
+      invalidateApiCache(`/api/ledger?customer_id=${id}`);
+      invalidateApiCache('/api/customers');
+      invalidateApiCache('/api/reports/customer-summary-city-wise');
+    }
     try {
-      const [custRes, ledgeRes] = await Promise.all([
-        fetch(`/api/customers/${id}`),
-        fetch(`/api/ledger?customer_id=${id}`)
+      const [cust, ledge] = await Promise.all([
+        cachedJsonFetch<any>(`/api/customers/${id}`, { credentials: 'include' }, 60_000),
+        cachedJsonFetch<any[]>(`/api/ledger?customer_id=${id}`, { credentials: 'include' }, 60_000)
       ]);
-      const cust = await custRes.json();
-      const ledge = await ledgeRes.json();
       setCustomer(cust);
-      setLedger(ledge);
+      setLedger(Array.isArray(ledge) ? ledge : []);
     } catch (error) {
       console.error('Fetch error:', error);
     } finally {
@@ -75,14 +83,14 @@ export default function CustomerDetail() {
       });
       if (res.ok) {
         setShowPaymentModal(false);
-        fetchData();
+        fetchData(true);
       }
     } catch (error) {
       console.error('Payment Error:', error);
     }
   };
 
-  if (isLoading) return <div className="p-12 text-center text-neutral-500 font-bold animate-pulse">Loading Customer Profile...</div>;
+  if (isLoading) return <DashboardSkeleton />;
   if (!customer) return <div className="p-12 text-center text-red-500 font-bold">Profile not found.</div>;
 
   const totalDebit = ledger.reduce((sum, entry) => sum + (entry.debit || 0), 0);
