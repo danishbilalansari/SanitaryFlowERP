@@ -670,41 +670,24 @@ export default function Dashboard() {
                 </div>
               </div>
 
-              {/* Black / Frosted Theme Toggle */}
-              <div
-                className={`inline-flex items-center gap-1 p-1 rounded-full border backdrop-blur-xl shrink-0 transition-all ${
+              {/* Single Icon-Only Theme Toggle Button */}
+              <button
+                type="button"
+                onClick={() => handleTopSellingThemeChange(isTopSellingBlack ? 'frosted' : 'black')}
+                title={isTopSellingBlack ? "Switch to Light Theme" : "Switch to Black Theme"}
+                aria-label={isTopSellingBlack ? "Switch to Light Theme" : "Switch to Black Theme"}
+                className={`w-8 h-8 rounded-full border backdrop-blur-xl flex items-center justify-center shrink-0 transition-all cursor-pointer ${
                   isTopSellingBlack
-                    ? 'bg-white/10 border-white/20 shadow-inner'
-                    : 'bg-white/80 border-white shadow-[0_2px_10px_rgba(15,23,42,0.04)]'
+                    ? 'bg-white/10 hover:bg-white/20 border-white/20 text-amber-300 shadow-[inset_0_1px_1px_rgba(255,255,255,0.15)]'
+                    : 'bg-white/85 hover:bg-white border-white text-slate-700 shadow-[0_2px_8px_rgba(15,23,42,0.06)]'
                 }`}
               >
-                <button
-                  type="button"
-                  onClick={() => handleTopSellingThemeChange('frosted')}
-                  title="Frosted Light Theme"
-                  className={`px-2 py-1 rounded-full text-[11px] font-semibold flex items-center gap-1 transition-all cursor-pointer ${
-                    !isTopSellingBlack
-                      ? 'bg-white text-slate-900 shadow-xs'
-                      : 'text-white/60 hover:text-white'
-                  }`}
-                >
-                  <Sun className="w-3 h-3 text-amber-500" />
-                  <span>Light</span>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => handleTopSellingThemeChange('black')}
-                  title="Black Theme"
-                  className={`px-2 py-1 rounded-full text-[11px] font-semibold flex items-center gap-1 transition-all cursor-pointer ${
-                    isTopSellingBlack
-                      ? 'bg-gradient-to-r from-sky-500 to-indigo-600 text-white shadow-xs'
-                      : 'text-slate-500 hover:text-slate-900'
-                  }`}
-                >
-                  <Moon className="w-3 h-3" />
-                  <span>Black</span>
-                </button>
-              </div>
+                {isTopSellingBlack ? (
+                  <Sun className="w-4 h-4 text-amber-400 transition-transform hover:rotate-45" />
+                ) : (
+                  <Moon className="w-4 h-4 text-slate-700 transition-transform hover:-rotate-12" />
+                )}
+              </button>
             </div>
 
             <div className="space-y-3.5">

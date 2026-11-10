@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { BarChart3, TrendingUp } from 'lucide-react';
+import { BarChart3, TrendingUp, Sun, Moon } from 'lucide-react';
 import {
   AreaChart,
   Area,
@@ -663,14 +663,19 @@ export function GlassCircularGauge({
           <button
             type="button"
             onClick={onToggleTheme}
-            title="Switch Gauge Theme"
-            className={`w-8 h-8 rounded-full flex items-center justify-center transition-all cursor-pointer ${
+            title={darkMode ? "Switch to Light Theme" : "Switch to Black Theme"}
+            aria-label={darkMode ? "Switch to Light Theme" : "Switch to Black Theme"}
+            className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 transition-all cursor-pointer ${
               darkMode
-                ? 'bg-white/10 hover:bg-white/20 text-white border border-white/15'
-                : 'bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-200/80'
+                ? 'bg-white/10 hover:bg-white/20 text-amber-300 border border-white/20 shadow-[inset_0_1px_1px_rgba(255,255,255,0.15)]'
+                : 'bg-white/85 hover:bg-white text-slate-700 border border-slate-200/80 shadow-[0_2px_8px_rgba(15,23,42,0.06)]'
             }`}
           >
-            <span className="text-[14px] font-bold leading-none">⋮</span>
+            {darkMode ? (
+              <Sun className="w-4 h-4 text-amber-400 transition-transform hover:rotate-45" />
+            ) : (
+              <Moon className="w-4 h-4 text-slate-700 transition-transform hover:-rotate-12" />
+            )}
           </button>
         )}
       </div>
