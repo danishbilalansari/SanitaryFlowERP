@@ -3,21 +3,22 @@ import { formatCurrency } from '../lib/currency';
 import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { 
-  TrendingUp, Package, Factory, 
+  Package, Factory, 
   Hammer,
   Plus, ChevronRight,
   ShoppingCart, Download,
   Sparkles, Hash, RotateCw, BookOpen, Feather, Flame
 } from 'lucide-react';
 import { motion } from 'motion/react';
-import { DashboardSkeleton, GlassEmptyState, GlossyChartCard, GlassCapsuleBar } from '../components/GlassUI';
-import { cachedJsonFetch, invalidateApiCache } from '../lib/apiCache';
+import { GlassEmptyState, GlossyChartCard, GlassCapsuleBar } from '../components/GlassUI';
+import { cachedJsonFetch, peekApiCache, invalidateApiCache } from '../lib/apiCache';
 
 export default function Dashboard() {
   const { currency } = useAppContext();
   const navigate = useNavigate();
-  const [stats, setStats] = useState<any>(null);
-  const [loading, setLoading] = useState(true);
+  const cachedStats = peekApiCache<any>('/api/analytics/dashboard', 60_000);
+  const [stats, setStats] = useState<any>(() => cachedStats ?? null);
+  const [loading, setLoading] = useState<boolean>(() => !cachedStats);
   const [refreshing, setRefreshing] = useState(false);
 
   const fetchDashboardStats = useCallback((isRefresh = false) => {
@@ -25,7 +26,7 @@ export default function Dashboard() {
       setRefreshing(true);
       invalidateApiCache('/api/analytics/dashboard');
     }
-    cachedJsonFetch('/api/analytics/dashboard', undefined, 30_000)
+    cachedJsonFetch('/api/analytics/dashboard', { credentials: 'include' }, 60_000)
       .then(data => {
         setStats(data || {});
         setLoading(false);
@@ -84,10 +85,6 @@ export default function Dashboard() {
     document.body.removeChild(link);
   };
 
-  if (loading) {
-    return <DashboardSkeleton />;
-  }
-
   const totalBatches = stats?.productionStats?.reduce((acc: number, s: any) => acc + Number(s.count), 0) || 0;
 
   const kpis = [
@@ -117,7 +114,6 @@ export default function Dashboard() {
     }
   ];
 
-  // Prepare data for the Glossy Graph (image_26474c66.png reference)
   const rawTopSellers = stats?.topSellers || [];
   const chartData = rawTopSellers.length > 0
     ? [...rawTopSellers].reverse().map((item: any, idx: number) => ({
@@ -205,34 +201,46 @@ export default function Dashboard() {
             <div className="w-12 h-12 rounded-2xl bg-white/90 border border-white shadow-[0_4px_12px_rgba(15,23,42,0.05),inset_0_1px_1px_rgba(255,255,255,1)] flex items-center justify-center shrink-0">
               <kpi.icon className={`w-5 h-5 ${kpi.iconColor} stroke-[1.9]`} />
             </div>
-            <div className="min-w-0">
+            <div className="min-w-0 flex-1">
               <p className="text-[10.5px] font-semibold tracking-[0.09em] text-slate-500 uppercase truncate">
                 {kpi.label}
               </p>
-              <h3 className="text-[22px] sm:text-[24px] font-bold text-slate-900 tracking-tight leading-tight mt-0.5 tabular-nums truncate">
-                {kpi.value}
-              </h3>
+              {loading ? (
+                <div className="h-7 w-28 rounded-full bg-slate-200/80 animate-pulse mt-1" />
+              ) : (
+                <h3 className="text-[22px] sm:text-[24px] font-bold text-slate-900 tracking-tight leading-tight mt-0.5 tabular-nums truncate">
+                  {kpi.value}
+                </h3>
+              )}
             </div>
           </motion.div>
         ))}
       </div>
 
       {/* Main Glossy Graph Card */}
-      <GlossyChartCard
-        uid="dashboard"
-        title="Sales Volume Trend"
-        subtitle="Balance of unit demand flow across your top-performing sanitaryware products"
-        data={chartData}
-        xKey="name"
-        yKey="total_qty"
-        valueLabel="Volume Sold"
-        valueFormatter={(value: any) => `${value} units`}
-        chartHeight={300}
-      />
+      {loading ? (
+        <div className="rounded-[32px] bg-white/[0.74] backdrop-blur-3xl border border-white/95 p-6 sm:p-8 shadow-[0_14px_40px_-8px_rgba(15,23,42,0.05),inset_0_1px_2px_rgba(255,255,255,1)]">
+          <div className="h-5 w-48 rounded-full bg-slate-200/80 animate-pulse mb-2" />
+          <div className="h-3.5 w-72 rounded-full bg-slate-200/60 animate-pulse mb-6" />
+          <div className="h-[300px] w-full rounded-2xl bg-slate-200/50 animate-pulse" />
+        </div>
+      ) : (
+        <GlossyChartCard
+          uid="dashboard"
+          title="Sales Volume Trend"
+          subtitle="Balance of unit demand flow across your top-performing sanitaryware products"
+          data={chartData}
+          xKey="name"
+          yKey="total_qty"
+          valueLabel="Volume Sold"
+          valueFormatter={(value: any) => `${value} units`}
+          chartHeight={300}
+        />
+      )}
 
-      {/* Bottom 2-Column Bento Cards (Modeled after Common Themes & Monthly Summary in image_593a5833.png) */}
+      {/* Bottom 2-Column Bento Cards */}
       <div className="grid grid-cols-1 md:grid-cols-12 gap-6">
-        {/* Left Card: Top Velocity Products (Styled after Common Themes) */}
+        {/* Left Card: Top Velocity Products */}
         <motion.div
           initial={{ opacity: 0, y: 14 }}
           animate={{ opacity: 1, y: 0 }}
@@ -255,36 +263,53 @@ export default function Dashboard() {
             </div>
 
             <div className="space-y-3.5">
-              {rawTopSellers.slice(0, 4).map((p: any, i: number) => {
-                const qty = Number(p.total_qty) || 0;
-                const pct = Math.max(12, Math.round((qty / maxSellerQty) * 100));
-                const badgeClass = pillStyles[i % pillStyles.length];
-                return (
+              {loading ? (
+                Array.from({ length: 4 }).map((_, i) => (
                   <div
                     key={i}
-                    className="p-3.5 rounded-2xl bg-white/65 border border-white/85 shadow-[0_2px_8px_rgba(15,23,42,0.02)] space-y-2.5"
+                    className="p-3.5 rounded-2xl bg-white/65 border border-white/85 space-y-2.5"
                   >
                     <div className="flex items-center justify-between gap-2">
-                      <span
-                        className={`inline-flex items-center gap-1 px-3 py-1 rounded-full text-[12px] font-semibold border truncate max-w-[210px] shadow-[inset_0_1px_1px_rgba(255,255,255,0.9)] ${badgeClass}`}
-                      >
-                        <span className="opacity-60">#</span>
-                        <span className="truncate">{p.name || 'Sanitary Unit'}</span>
-                      </span>
-                      <span className="text-[13px] font-bold text-slate-900 tabular-nums shrink-0">
-                        {qty} units
-                      </span>
+                      <div className="h-6 w-36 rounded-full bg-slate-200/80 animate-pulse" />
+                      <div className="h-4 w-16 rounded-full bg-slate-200/70 animate-pulse" />
                     </div>
-                    <GlassCapsuleBar percentage={pct} darkMode={false} heightClass="h-4" />
+                    <div className="h-4 w-full rounded-full bg-slate-200/60 animate-pulse" />
                   </div>
-                );
-              })}
+                ))
+              ) : (
+                <>
+                  {rawTopSellers.slice(0, 4).map((p: any, i: number) => {
+                    const qty = Number(p.total_qty) || 0;
+                    const pct = Math.max(12, Math.round((qty / maxSellerQty) * 100));
+                    const badgeClass = pillStyles[i % pillStyles.length];
+                    return (
+                      <div
+                        key={i}
+                        className="p-3.5 rounded-2xl bg-white/65 border border-white/85 shadow-[0_2px_8px_rgba(15,23,42,0.02)] space-y-2.5"
+                      >
+                        <div className="flex items-center justify-between gap-2">
+                          <span
+                            className={`inline-flex items-center gap-1 px-3 py-1 rounded-full text-[12px] font-semibold border truncate max-w-[210px] shadow-[inset_0_1px_1px_rgba(255,255,255,0.9)] ${badgeClass}`}
+                          >
+                            <span className="opacity-60">#</span>
+                            <span className="truncate">{p.name || 'Sanitary Unit'}</span>
+                          </span>
+                          <span className="text-[13px] font-bold text-slate-900 tabular-nums shrink-0">
+                            {qty} units
+                          </span>
+                        </div>
+                        <GlassCapsuleBar percentage={pct} darkMode={false} heightClass="h-4" />
+                      </div>
+                    );
+                  })}
 
-              {rawTopSellers.length === 0 && (
-                <GlassEmptyState
-                  title="No sales volume yet"
-                  description="Top-selling sanitaryware products will appear here once invoices are recorded."
-                />
+                  {rawTopSellers.length === 0 && (
+                    <GlassEmptyState
+                      title="No sales volume yet"
+                      description="Top-selling sanitaryware products will appear here once invoices are recorded."
+                    />
+                  )}
+                </>
               )}
             </div>
           </div>
@@ -301,7 +326,7 @@ export default function Dashboard() {
           </div>
         </motion.div>
 
-        {/* Right Card: Production & Channel Summary (Styled after AI Monthly Summary) */}
+        {/* Right Card: Production & Channel Summary */}
         <motion.div
           initial={{ opacity: 0, y: 14 }}
           animate={{ opacity: 1, y: 0 }}
@@ -334,20 +359,29 @@ export default function Dashboard() {
 
             {/* Active Production Status Pills */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-5">
-              {(stats?.productionStats || []).map((p: any, i: number) => (
-                <div
-                  key={i}
-                  className="flex items-center justify-between px-4 py-3 rounded-2xl bg-white/85 border border-white shadow-[0_2px_10px_rgba(15,23,42,0.03)]"
-                >
-                  <div className="flex items-center gap-2.5">
-                    <span className="w-2.5 h-2.5 rounded-full bg-[#0284c7]" />
-                    <span className="text-[13.5px] font-semibold text-slate-800">{p.status}</span>
+              {loading ? (
+                Array.from({ length: 2 }).map((_, i) => (
+                  <div
+                    key={i}
+                    className="h-12 rounded-2xl bg-slate-200/70 animate-pulse"
+                  />
+                ))
+              ) : (
+                (stats?.productionStats || []).map((p: any, i: number) => (
+                  <div
+                    key={i}
+                    className="flex items-center justify-between px-4 py-3 rounded-2xl bg-white/85 border border-white shadow-[0_2px_10px_rgba(15,23,42,0.03)]"
+                  >
+                    <div className="flex items-center gap-2.5">
+                      <span className="w-2.5 h-2.5 rounded-full bg-[#0284c7]" />
+                      <span className="text-[13.5px] font-semibold text-slate-800">{p.status}</span>
+                    </div>
+                    <span className="px-3 py-0.5 rounded-full bg-sky-100/80 text-sky-800 text-[12px] font-bold tabular-nums">
+                      {p.count} batches
+                    </span>
                   </div>
-                  <span className="px-3 py-0.5 rounded-full bg-sky-100/80 text-sky-800 text-[12px] font-bold tabular-nums">
-                    {p.count} batches
-                  </span>
-                </div>
-              ))}
+                ))
+              )}
             </div>
 
             {/* Direct Inventory Channels */}

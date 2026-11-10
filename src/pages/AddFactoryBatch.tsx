@@ -3,13 +3,14 @@ import { Link, useNavigate } from 'react-router-dom';
 import { ArrowLeft, CheckCircle2, ChevronRight, Search, Factory, Package } from 'lucide-react';
 import { useAppContext } from '../store';
 import { GlassSelect } from '../components/GlassUI';
-import { cachedJsonFetch, invalidateApiCache } from '../lib/apiCache';
+import { cachedJsonFetch, peekApiCache, invalidateApiCache } from '../lib/apiCache';
 
 export default function AddFactoryBatch() {
   const { showToast } = useAppContext();
   const navigate = useNavigate();
-  const [inventory, setInventory] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
+  const cachedInventory = peekApiCache<any[]>('/api/inventory', 60_000);
+  const [inventory, setInventory] = useState<any[]>(() => Array.isArray(cachedInventory) ? cachedInventory : []);
+  const [loading, setLoading] = useState<boolean>(() => !Array.isArray(cachedInventory));
   const [saving, setSaving] = useState(false);
 
   const [formData, setFormData] = useState({
@@ -24,7 +25,7 @@ export default function AddFactoryBatch() {
   const [error, setError] = useState('');
 
   useEffect(() => {
-    cachedJsonFetch('/api/inventory', undefined, 60_000)
+    cachedJsonFetch('/api/inventory', { credentials: 'include' }, 60_000)
       .then(data => {
         setInventory(Array.isArray(data) ? data : []);
         setLoading(false);
@@ -93,6 +94,8 @@ export default function AddFactoryBatch() {
       if (response.ok) {
         invalidateApiCache('/api/production');
         invalidateApiCache('/api/factory/dashboard');
+        invalidateApiCache('/api/analytics/dashboard');
+        invalidateApiCache('/api/inventory');
         showToast('New production batch started!', 'success');
         navigate('/factory');
       } else {

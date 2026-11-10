@@ -39,6 +39,9 @@ export default function Layout() {
   useEffect(() => {
     if (!currentUser) return;
     const warmEndpoints = [
+      '/api/analytics/dashboard',
+      '/api/production',
+      '/api/factory/dashboard',
       '/api/sales',
       '/api/sales/stats',
       '/api/inventory',
@@ -48,8 +51,6 @@ export default function Layout() {
       '/api/suppliers/balances',
       '/api/suppliers',
       '/api/labour',
-      '/api/production',
-      '/api/factory/dashboard',
       '/api/shop/dashboard',
       '/api/inventory?category=Shop',
       '/api/inventory/transfers'

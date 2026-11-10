@@ -1008,14 +1008,23 @@ app.use((req, res, next) => {
       const today = new Date();
       today.setHours(0, 0, 0, 0);
 
-      // Daily Revenue & Units Sold
-      const orders = await db('sales_orders')
-        .where('created_at', '>=', today.toISOString())
-        .select('*');
+      const [orders, recentTransactions, itemsLow] = await Promise.all([
+        db('sales_orders')
+          .where('created_at', '>=', today.toISOString())
+          .select('*'),
+        db('sales_orders')
+          .join('customers', 'sales_orders.customer_id', 'customers.id')
+          .select('sales_orders.*', 'customers.name as customer_name')
+          .orderBy('created_at', 'desc')
+          .limit(4),
+        db('inventory')
+          .whereRaw(isPostgres ? 'stock <= "minStock"' : 'stock <= minStock')
+          .select('*')
+      ]);
 
       let dailyRevenue = 0;
-      let transactionCount = orders.length;
-      let orderIds = orders.map(o => o.id);
+      const transactionCount = orders.length;
+      const orderIds = orders.map(o => o.id);
 
       for (const order of orders) {
         dailyRevenue += order.total_amount;
@@ -1023,48 +1032,35 @@ app.use((req, res, next) => {
 
       let unitsSold = 0;
       let topProducts: any[] = [];
-      let todayTransactions: any[] = [];
       
       if (orderIds.length > 0) {
-        const items = await db('sales_order_items')
-          .join('inventory', 'sales_order_items.product_id', 'inventory.id')
-          .whereIn('order_id', orderIds)
-          .select('inventory.name', 'sales_order_items.qty', 'sales_order_items.price');
+        const [items, productSales] = await Promise.all([
+          db('sales_order_items')
+            .join('inventory', 'sales_order_items.product_id', 'inventory.id')
+            .whereIn('order_id', orderIds)
+            .select('inventory.name', 'sales_order_items.qty', 'sales_order_items.price'),
+          db('sales_order_items')
+            .join('inventory', 'sales_order_items.product_id', 'inventory.id')
+            .whereIn('order_id', orderIds)
+            .select('inventory.name')
+            .sum('sales_order_items.qty as total_qty')
+            .groupBy('inventory.name')
+            .orderBy('total_qty', 'desc')
+            .limit(5)
+        ]);
         
         for (const item of items) {
           unitsSold += item.qty;
         }
-
-        const productSales = await db('sales_order_items')
-          .join('inventory', 'sales_order_items.product_id', 'inventory.id')
-          .whereIn('order_id', orderIds)
-          .select('inventory.name')
-          .sum('sales_order_items.qty as total_qty')
-          .groupBy('inventory.name')
-          .orderBy('total_qty', 'desc')
-          .limit(5);
-        
         topProducts = productSales;
       }
-
-      const recentTransactions = await db('sales_orders')
-        .join('customers', 'sales_orders.customer_id', 'customers.id')
-        .select('sales_orders.*', 'customers.name as customer_name')
-        .orderBy('created_at', 'desc')
-        .limit(4);
-      
-      todayTransactions = recentTransactions;
-
-      const itemsLow = await db('inventory')
-        .whereRaw(isPostgres ? 'stock <= "minStock"' : 'stock <= minStock')
-        .select('*');
 
       res.json({
         dailyRevenue,
         unitsSold,
         avgTransaction: transactionCount > 0 ? dailyRevenue / transactionCount : 0,
         topProducts,
-        todayTransactions,
+        todayTransactions: recentTransactions,
         stockAlerts: itemsLow
       });
     } catch (error) {
@@ -1080,40 +1076,33 @@ app.use((req, res, next) => {
       today.setHours(0, 0, 0, 0);
 
       const mtd = new Date(today.getFullYear(), today.getMonth(), 1);
-
-      // Total Revenue MTD
-      // Use strftime for SQLite compatibility if needed, or stick to simple string compare
       const mtdStr = mtd.toISOString().split('T')[0];
-      
-      const mtdSales = await db('sales_orders')
-        .where('created_at', '>=', mtdStr)
-        .sum('total_amount as sum');
-      const totalRevenue = Number(mtdSales[0]?.sum || 0);
-
-      // Overall Revenue
-      const overallSales = await db('sales_orders').sum('total_amount as sum');
-      const totalRevenueOverall = Number(overallSales[0]?.sum || 0);
-
-      // Orders Today
       const todayStr = today.toISOString().split('T')[0];
-      const todaySales = await db('sales_orders')
-        .where('created_at', '>=', todayStr)
-        .count('id as count')
-        .sum('total_amount as sum');
-      
+
+      const [mtdSales, overallSales, todaySales, topProductRows] = await Promise.all([
+        db('sales_orders')
+          .where('created_at', '>=', mtdStr)
+          .sum('total_amount as sum'),
+        db('sales_orders').sum('total_amount as sum'),
+        db('sales_orders')
+          .where('created_at', '>=', todayStr)
+          .count('id as count')
+          .sum('total_amount as sum'),
+        db('sales_order_items')
+          .join('sales_orders', 'sales_order_items.order_id', 'sales_orders.id')
+          .join('inventory', 'sales_order_items.product_id', 'inventory.id')
+          .where('sales_orders.created_at', '>=', mtdStr)
+          .select('inventory.name')
+          .sum('sales_order_items.qty as total_qty')
+          .groupBy('inventory.id', 'inventory.name')
+          .orderBy('total_qty', 'desc')
+          .limit(1)
+      ]);
+
+      const totalRevenue = Number(mtdSales[0]?.sum || 0);
+      const totalRevenueOverall = Number(overallSales[0]?.sum || 0);
       const ordersToday = Number(todaySales[0]?.count || 0);
       const todayRevenue = Number(todaySales[0]?.sum || 0);
-
-      // Top Product MTD
-      const topProductRows = await db('sales_order_items')
-        .join('sales_orders', 'sales_order_items.order_id', 'sales_orders.id')
-        .join('inventory', 'sales_order_items.product_id', 'inventory.id')
-        .where('sales_orders.created_at', '>=', mtdStr)
-        .select('inventory.name')
-        .sum('sales_order_items.qty as total_qty')
-        .groupBy('inventory.id', 'inventory.name')
-        .orderBy('total_qty', 'desc')
-        .limit(1);
 
       res.json({
         totalRevenue,
@@ -1849,25 +1838,33 @@ app.use((req, res, next) => {
   // Production Batches
   app.get('/api/factory/dashboard', checkPermission('Production'), async (req, res) => {
     try {
-      const rawMaterialStats = await db('inventory')
-        .where('category', 'Raw Material')
-        .sum('stock as totalStock');
-      
-      const machineMaintenance = await db('machine_maintenance').select('*');
-      
-      const damageReports = await db('damage_reports').select('*');
-
-      // Aggregate actual output velocity based on production_batches completed today
       const now = new Date();
       const twentyFourHoursAgo = new Date(now.getTime() - 24 * 60 * 60 * 1000);
-      
-      const recentBatches = await db('production_batches')
-        .leftJoin('inventory', function() {
-          this.on('production_batches.product_id', '=', 'inventory.id');
-        })
-        .where('production_batches.status', 'Completed')
-        .andWhere('production_batches.completed_at', '>', twentyFourHoursAgo)
-        .select('production_batches.actual_qty', 'production_batches.completed_at', 'inventory.category as product_category', 'inventory.name as product_name');
+
+      const [
+        rawMaterialStats,
+        machineMaintenance,
+        damageReports,
+        recentBatches,
+        todayBatches
+      ] = await Promise.all([
+        db('inventory')
+          .where('category', 'Raw Material')
+          .sum('stock as totalStock'),
+        db('machine_maintenance').select('*'),
+        db('damage_reports').select('*'),
+        db('production_batches')
+          .leftJoin('inventory', function() {
+            this.on('production_batches.product_id', '=', 'inventory.id');
+          })
+          .where('production_batches.status', 'Completed')
+          .andWhere('production_batches.completed_at', '>', twentyFourHoursAgo)
+          .select('production_batches.actual_qty', 'production_batches.completed_at', 'inventory.category as product_category', 'inventory.name as product_name'),
+        db('production_batches')
+          .leftJoin('inventory', 'production_batches.product_id', 'inventory.id')
+          .where('production_batches.created_at', '>', twentyFourHoursAgo)
+          .select('production_batches.*', 'inventory.category as product_category')
+      ]);
       
       // Calculate real categories and targets
       const categoryAggregates: Record<string, { actual: number, target: number }> = {};
@@ -1880,12 +1877,6 @@ app.use((req, res, next) => {
         }
         categoryAggregates[cat].actual += (b.actual_qty || 0);
       });
-
-      // Get all active batches for today to set targets
-      const todayBatches = await db('production_batches')
-        .leftJoin('inventory', 'production_batches.product_id', 'inventory.id')
-        .where('production_batches.created_at', '>', twentyFourHoursAgo)
-        .select('production_batches.*', 'inventory.category as product_category');
 
       todayBatches.forEach(b => {
         const cat = b.product_category || 'Uncategorized';
@@ -2504,45 +2495,45 @@ app.use((req, res, next) => {
   // --- Phase 6: Reporting & Analytics Layer ---
   app.get('/api/analytics/dashboard', checkPermission('Dashboard'), async (req, res) => {
     try {
-      // 1. Total Stock Value
-      const stockValue = await db('inventory').select(db.raw('SUM(stock * price) as total')) as any[];
-      
-      // 2. Weekly Production Efficiency (Real calculation)
-      const efficiencyStats = await db('production_batches')
-        .where('status', 'Completed')
-        .where('completed_at', '>=', new Date(Date.now() - 7 * 86400000).toISOString())
-        .select(
-          db.raw('SUM(target_qty) as total_target'),
-          db.raw('SUM(actual_qty) as total_actual')
-        )
-        .first() as any;
+      const [
+        stockValue,
+        efficiencyStats,
+        productionStats,
+        topSellers,
+        lowStock
+      ] = await Promise.all([
+        db('inventory').select(db.raw('SUM(stock * price) as total')) as Promise<any[]>,
+        db('production_batches')
+          .where('status', 'Completed')
+          .where('completed_at', '>=', new Date(Date.now() - 7 * 86400000).toISOString())
+          .select(
+            db.raw('SUM(target_qty) as total_target'),
+            db.raw('SUM(actual_qty) as total_actual')
+          )
+          .first() as Promise<any>,
+        db('production_batches')
+          .select('status')
+          .count('* as count')
+          .groupBy('status'),
+        db('sales_order_items')
+          .join('inventory', 'sales_order_items.product_id', 'inventory.id')
+          .select('inventory.name')
+          .sum('sales_order_items.qty as total_qty')
+          .groupBy('inventory.id', 'inventory.name')
+          .orderBy('total_qty', 'desc')
+          .limit(5),
+        db('inventory')
+          .whereRaw(isPostgres ? 'stock < "minStock"' : 'stock < minStock')
+          .count('* as count')
+          .first()
+      ]);
 
       const productionEfficiency = efficiencyStats && efficiencyStats.total_target > 0 
         ? Math.round((efficiencyStats.total_actual / efficiencyStats.total_target) * 100)
         : 0;
 
-      const productionStats = await db('production_batches')
-        .select('status')
-        .count('* as count')
-        .groupBy('status');
-
-      // 3. Top Selling Items
-      const topSellers = await db('sales_order_items')
-        .join('inventory', 'sales_order_items.product_id', 'inventory.id')
-        .select('inventory.name')
-        .sum('sales_order_items.qty as total_qty')
-        .groupBy('inventory.id', 'inventory.name')
-        .orderBy('total_qty', 'desc')
-        .limit(5);
-
-      // 4. Low Stock Alerts
-      const lowStock = await db('inventory')
-        .whereRaw(isPostgres ? 'stock < "minStock"' : 'stock < minStock')
-        .count('* as count')
-        .first();
-
       res.json({
-        stockValue: stockValue[0].total || 0,
+        stockValue: stockValue[0]?.total || 0,
         productionEfficiency,
         productionStats,
         topSellers,

@@ -1,34 +1,27 @@
 import React, { useState, useEffect } from 'react';
-import { createPortal } from 'react-dom';
-import { motion, AnimatePresence } from 'motion/react';
 import { useAppContext } from '../store';
 import { 
   Download, 
   RotateCcw, 
   CheckCircle2, 
   AlertTriangle, 
-  PauseCircle, 
   ChevronRight,
   ChevronLeft,
   TrendingUp,
   Trash2,
-  Box,
   Factory as FactoryIcon,
-  Search,
   X,
-  Loader2,
-  PlusCircle
+  Loader2
 } from 'lucide-react';
 import { 
   PieChart,
   Pie,
   Cell,
   Tooltip,
-  ResponsiveContainer,
-  Legend
+  ResponsiveContainer
 } from 'recharts';
 import { Link } from 'react-router-dom';
-import { GlossyChartCard, GlassModal, GlassCircularGauge, GlassCapsuleBar, DashboardSkeleton } from '../components/GlassUI';
+import { GlossyChartCard, GlassModal, GlassCircularGauge, GlassCapsuleBar, TableSkeletonRows } from '../components/GlassUI';
 import { cachedJsonFetch, peekApiCache, invalidateApiCache } from '../lib/apiCache';
 
 export default function Factory() {
@@ -42,15 +35,6 @@ export default function Factory() {
   const [gaugeDarkTheme, setGaugeDarkThemeState] = useState<boolean>(() => {
     try {
       const saved = localStorage.getItem('ios26_gauge_dark_theme');
-      if (saved !== null) return saved === 'true';
-    } catch {
-      // ignore
-    }
-    return true;
-  });
-  const [wastageDarkTheme, setWastageDarkThemeState] = useState<boolean>(() => {
-    try {
-      const saved = localStorage.getItem('ios26_wastage_dark_theme');
       if (saved !== null) return saved === 'true';
     } catch {
       // ignore
@@ -71,17 +55,6 @@ export default function Factory() {
     });
   };
 
-  const toggleWastageTheme = () => {
-    setWastageDarkThemeState(prev => {
-      const next = !prev;
-      try {
-        localStorage.setItem('ios26_wastage_dark_theme', String(next));
-      } catch {
-        // ignore
-      }
-      return next;
-    });
-  };
   const itemsPerPage = 8;
 
   const [showCompleteModal, setShowCompleteModal] = useState(false);
@@ -103,11 +76,12 @@ export default function Factory() {
       setRefreshing(true);
       invalidateApiCache('/api/production');
       invalidateApiCache('/api/factory/dashboard');
+      invalidateApiCache('/api/analytics/dashboard');
     }
     try {
       const [batchesData, dashData] = await Promise.all([
-        cachedJsonFetch<any[]>('/api/production', { credentials: 'include' }, 20_000),
-        cachedJsonFetch<any>('/api/factory/dashboard', { credentials: 'include' }, 20_000)
+        cachedJsonFetch<any[]>('/api/production', { credentials: 'include' }, 60_000),
+        cachedJsonFetch<any>('/api/factory/dashboard', { credentials: 'include' }, 60_000)
       ]);
 
       setBatches(Array.isArray(batchesData) ? batchesData : []);
@@ -140,10 +114,8 @@ export default function Factory() {
       return;
     }
 
-    // Sort batches similar to the table display
     const sortedBatches = [...batches].sort((a, b) => Number(b.id) - Number(a.id));
 
-    // Build CSV content
     const headers = ['Batch #', 'Category', 'Product', 'Target Qty', 'Actual Qty', 'Wastage Qty', 'Damaged Qty', 'Status', 'Created At', 'Completed At'];
     const rows = sortedBatches.map(batch => [
       batch.batch_number,
@@ -163,7 +135,6 @@ export default function Factory() {
       ...rows.map(row => row.map(cell => `"${String(cell).replace(/"/g, '""')}"`).join(','))
     ].join('\n');
 
-    // Create download link
     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
@@ -178,11 +149,8 @@ export default function Factory() {
   const handleUpdateStatus = async (batch: any) => {
     if (!batch) return;
     const currentStatus = (batch.status || '').toLowerCase().trim();
-    
-    console.log('Update Status Triggered:', { id: batch.id, status: currentStatus, batch });
 
     if (currentStatus.includes('progress')) {
-      console.log('Opening Complete Modal for batch:', batch.batch_number);
       const targetQty = Number(batch.target_qty) || 0;
       const actualQty = Number(batch.actual_qty) || 0;
       
@@ -199,7 +167,6 @@ export default function Factory() {
 
     if (currentStatus === 'completed') return;
 
-    // Transition from Scheduled -> In Progress
     const nextStatus = currentStatus === 'scheduled' ? 'In Progress' : 'In Progress';
     
     try {
@@ -215,6 +182,7 @@ export default function Factory() {
       });
 
       if (response.ok) {
+        invalidateApiCache('/api/inventory');
         fetchData(true);
         showToast?.(`Batch status updated to ${nextStatus}`, 'success');
       } else {
@@ -245,9 +213,9 @@ export default function Factory() {
         body: JSON.stringify(payload)
       });
 
-      // ... previous functionality
       if (response.ok) {
         setShowCompleteModal(false);
+        invalidateApiCache('/api/inventory');
         fetchBatches();
         showToast?.('Batch completed successfully', 'success');
       } else {
@@ -295,10 +263,6 @@ export default function Factory() {
   const historicalTypes = Array.from(new Set((dashboardData?.damageReports || []).map((r: any) => r.type) as string[]));
   const availableTypes = Array.from(new Set([...defaultDamageTypes, ...historicalTypes]));
 
-  if (loading) {
-    return <DashboardSkeleton />;
-  }
-
   return (
     <>
       <div className="space-y-6 pb-12">
@@ -343,7 +307,13 @@ export default function Factory() {
         {/* Output Target Gauges & Velocity Graph */}
         <div className="col-span-12 grid grid-cols-1 lg:grid-cols-12 gap-6">
           <div className="lg:col-span-4 flex flex-col h-[480px]">
-            {(() => {
+            {loading ? (
+              <div className="h-full rounded-[32px] bg-white/[0.74] backdrop-blur-3xl border border-white/95 p-7 flex flex-col justify-between">
+                <div className="h-4 w-36 rounded-full bg-slate-200/80 animate-pulse" />
+                <div className="w-48 h-48 rounded-full border-[18px] border-slate-200/70 animate-pulse mx-auto" />
+                <div className="h-8 w-full rounded-full bg-slate-200/70 animate-pulse" />
+              </div>
+            ) : (() => {
               const targets = (dashboardData?.outputTargets && dashboardData.outputTargets.length > 0)
                 ? dashboardData.outputTargets
                 : [{ label: 'Daily Output', actual: 0, target: 5000 }];
@@ -370,35 +340,44 @@ export default function Factory() {
             })()}
           </div>
 
-          <GlossyChartCard
-            uid="factory-velocity"
-            className="lg:col-span-8"
-            title="Output Velocity"
-            subtitle="Real-time units produced by shift"
-            data={
-              (dashboardData?.velocityData || []).some((d: any) => Number(d.value) > 0)
-                ? dashboardData.velocityData
-                : [
-                    { time: '06:00', value: 18 },
-                    { time: '10:00', value: 46 },
-                    { time: '14:00', value: 32 },
-                    { time: '18:00', value: 54 },
-                    { time: '22:00', value: 28 },
-                    { time: '02:00', value: 16 }
-                  ]
-            }
-            xKey="time"
-            yKey="value"
-            valueLabel="In-Spec Output"
-            valueFormatter={(val) => `${Number(val).toLocaleString()} units`}
-            yTickFormatter={(val) => (val >= 1000 ? `${(val / 1000).toFixed(1)}k` : String(val))}
-            chartHeight={300}
-          />
+          {loading ? (
+            <div className="lg:col-span-8 rounded-[32px] bg-white/[0.74] backdrop-blur-3xl border border-white/95 p-7 flex flex-col justify-between h-[480px]">
+              <div>
+                <div className="h-5 w-44 rounded-full bg-slate-200/80 animate-pulse mb-2" />
+                <div className="h-3.5 w-64 rounded-full bg-slate-200/60 animate-pulse" />
+              </div>
+              <div className="h-[320px] w-full rounded-2xl bg-slate-200/50 animate-pulse" />
+            </div>
+          ) : (
+            <GlossyChartCard
+              uid="factory-velocity"
+              className="lg:col-span-8"
+              title="Output Velocity"
+              subtitle="Real-time units produced by shift"
+              data={
+                (dashboardData?.velocityData || []).some((d: any) => Number(d.value) > 0)
+                  ? dashboardData.velocityData
+                  : [
+                      { time: '06:00', value: 18 },
+                      { time: '10:00', value: 46 },
+                      { time: '14:00', value: 32 },
+                      { time: '18:00', value: 54 },
+                      { time: '22:00', value: 28 },
+                      { time: '02:00', value: 16 }
+                    ]
+              }
+              xKey="time"
+              yKey="value"
+              valueLabel="In-Spec Output"
+              valueFormatter={(val) => `${Number(val).toLocaleString()} units`}
+              yTickFormatter={(val) => (val >= 1000 ? `${(val / 1000).toFixed(1)}k` : String(val))}
+              chartHeight={300}
+            />
+          )}
         </div>
 
         {/* Output Targets Breakdown Chart — Apple iOS 26 Liquid Glass Donut */}
         <div className="col-span-12 lg:col-span-8 glass-card p-7 sm:p-8 rounded-[30px] space-y-6 flex flex-col justify-between relative overflow-hidden">
-          {/* Subtle ambient pastel glow behind donut */}
           <div className="pointer-events-none absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-72 h-72 rounded-full bg-gradient-to-tr from-sky-300/20 via-indigo-300/15 to-fuchsia-300/20 blur-3xl" />
 
           <div className="relative z-10 flex items-center justify-between gap-3.5 border-b border-slate-200/60 pb-5">
@@ -417,7 +396,18 @@ export default function Factory() {
             </span>
           </div>
 
-          {(() => {
+          {loading ? (
+            <div className="relative z-10 flex flex-col gap-5 py-4">
+              <div className="h-[220px] flex items-center justify-center">
+                <div className="w-48 h-48 rounded-full border-[28px] border-slate-200/70 animate-pulse" />
+              </div>
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                {Array.from({ length: 4 }).map((_, i) => (
+                  <div key={i} className="h-16 rounded-2xl bg-slate-200/60 animate-pulse" />
+                ))}
+              </div>
+            </div>
+          ) : (() => {
             const rawTargets = dashboardData?.outputTargets || [];
             const hasValidBreakdown =
               rawTargets.length >= 2 && rawTargets.some((t: any) => Number(t.actual) > 0);
@@ -442,12 +432,9 @@ export default function Factory() {
 
             return (
               <div className="relative z-10 flex flex-col gap-5">
-                {/* Donut Chart with Frosted Glass Center Readout */}
                 <div className="relative h-[245px] w-full flex items-center justify-center">
-                  {/* Recessed frosted glass ring track */}
                   <div className="pointer-events-none absolute w-[216px] h-[216px] rounded-full border-[34px] border-slate-200/45 shadow-[inset_0_2px_6px_rgba(15,23,42,0.06)]" />
 
-                  {/* Center Frosted Glass Hub */}
                   <div className="pointer-events-none absolute w-[124px] h-[124px] rounded-full bg-white/85 backdrop-blur-2xl border border-white shadow-[0_8px_24px_rgba(15,23,42,0.06),inset_0_1.5px_2px_rgba(255,255,255,1)] flex flex-col items-center justify-center text-center">
                     <span className="text-[10px] font-extrabold uppercase tracking-[0.14em] text-slate-400">
                       TOTAL YIELD
@@ -527,7 +514,6 @@ export default function Factory() {
                   </ResponsiveContainer>
                 </div>
 
-                {/* iOS 26 Frosted Glass Pill Legend */}
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 pt-1">
                   {pieData.map((item: any, index: number) => {
                     const val = Number(item.actual) || 0;
@@ -581,36 +567,45 @@ export default function Factory() {
             </div>
 
             <div className="max-h-[300px] overflow-y-auto pr-2 space-y-4">
-              {(dashboardData?.damageReports || [])
-                .reduce((acc: any, rep: any) => {
-                  const existing = acc.find((a: any) => a.type === rep.type);
-                  if (existing) existing.quantity += rep.quantity;
-                  else acc.push({ ...rep });
-                  return acc;
-                }, [])
-                .map((report: any, i: number) => {
-                  const isRed = report.type.includes('Crack') || report.type.includes('Failure');
-                  const dotColor = isRed ? 'bg-rose-500' : 'bg-[#0284c7]';
-                  const pct = Math.min(100, Math.max(14, (report.quantity / 200) * 100));
+              {loading ? (
+                Array.from({ length: 3 }).map((_, i) => (
+                  <div key={i} className="p-3.5 rounded-2xl bg-white/65 border border-white/85 space-y-2.5">
+                    <div className="h-4 w-36 rounded-full bg-slate-200/80 animate-pulse" />
+                    <div className="h-4 w-full rounded-full bg-slate-200/60 animate-pulse" />
+                  </div>
+                ))
+              ) : (
+                (dashboardData?.damageReports || [])
+                  .reduce((acc: any, rep: any) => {
+                    const existing = acc.find((a: any) => a.type === rep.type);
+                    if (existing) existing.quantity += rep.quantity;
+                    else acc.push({ ...rep });
+                    return acc;
+                  }, [])
+                  .map((report: any, i: number) => {
+                    const isRed = report.type.includes('Crack') || report.type.includes('Failure');
+                    const dotColor = isRed ? 'bg-rose-500' : 'bg-[#0284c7]';
+                    const pct = Math.min(100, Math.max(14, (report.quantity / 200) * 100));
 
-                  return (
-                    <div
-                      key={i}
-                      className="p-3.5 rounded-2xl bg-white/65 border border-white/85 shadow-[0_2px_8px_rgba(15,23,42,0.02)]"
-                    >
-                      <div className="flex justify-between items-center mb-2.5">
-                        <div className="flex items-center gap-2">
-                          <div className={`w-2 h-2 rounded-full ${dotColor}`} />
-                          <span className="text-[13.5px] font-semibold text-slate-800">{report.type}</span>
+                    return (
+                      <div
+                        key={i}
+                        className="p-3.5 rounded-2xl bg-white/65 border border-white/85 shadow-[0_2px_8px_rgba(15,23,42,0.02)]"
+                      >
+                        <div className="flex justify-between items-center mb-2.5">
+                          <div className="flex items-center gap-2">
+                            <div className={`w-2 h-2 rounded-full ${dotColor}`} />
+                            <span className="text-[13.5px] font-semibold text-slate-800">{report.type}</span>
+                          </div>
+                          <span className="text-[13px] font-bold text-slate-900 tabular-nums">
+                            {report.quantity} units
+                          </span>
                         </div>
-                        <span className="text-[13px] font-bold text-slate-900 tabular-nums">
-                          {report.quantity} units
-                        </span>
+                        <GlassCapsuleBar percentage={pct} darkMode={false} heightClass="h-4" />
                       </div>
-                      <GlassCapsuleBar percentage={pct} darkMode={false} heightClass="h-4" />
-                    </div>
-                  );
-                })}
+                    );
+                  })
+              )}
             </div>
 
             <button
@@ -634,7 +629,11 @@ export default function Factory() {
                 <p className="text-[12px] text-slate-500 font-medium">Real-time floor batches and stage progress</p>
               </div>
             </div>
-            <span className="text-[11px] font-bold text-slate-500 uppercase tracking-widest px-3 py-1 rounded-full bg-white/80 border border-white shadow-sm">{batches.length} Batches Active</span>
+            {loading ? (
+              <div className="h-6 w-28 rounded-full bg-slate-200/80 animate-pulse" />
+            ) : (
+              <span className="text-[11px] font-bold text-slate-500 uppercase tracking-widest px-3 py-1 rounded-full bg-white/80 border border-white shadow-sm">{batches.length} Batches Active</span>
+            )}
           </div>
           <div className="overflow-x-auto">
             <table className="w-full text-left">
@@ -651,9 +650,7 @@ export default function Factory() {
               </thead>
               <tbody className="text-[14px] divide-y divide-slate-100/80">
                 {loading ? (
-                  <tr>
-                    <td colSpan={7} className="px-8 py-10 text-center text-neutral-400">Loading factory floor data...</td>
-                  </tr>
+                  <TableSkeletonRows columns={7} rows={5} />
                 ) : batches.length === 0 ? (
                   <tr>
                     <td colSpan={7} className="px-8 py-10 text-center text-neutral-400 italic">No active production batches found.</td>
