@@ -9,7 +9,7 @@ import { ItemImage } from '../components/ItemImage';
 import { GlassSelect, GlassDatePicker, GlassModal } from '../components/GlassUI';
 import { motion, AnimatePresence } from 'motion/react';
 import { useAppContext } from '../store';
-import { cachedJsonFetch, invalidateApiCache } from '../lib/apiCache';
+import { cachedJsonFetch, peekApiCache, invalidateApiCache } from '../lib/apiCache';
 
 const steps = [
   { id: 1, label: 'DRAFT', status: 'active' },
@@ -35,14 +35,24 @@ export default function StockTransfer() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   
   const [showProductSelector, setShowProductSelector] = useState(false);
-  const [inventory, setInventory] = useState<any[]>([]);
+  const initialCachedInv =
+    peekApiCache<any[]>(`/api/inventory?warehouse=${encodeURIComponent('Main Factory (A-1)')}`, 60_000) ??
+    peekApiCache<any[]>('/api/inventory', 60_000);
+  const [inventory, setInventory] = useState<any[]>(() => Array.isArray(initialCachedInv) ? initialCachedInv : []);
   const [searchQuery, setSearchQuery] = useState('');
   const [loadingInventory, setLoadingInventory] = useState(false);
 
   useEffect(() => {
     if (showProductSelector) {
-      setLoadingInventory(true);
-      cachedJsonFetch<any[]>(`/api/inventory?warehouse=${encodeURIComponent(sourceWarehouse)}`, { credentials: 'include' }, 30_000)
+      const url = `/api/inventory?warehouse=${encodeURIComponent(sourceWarehouse)}`;
+      const cached = peekApiCache<any[]>(url, 60_000);
+      if (Array.isArray(cached)) {
+        setInventory(cached);
+        setLoadingInventory(false);
+      } else {
+        setLoadingInventory(true);
+      }
+      cachedJsonFetch<any[]>(url, { credentials: 'include' }, 60_000)
         .then(data => {
           setInventory(Array.isArray(data) ? data : []);
           setLoadingInventory(false);

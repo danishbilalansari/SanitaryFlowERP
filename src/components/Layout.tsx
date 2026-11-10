@@ -39,6 +39,8 @@ export default function Layout() {
   useEffect(() => {
     if (!currentUser) return;
     const warmEndpoints = [
+      '/api/sales',
+      '/api/sales/stats',
       '/api/inventory',
       '/api/customers',
       '/api/reports/customer-summary-city-wise',

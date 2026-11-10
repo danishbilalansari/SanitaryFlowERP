@@ -26,11 +26,14 @@ import { Link } from 'react-router-dom';
 import { motion } from 'motion/react';
 import { useAppContext } from '../store';
 import { TableSkeletonRows, GlassEmptyState } from '../components/GlassUI';
+import { cachedJsonFetch, peekApiCache, invalidateApiCache } from '../lib/apiCache';
 
 export default function Sales() {
   const { showToast, currentUser, currency } = useAppContext();
-  const [sales, setSales] = useState<any[]>([]);
-  const [stats, setStats] = useState({
+  const cachedSales = peekApiCache<any[]>('/api/sales', 60_000);
+  const cachedStats = peekApiCache<any>('/api/sales/stats', 60_000);
+  const [sales, setSales] = useState<any[]>(() => Array.isArray(cachedSales) ? cachedSales : []);
+  const [stats, setStats] = useState(() => cachedStats || {
     totalRevenue: 0,
     ordersToday: 0,
     todayRevenue: 0,
@@ -38,7 +41,7 @@ export default function Sales() {
     topProductQty: 0
   });
 
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState<boolean>(() => !(Array.isArray(cachedSales) && cachedStats));
   const [activeTab, setActiveTab] = useState('All Sales');
   const [searchQuery, setSearchQuery] = useState('');
   const [dateRange, setDateRange] = useState('Last 30 Days');
@@ -46,30 +49,28 @@ export default function Sales() {
   const [showDateMenu, setShowDateMenu] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 8;
-  
-  useEffect(() => {
+
+  const fetchSalesData = (forceRefresh = false) => {
+    if (forceRefresh) {
+      invalidateApiCache('/api/sales');
+      invalidateApiCache('/api/sales/stats');
+    }
     Promise.all([
-      fetch('/api/sales', { credentials: 'include' }).then(async res => {
-        if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
-        const contentType = res.headers.get('content-type');
-        if (!contentType || !contentType.includes('application/json')) throw new Error('Not JSON response');
-        return res.json();
-      }),
-      fetch('/api/sales/stats', { credentials: 'include' }).then(async res => {
-        if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
-        const contentType = res.headers.get('content-type');
-        if (!contentType || !contentType.includes('application/json')) throw new Error('Not JSON response');
-        return res.json();
-      })
+      cachedJsonFetch<any[]>('/api/sales', { credentials: 'include' }, 60_000),
+      cachedJsonFetch<any>('/api/sales/stats', { credentials: 'include' }, 60_000)
     ]).then(([salesData, statsData]) => {
-      setSales(salesData || []);
-      setStats(statsData);
+      setSales(Array.isArray(salesData) ? salesData : []);
+      if (statsData) setStats(statsData);
       setLoading(false);
     }).catch(err => {
       console.error('Failed to fetch sales data:', err);
       showToast('Failed to load sales data', 'error');
       setLoading(false);
     });
+  };
+  
+  useEffect(() => {
+    fetchSalesData();
   }, []);
   
   const handlePrintStatement = () => {
@@ -241,13 +242,22 @@ export default function Sales() {
               </div>
             </div>
             <div>
-              <h3 className="text-2xl sm:text-3xl font-extrabold tracking-tight leading-none text-slate-900 tabular-nums">
-                {kpi.value}
-              </h3>
-              {kpi.subValue && (
-                <p className="text-xs font-semibold mt-2 text-blue-600">
-                  {kpi.subValue}
-                </p>
+              {loading ? (
+                <>
+                  <div className="h-8 w-36 rounded-full bg-slate-200/80 animate-pulse" />
+                  <div className="h-4 w-28 rounded-full bg-slate-200/70 animate-pulse mt-2.5" />
+                </>
+              ) : (
+                <>
+                  <h3 className="text-2xl sm:text-3xl font-extrabold tracking-tight leading-none text-slate-900 tabular-nums">
+                    {kpi.value}
+                  </h3>
+                  {kpi.subValue && (
+                    <p className="text-xs font-semibold mt-2 text-blue-600">
+                      {kpi.subValue}
+                    </p>
+                  )}
+                </>
               )}
             </div>
           </motion.div>
@@ -440,8 +450,13 @@ export default function Sales() {
                              }).then(async res => {
                                const contentType = res.headers.get('content-type');
                                if (res.ok) { 
+                                 invalidateApiCache('/api/sales');
+                                 invalidateApiCache('/api/customers');
+                                 invalidateApiCache('/api/ledger');
+                                 invalidateApiCache('/api/reports/customer-summary-city-wise');
+                                 invalidateApiCache('/api/shop/dashboard');
                                  showToast('Sale completed successfully!', 'success');
-                                 setTimeout(() => window.location.reload(), 500);
+                                 fetchSalesData(true);
                                } else {
                                  const text = await res.text();
                                  let errorMsg = 'Failed to complete sale';
@@ -509,8 +524,6 @@ export default function Sales() {
           </div>
         )}
       </div>
-
-
     </div>
   );
 }

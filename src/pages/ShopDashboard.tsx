@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
-import { UserPlus, ShoppingCart, Banknote, Package, BarChart3, AlertTriangle, ArrowRight, PackageOpen, ChevronRight } from 'lucide-react';
+import { Package, AlertTriangle, PackageOpen, ChevronRight } from 'lucide-react';
 import { Link } from 'react-router-dom';
-import { DashboardSkeleton, TableSkeletonRows, GlassEmptyState } from '../components/GlassUI';
+import { TableSkeletonRows, GlassEmptyState } from '../components/GlassUI';
 import { cachedJsonFetch, peekApiCache } from '../lib/apiCache';
 
 interface DashboardData {
@@ -43,10 +43,9 @@ export default function ShopDashboard() {
       });
   }, []);
 
-  if (loading || !data) return <DashboardSkeleton />;
-
   const totalDisplay = inventory.reduce((acc, item) => acc + (item.display_stock || 0), 0);
   const totalWarehouse = inventory.reduce((acc, item) => acc + (item.warehouse_stock || 0), 0);
+  const stockAlerts = data?.stockAlerts || [];
 
   return (
     <div className="space-y-8 animate-in fade-in duration-500 pb-12">
@@ -74,7 +73,11 @@ export default function ShopDashboard() {
           </div>
           <div>
             <p className="text-[11px] font-bold text-slate-400 uppercase tracking-widest mb-1">TOTAL DISPLAY STOCK</p>
-            <h3 className="text-[32px] font-bold text-slate-900 tracking-tight">{totalDisplay.toLocaleString()} <span className="text-[16px] font-normal text-slate-500">Items</span></h3>
+            {loading ? (
+              <div className="h-9 w-36 rounded-full bg-slate-200/80 animate-pulse mt-1" />
+            ) : (
+              <h3 className="text-[32px] font-bold text-slate-900 tracking-tight tabular-nums">{totalDisplay.toLocaleString()} <span className="text-[16px] font-normal text-slate-500">Items</span></h3>
+            )}
           </div>
         </div>
 
@@ -87,19 +90,23 @@ export default function ShopDashboard() {
           </div>
           <div>
             <p className="text-[11px] font-bold text-slate-400 uppercase tracking-widest mb-1">TOTAL WAREHOUSE STOCK</p>
-            <h3 className="text-[32px] font-bold text-slate-900 tracking-tight">{totalWarehouse.toLocaleString()} <span className="text-[16px] font-normal text-slate-500">Items</span></h3>
+            {loading ? (
+              <div className="h-9 w-36 rounded-full bg-slate-200/80 animate-pulse mt-1" />
+            ) : (
+              <h3 className="text-[32px] font-bold text-slate-900 tracking-tight tabular-nums">{totalWarehouse.toLocaleString()} <span className="text-[16px] font-normal text-slate-500">Items</span></h3>
+            )}
           </div>
         </div>
       </div>
 
       {/* Stock Alerts & Table Section */}
       <div className="space-y-6">
-        {data.stockAlerts.length > 0 && (
+        {!loading && stockAlerts.length > 0 && (
           <div className="bg-red-50/90 border border-red-200/80 p-4 rounded-2xl flex items-center justify-between">
             <div className="flex items-center gap-3">
               <AlertTriangle className="text-red-500 w-5 h-5" />
               <p className="text-[14px] font-medium text-red-800">
-                <span className="font-bold">{data.stockAlerts.length} items</span> are below minimum threshold in the shop.
+                <span className="font-bold">{stockAlerts.length} items</span> are below minimum threshold in the shop.
               </p>
             </div>
           </div>

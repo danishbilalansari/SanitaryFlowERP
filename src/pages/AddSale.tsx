@@ -26,14 +26,17 @@ import {
   Package
 } from 'lucide-react';
 import { useAppContext } from '../store';
+import { cachedJsonFetch, peekApiCache, invalidateApiCache } from '../lib/apiCache';
 
 export default function AddSale() {
   const { showToast, currency } = useAppContext();
   const navigate = useNavigate();
 
-  const [inventory, setInventory] = useState<any[]>([]);
-  const [customers, setCustomers] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
+  const cachedInv = peekApiCache<any[]>('/api/inventory', 60_000);
+  const cachedCust = peekApiCache<any[]>('/api/customers', 60_000);
+  const [inventory, setInventory] = useState<any[]>(() => Array.isArray(cachedInv) ? cachedInv : []);
+  const [customers, setCustomers] = useState<any[]>(() => Array.isArray(cachedCust) ? cachedCust : []);
+  const [loading, setLoading] = useState<boolean>(() => !(Array.isArray(cachedInv) && Array.isArray(cachedCust)));
   const [selectedItems, setSelectedItems] = useState<any[]>([]);
   const [selectedCustomerId, setSelectedCustomerId] = useState<number | ''>('');
   const [discount, setDiscount] = useState<number>(0);
@@ -44,28 +47,19 @@ export default function AddSale() {
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
-    const fetchData = async () => {
-      try {
-        const [invRes, custRes] = await Promise.all([
-          fetch('/api/inventory'),
-          fetch('/api/customers')
-        ]);
-        
-        if (!invRes.ok) throw new Error('Inventory fetch failed');
-        if (!custRes.ok) throw new Error('Customers fetch failed');
-        
-        const invData = await invRes.text();
-        const custData = await custRes.text();
-        
-        setInventory(invData ? JSON.parse(invData) : []);
-        setCustomers(custData ? JSON.parse(custData) : []);
+    Promise.all([
+      cachedJsonFetch<any[]>('/api/inventory', { credentials: 'include' }, 60_000),
+      cachedJsonFetch<any[]>('/api/customers', { credentials: 'include' }, 60_000)
+    ])
+      .then(([invData, custData]) => {
+        setInventory(Array.isArray(invData) ? invData : []);
+        setCustomers(Array.isArray(custData) ? custData : []);
         setLoading(false);
-      } catch (err) {
+      })
+      .catch(err => {
         console.error('Fetch error:', err);
         setLoading(false);
-      }
-    };
-    fetchData();
+      });
   }, []);
 
   const filteredItems = inventory.filter(item => 
@@ -161,6 +155,12 @@ export default function AddSale() {
       });
 
       if (response.ok) {
+        invalidateApiCache('/api/sales');
+        invalidateApiCache('/api/inventory');
+        invalidateApiCache('/api/customers');
+        invalidateApiCache('/api/ledger');
+        invalidateApiCache('/api/reports/customer-summary-city-wise');
+        invalidateApiCache('/api/shop/dashboard');
         showToast('Sale completed successfully!', 'success');
         navigate('/sales');
       } else {

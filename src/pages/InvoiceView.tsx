@@ -3,6 +3,8 @@ import { formatCurrency } from '../lib/currency';
 import React, { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { Printer, FileText, ArrowLeft, ChevronRight } from 'lucide-react';
+import { DashboardSkeleton } from '../components/GlassUI';
+import { cachedJsonFetch, peekApiCache } from '../lib/apiCache';
 
 export default function InvoiceView() {
   const { 
@@ -14,14 +16,15 @@ export default function InvoiceView() {
     companyPhone 
   } = useAppContext();
   const { id } = useParams<{ id: string }>();
-  const [sale, setSale] = useState<any>(null);
-  const [loading, setLoading] = useState(true);
+  const cachedSale = id ? peekApiCache<any>(`/api/sales/${id}`, 60_000) : undefined;
+  const [sale, setSale] = useState<any>(() => cachedSale && !cachedSale.error ? cachedSale : null);
+  const [loading, setLoading] = useState<boolean>(() => !(cachedSale && !cachedSale.error));
   
   useEffect(() => {
-    fetch(`/api/sales/${id}`)
-      .then(res => res.json())
+    if (!id) return;
+    cachedJsonFetch<any>(`/api/sales/${id}`, { credentials: 'include' }, 60_000)
       .then(data => {
-        if (!data.error) setSale(data);
+        if (data && !data.error) setSale(data);
         setLoading(false);
       })
       .catch(err => {
@@ -31,7 +34,7 @@ export default function InvoiceView() {
   }, [id]);
 
   if (loading) {
-     return <div className="flex justify-center py-12 text-neutral-500">Loading invoice...</div>;
+     return <DashboardSkeleton />;
   }
 
   if (!sale) {

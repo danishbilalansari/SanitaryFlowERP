@@ -82,12 +82,18 @@ export default function TransferHistory() {
   };
 
   const fetchTransferDetails = async (id: number) => {
-    try {
-      const res = await fetch(`/api/inventory/transfers/${id}`);
-      if (!res.ok) throw new Error('Failed to fetch details');
-      const data = await res.json();
-      setSelectedTransfer(data);
+    const url = `/api/inventory/transfers/${id}`;
+    const cached = peekApiCache<Transfer>(url, 60_000);
+    if (cached) {
+      setSelectedTransfer(cached);
       setIsModalOpen(true);
+    }
+    try {
+      const data = await cachedJsonFetch<Transfer>(url, { credentials: 'include' }, 60_000);
+      if (data) {
+        setSelectedTransfer(data);
+        setIsModalOpen(true);
+      }
     } catch (err) {
       console.error(err);
     }

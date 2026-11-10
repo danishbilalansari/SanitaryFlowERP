@@ -1,28 +1,19 @@
 import React, { useState, useEffect } from 'react';
 import { 
   ArrowLeft, 
-  Search, 
-  Bell, 
-  HelpCircle, 
   Edit, 
-  Settings2, 
-  History, 
   ShoppingCart, 
   Factory, 
   Truck,
-  ChevronDown, 
-  Filter,
-  Settings,
-  MoreVertical,
-  Package,
   ChevronRight
 } from 'lucide-react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { ItemImage } from '../components/ItemImage';
-import { GlossyChartCard, GlassSelect, GlassPillTabs, GlassPagination, GlassModal } from '../components/GlassUI';
+import { GlossyChartCard, GlassSelect, GlassPillTabs, GlassPagination, GlassModal, DashboardSkeleton } from '../components/GlassUI';
 import { motion } from 'motion/react';
 import { useAppContext } from '../store';
 import { formatCurrency } from '../lib/currency';
+import { cachedJsonFetch, peekApiCache, invalidateApiCache } from '../lib/apiCache';
 
 interface InventoryItem {
   id: number;
@@ -47,50 +38,59 @@ export default function InventoryDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
   const { showToast, currency } = useAppContext();
-    const [item, setItem] = useState<InventoryItem | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [transactions, setTransactions] = useState<any[]>([]);
+
+  const cachedItem = id
+    ? (peekApiCache<InventoryItem>(`/api/inventory/${id}`, 60_000) ??
+       peekApiCache<InventoryItem[]>('/api/inventory', 60_000)?.find(i => String(i.id) === String(id)) ??
+       null)
+    : null;
+  const cachedTrends = id ? peekApiCache<any[]>(`/api/inventory/${id}/trends`, 60_000) : undefined;
+  const cachedDist = id ? peekApiCache<any[]>(`/api/inventory/${id}/distribution`, 60_000) : undefined;
+  const cachedTx = id ? peekApiCache<any[]>(`/api/inventory/${id}/transactions?type=All`, 60_000) : undefined;
+
+  const [item, setItem] = useState<InventoryItem | null>(() => cachedItem);
+  const [loading, setLoading] = useState<boolean>(() => !cachedItem);
+  const [transactions, setTransactions] = useState<any[]>(() => Array.isArray(cachedTx) ? cachedTx : []);
   const [transactionType, setTransactionType] = useState('All');
-  const [trendData, setTrendData] = useState<any[]>([]);
-  const [loadingHistory, setLoadingHistory] = useState(false);
-  const [distribution, setDistribution] = useState<any[]>([]);
+  const [trendData, setTrendData] = useState<any[]>(() => Array.isArray(cachedTrends) ? cachedTrends : []);
+  const [loadingHistory, setLoadingHistory] = useState<boolean>(() => !Array.isArray(cachedTx));
+  const [distribution, setDistribution] = useState<any[]>(() => Array.isArray(cachedDist) ? cachedDist : []);
   const [historyPage, setHistoryPage] = useState(1);
   const historyPerPage = 6;
 
-  const fetchTrends = () => {
-    fetch(`/api/inventory/${id}/trends`)
-      .then(async res => {
-        if (!res.ok) throw new Error('Trends fetch failed');
-        const text = await res.text();
-        return text ? JSON.parse(text) : [];
-      })
-      .then(data => setTrendData(data))
+  const fetchTrends = (force = false) => {
+    if (!id) return;
+    const url = `/api/inventory/${id}/trends`;
+    if (force) invalidateApiCache(url);
+    cachedJsonFetch<any[]>(url, { credentials: 'include' }, 60_000)
+      .then(data => setTrendData(Array.isArray(data) ? data : []))
       .catch(err => console.error(err));
   };
 
-  const fetchDistribution = () => {
-    fetch(`/api/inventory/${id}/distribution`)
-      .then(async res => {
-        if (!res.ok) throw new Error('Distribution fetch failed');
-        const text = await res.text();
-        return text ? JSON.parse(text) : [];
-      })
-      .then(data => setDistribution(data))
+  const fetchDistribution = (force = false) => {
+    if (!id) return;
+    const url = `/api/inventory/${id}/distribution`;
+    if (force) invalidateApiCache(url);
+    cachedJsonFetch<any[]>(url, { credentials: 'include' }, 60_000)
+      .then(data => setDistribution(Array.isArray(data) ? data : []))
       .catch(err => console.error(err));
   };
 
-  const fetchHistory = (type: string) => {
-    setLoadingHistory(true);
-    // Fetch full history so client-side pagination can paginate seamlessly across all records
+  const fetchHistory = (type: string, force = false) => {
+    if (!id) return;
     const url = `/api/inventory/${id}/transactions?type=${type}`;
-    fetch(url)
-      .then(async res => {
-        if (!res.ok) throw new Error('History fetch failed');
-        const text = await res.text();
-        return text ? JSON.parse(text) : [];
-      })
+    if (force) invalidateApiCache(url);
+    const cached = peekApiCache<any[]>(url, 60_000);
+    if (Array.isArray(cached) && !force) {
+      setTransactions(cached);
+      setHistoryPage(1);
+      setLoadingHistory(false);
+    } else {
+      setLoadingHistory(true);
+    }
+    cachedJsonFetch<any[]>(url, { credentials: 'include' }, 60_000)
       .then(data => {
-        setTransactions(data);
+        setTransactions(Array.isArray(data) ? data : []);
         setHistoryPage(1);
         setLoadingHistory(false);
       })
@@ -101,14 +101,10 @@ export default function InventoryDetail() {
   };
 
   useEffect(() => {
-    fetch(`/api/inventory/${id}`)
-      .then(async res => {
-        if (!res.ok) throw new Error('Item fetch failed');
-        const text = await res.text();
-        return text ? JSON.parse(text) : null;
-      })
+    if (!id) return;
+    cachedJsonFetch<InventoryItem>(`/api/inventory/${id}`, { credentials: 'include' }, 60_000)
       .then(data => {
-        setItem(data);
+        if (data) setItem(data);
         setLoading(false);
       })
       .catch(err => {
@@ -124,8 +120,8 @@ export default function InventoryDetail() {
     fetchTrends();
     const interval = setInterval(() => {
       if (typeof document !== 'undefined' && document.visibilityState === 'hidden') return;
-      fetchTrends();
-    }, 60_000); // Refresh trends every 60 seconds when tab is visible
+      fetchTrends(true);
+    }, 60_000);
     return () => clearInterval(interval);
   }, [id]);
 
@@ -149,13 +145,15 @@ export default function InventoryDetail() {
         body: JSON.stringify({ id: item?.id, ...adjustment })
       });
       if (res.ok) {
+        invalidateApiCache('/api/inventory');
+        invalidateApiCache('/api/shop/dashboard');
         showToast('Inventory adjusted successfully', 'success');
         const text = await res.text();
         const data = text ? JSON.parse(text) : {};
         if (item) setItem({ ...item, stock: data.newStock });
         setShowAdjust(false);
-        fetchHistory(transactionType);
-        fetchTrends();
+        fetchHistory(transactionType, true);
+        fetchTrends(true);
       } else {
         const errData = await res.json().catch(() => ({}));
         showToast(errData.error || 'Adjustment failed', 'error');
@@ -190,19 +188,15 @@ export default function InventoryDetail() {
         })
       });
       if (res.ok) {
+        invalidateApiCache('/api/inventory');
+        invalidateApiCache('/api/shop/dashboard');
         showToast('Stock transfer successful', 'success');
         setShowTransfer(false);
-        fetchHistory(transactionType);
-        fetchDistribution();
-        fetchTrends();
-        // Refresh item main stock too
-        fetch(`/api/inventory/${id}`)
-          .then(async r => {
-            if (!r.ok) throw new Error('Refresh failed');
-            const text = await r.text();
-            return text ? JSON.parse(text) : null;
-          })
-          .then(setItem)
+        fetchHistory(transactionType, true);
+        fetchDistribution(true);
+        fetchTrends(true);
+        cachedJsonFetch<InventoryItem>(`/api/inventory/${id}`, { credentials: 'include' }, 30_000)
+          .then(data => { if (data) setItem(data); })
           .catch(err => console.error('Error refreshing item:', err));
       } else {
         const errData = await res.json().catch(() => ({}));
@@ -217,11 +211,7 @@ export default function InventoryDetail() {
   };
 
   if (loading) {
-    return (
-      <div className="flex items-center justify-center min-h-[60vh]">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#006397]"></div>
-      </div>
-    );
+    return <DashboardSkeleton />;
   }
 
   if (!item) {
@@ -335,13 +325,13 @@ export default function InventoryDetail() {
               <div>
                 <p className="text-[11px] font-bold text-slate-400 uppercase tracking-widest mb-1.5">On Hand</p>
                 <p className={`text-[28px] font-extrabold leading-none ${item.stock < item.minStock ? 'text-rose-500' : 'text-slate-900'}`}>
-                  {item.stock.toLocaleString()} <span className="text-[13px] font-semibold text-slate-400 ml-1">units</span>
+                  {(item.stock ?? 0).toLocaleString()} <span className="text-[13px] font-semibold text-slate-400 ml-1">units</span>
                 </p>
               </div>
               <div>
                 <p className="text-[11px] font-bold text-slate-400 uppercase tracking-widest mb-1.5">Safety Stock</p>
                 <p className="text-[28px] font-extrabold text-[#0284c7] leading-none">
-                  {item.minStock} <span className="text-[13px] font-semibold text-slate-400 ml-1">units</span>
+                  {item.minStock ?? 0} <span className="text-[13px] font-semibold text-slate-400 ml-1">units</span>
                 </p>
               </div>
               <div>

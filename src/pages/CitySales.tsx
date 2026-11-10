@@ -8,17 +8,25 @@ import {
 } from 'lucide-react';
 import { useAppContext } from '../store';
 import { Link } from 'react-router-dom';
+import { cachedJsonFetch, peekApiCache } from '../lib/apiCache';
 
 export default function CitySales() {
-  const { sales, customers, currency } = useAppContext();
+  const { currency, showToast } = useAppContext();
 
-  const [cityData, setCityData] = useState<any[]>([]);
+  const cachedCityData = peekApiCache<any[]>('/api/reports/customer-summary-city-wise', 60_000);
+  const [cityData, setCityData] = useState<any[]>(() => Array.isArray(cachedCityData) ? cachedCityData : []);
+  const [loading, setLoading] = useState<boolean>(() => !Array.isArray(cachedCityData));
 
   useEffect(() => {
-    fetch('/api/reports/customer-summary-city-wise')
-      .then(res => res.json())
-      .then(data => setCityData(data))
-      .catch(console.error);
+    cachedJsonFetch<any[]>('/api/reports/customer-summary-city-wise', { credentials: 'include' }, 60_000)
+      .then(data => {
+        setCityData(Array.isArray(data) ? data : []);
+        setLoading(false);
+      })
+      .catch(err => {
+        console.error(err);
+        setLoading(false);
+      });
   }, []);
 
   const cityTracking: any[] = Object.values(cityData.reduce((acc, curr) => {
@@ -28,14 +36,12 @@ export default function CitySales() {
     }
     const sales = Number(curr.total_sales) || 0;
     acc[city].totalRevenue += sales;
-    // Assuming we don't have orderCount per customer in this API, let's just use 1 or count customers
     acc[city].orderCount += 1;
     acc[city].customers.push(curr);
     return acc;
   }, {} as Record<string, any>));
 
   const sortedTopCities = [...cityTracking].sort((a, b) => b.totalRevenue - a.totalRevenue);
-  const { showToast } = useAppContext();
 
   const handleExport = () => {
     if (!cityTracking || cityTracking.length === 0) {
@@ -115,7 +121,11 @@ export default function CitySales() {
             </div>
           </div>
           <div className="flex flex-col gap-3 overflow-y-auto pr-1">
-             {sortedTopCities.slice(0, 6).map((cityData, index) => (
+             {loading ? (
+               Array.from({ length: 4 }).map((_, idx) => (
+                 <div key={idx} className="h-12 rounded-2xl bg-slate-200/70 animate-pulse" />
+               ))
+             ) : sortedTopCities.slice(0, 6).map((cityData, index) => (
                <div key={cityData.city} className="flex items-center justify-between p-3.5 bg-white/70 rounded-2xl border border-white shadow-[0_2px_8px_rgba(15,23,42,0.03)] hover:bg-white transition-all">
                   <div className="flex items-center gap-3.5">
                     <span className="text-[15px] font-bold text-[#0284c7] opacity-60 w-6">0{index+1}</span>
@@ -134,10 +144,19 @@ export default function CitySales() {
               <h3 className="text-[18px] font-bold text-slate-900 tracking-tight">Detailed Performance Ledger</h3>
               <p className="text-[13px] text-slate-500 font-medium">Breakdown of customer sales and balance by region</p>
             </div>
-            <p className="text-[11px] font-bold text-slate-500 uppercase tracking-widest px-3 py-1 rounded-full bg-white/80 border border-white shadow-sm">{cityTracking.length} Cities Covered</p>
+            {loading ? (
+              <div className="h-6 w-28 rounded-full bg-slate-200/80 animate-pulse" />
+            ) : (
+              <p className="text-[11px] font-bold text-slate-500 uppercase tracking-widest px-3 py-1 rounded-full bg-white/80 border border-white shadow-sm">{cityTracking.length} Cities Covered</p>
+            )}
           </div>
 
-          {cityTracking.map((cityData) => (
+          {loading ? (
+            <div className="glass-card rounded-[28px] p-8 space-y-4">
+              <div className="h-8 w-44 rounded-full bg-slate-200/80 animate-pulse" />
+              <div className="h-32 w-full rounded-2xl bg-slate-200/60 animate-pulse" />
+            </div>
+          ) : cityTracking.map((cityData) => (
             <div key={cityData.city} className="glass-table-container rounded-[28px] overflow-hidden flex flex-col">
               <div className="bg-white/40 backdrop-blur-md border-b border-slate-200/60 px-7 py-4 flex justify-between items-center">
                  <h3 className="text-[16px] font-bold text-slate-900 flex items-center gap-2.5">
@@ -189,7 +208,7 @@ export default function CitySales() {
               </div>
             </div>
           ))}
-          {cityTracking.length === 0 && (
+          {!loading && cityTracking.length === 0 && (
             <div className="p-12 text-center text-slate-500 glass-card rounded-[28px]">
               No city sales data available.
             </div>

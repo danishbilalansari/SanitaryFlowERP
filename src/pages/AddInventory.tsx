@@ -53,7 +53,10 @@ export default function AddInventory() {
   const { showToast, currency } = useAppContext();
   const navigate = useNavigate();
 
-  const cachedItem = isEdit && id ? peekApiCache<any>(`/api/inventory/${id}`, 60_000) : undefined;
+  const cachedItem = isEdit && id
+    ? (peekApiCache<any>(`/api/inventory/${id}`, 60_000) ??
+       peekApiCache<any[]>('/api/inventory', 60_000)?.find((i: any) => String(i.id) === String(id)))
+    : undefined;
   const [formData, setFormData] = useState(() =>
     cachedItem
       ? mapInventoryToForm(cachedItem)
