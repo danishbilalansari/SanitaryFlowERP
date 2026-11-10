@@ -3,7 +3,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { ArrowLeft, CheckCircle2, ChevronRight, Search, Factory, Package } from 'lucide-react';
 import { useAppContext } from '../store';
 import { GlassSelect } from '../components/GlassUI';
-import { cachedJsonFetch } from '../lib/apiCache';
+import { cachedJsonFetch, invalidateApiCache } from '../lib/apiCache';
 
 export default function AddFactoryBatch() {
   const { showToast } = useAppContext();
@@ -91,6 +91,8 @@ export default function AddFactoryBatch() {
       });
 
       if (response.ok) {
+        invalidateApiCache('/api/production');
+        invalidateApiCache('/api/factory/dashboard');
         showToast('New production batch started!', 'success');
         navigate('/factory');
       } else {

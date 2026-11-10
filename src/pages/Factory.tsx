@@ -28,7 +28,8 @@ import {
   Legend
 } from 'recharts';
 import { Link } from 'react-router-dom';
-import { GlossyChartCard, GlassModal, GlassCircularGauge, GlassCapsuleBar } from '../components/GlassUI';
+import { GlossyChartCard, GlassModal, GlassCircularGauge, GlassCapsuleBar, DashboardSkeleton } from '../components/GlassUI';
+import { cachedJsonFetch, invalidateApiCache } from '../lib/apiCache';
 
 export default function Factory() {
   const [batches, setBatches] = useState<any[]>([]);
@@ -96,26 +97,24 @@ export default function Factory() {
   const { showToast } = useAppContext();
 
   const fetchData = async (isManual = false) => {
-    if (isManual) setRefreshing(true);
+    if (isManual) {
+      setRefreshing(true);
+      invalidateApiCache('/api/production');
+      invalidateApiCache('/api/factory/dashboard');
+    }
     try {
-      const [batchesRes, dashRes] = await Promise.all([
-        fetch('/api/production', { credentials: 'include' }),
-        fetch('/api/factory/dashboard', { credentials: 'include' })
+      const [batchesData, dashData] = await Promise.all([
+        cachedJsonFetch<any[]>('/api/production', { credentials: 'include' }, 20_000),
+        cachedJsonFetch<any>('/api/factory/dashboard', { credentials: 'include' }, 20_000)
       ]);
-      
-      if (batchesRes.ok) {
-        const text = await batchesRes.text();
-        const data = text ? JSON.parse(text) : [];
-        setBatches(Array.isArray(data) ? data : []);
+
+      setBatches(Array.isArray(batchesData) ? batchesData : []);
+      if (dashData) {
+        setDashboardData(dashData);
       }
-      
-      if (dashRes.ok) {
-        setDashboardData(await dashRes.json());
-      }
-      
+
       setLoading(false);
       if (isManual) {
-        // Quick delay for visual feedback
         setTimeout(() => setRefreshing(false), 600);
       }
     } catch (error) {
@@ -279,7 +278,7 @@ export default function Factory() {
       if (response.ok) {
         setShowDamageModal(false);
         setDamageForm({ type: 'Thermal Cracks', customType: '', quantity: 0, notes: '' });
-        fetchData();
+        fetchData(true);
         showToast?.('Damage report logged successfully', 'success');
       } else {
         showToast?.('Failed to log damage report', 'error');
@@ -293,6 +292,10 @@ export default function Factory() {
   const defaultDamageTypes = ['Thermal Cracks', 'Glaze Defects', 'Structural Failure'];
   const historicalTypes = Array.from(new Set((dashboardData?.damageReports || []).map((r: any) => r.type) as string[]));
   const availableTypes = Array.from(new Set([...defaultDamageTypes, ...historicalTypes]));
+
+  if (loading) {
+    return <DashboardSkeleton />;
+  }
 
   return (
     <>
@@ -341,7 +344,7 @@ export default function Factory() {
             {(() => {
               const targets = (dashboardData?.outputTargets && dashboardData.outputTargets.length > 0)
                 ? dashboardData.outputTargets
-                : [{ label: 'Daily Output', actual: 3500, target: 5000 }];
+                : [{ label: 'Daily Output', actual: 0, target: 5000 }];
               const current = targets[activeTargetIdx % targets.length] || targets[0];
               const actualVal = Number(current.actual) || 0;
               const targetVal = Number(current.target) || 5000;
