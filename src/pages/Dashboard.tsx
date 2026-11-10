@@ -267,14 +267,14 @@ export default function Dashboard() {
         />
       )}
 
-      {/* Bottom 2-Column Bento Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-12 gap-6">
-        {/* Left Card: Top Velocity Products */}
+      {/* Bottom 3-Column Bento Cards (Three Separate Tabs/Cards) */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+        {/* Card 1 (Left): Top Selling Products */}
         <motion.div
           initial={{ opacity: 0, y: 14 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.4, delay: 0.15 }}
-          className="md:col-span-5 rounded-[32px] bg-white/[0.74] backdrop-blur-3xl border border-white/95 p-6 sm:p-7 shadow-[0_14px_40px_-8px_rgba(15,23,42,0.05),inset_0_1px_2px_rgba(255,255,255,1)] flex flex-col justify-between"
+          transition={{ duration: 0.4, delay: 0.12 }}
+          className="lg:col-span-4 rounded-[32px] bg-white/[0.74] backdrop-blur-3xl border border-white/95 p-6 sm:p-7 shadow-[0_14px_40px_-8px_rgba(15,23,42,0.05),inset_0_1px_2px_rgba(255,255,255,1)] flex flex-col justify-between"
         >
           <div>
             <div className="flex items-start gap-3.5 mb-6">
@@ -318,7 +318,7 @@ export default function Dashboard() {
                       >
                         <div className="flex items-center justify-between gap-2">
                           <span
-                            className={`inline-flex items-center gap-1 px-3 py-1 rounded-full text-[12px] font-semibold border truncate max-w-[210px] shadow-[inset_0_1px_1px_rgba(255,255,255,0.9)] ${badgeClass}`}
+                            className={`inline-flex items-center gap-1 px-3 py-1 rounded-full text-[12px] font-semibold border truncate max-w-[180px] shadow-[inset_0_1px_1px_rgba(255,255,255,0.9)] ${badgeClass}`}
                           >
                             <span className="opacity-60">#</span>
                             <span className="truncate">{p.name || 'Sanitary Unit'}</span>
@@ -355,297 +355,318 @@ export default function Dashboard() {
           </div>
         </motion.div>
 
-        {/* Right Card: Production & Inventory Summary (Vertical Channels on Left + Glossy Graph on Right) */}
+        {/* Card 2 (Middle): Production & Inventory Summary (Vertical Layout) */}
         <motion.div
           initial={{ opacity: 0, y: 14 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.4, delay: 0.2 }}
-          className="md:col-span-7 rounded-[32px] bg-white/[0.74] backdrop-blur-3xl border border-white/95 p-6 sm:p-7 shadow-[0_14px_40px_-8px_rgba(15,23,42,0.05),inset_0_1px_2px_rgba(255,255,255,1)] flex flex-col justify-between relative overflow-hidden"
+          transition={{ duration: 0.4, delay: 0.18 }}
+          className="lg:col-span-4 rounded-[32px] bg-white/[0.74] backdrop-blur-3xl border border-white/95 p-6 sm:p-7 shadow-[0_14px_40px_-8px_rgba(15,23,42,0.05),inset_0_1px_2px_rgba(255,255,255,1)] flex flex-col justify-between"
         >
-          <div className="pointer-events-none absolute -bottom-20 right-10 w-64 h-64 rounded-full bg-gradient-to-tr from-sky-300/20 via-indigo-300/15 to-fuchsia-300/20 blur-3xl" />
-
-          <div className="relative z-10">
-            <div className="flex flex-wrap items-center justify-between gap-3 mb-6">
-              <div className="flex items-center gap-3.5">
+          <div>
+            <div className="flex items-center justify-between gap-3 mb-6">
+              <div className="flex items-center gap-3.5 min-w-0">
                 <div className="w-10 h-10 rounded-2xl bg-white/90 border border-white shadow-[0_4px_12px_rgba(15,23,42,0.05)] flex items-center justify-center text-[#0284c7] shrink-0">
                   <Sparkles className="w-4 h-4 stroke-[2.1]" />
                 </div>
-                <div>
-                  <h3 className="text-[18px] font-bold text-slate-900 tracking-tight leading-snug">
+                <div className="min-w-0">
+                  <h3 className="text-[18px] font-bold text-slate-900 tracking-tight leading-snug truncate">
                     Production &amp; Inventory Summary
                   </h3>
                   <p className="text-[13px] text-slate-500">{currentMonthYear}</p>
                 </div>
               </div>
 
-              <div className="flex items-center gap-2">
-                <button
-                  type="button"
-                  onClick={() => setSummaryChartStyle(prev => prev === 'glossy-bars' ? 'area' : 'glossy-bars')}
-                  className="glass-pill-button px-3.5 py-2 text-[12px] font-semibold text-slate-600 inline-flex items-center gap-1.5 cursor-pointer"
-                >
-                  {summaryChartStyle === 'glossy-bars' ? (
-                    <>
-                      <TrendingUp className="w-3.5 h-3.5 text-[#0284c7]" />
-                      <span>Wave View</span>
-                    </>
-                  ) : (
-                    <>
-                      <BarChart3 className="w-3.5 h-3.5 text-[#0284c7]" />
-                      <span>Glossy Bars</span>
-                    </>
-                  )}
-                </button>
-                <button
-                  type="button"
-                  onClick={() => fetchDashboardStats(true)}
-                  className="glass-pill-button px-4 py-2 text-[12.5px] font-semibold text-slate-600 inline-flex items-center gap-1.5 cursor-pointer"
-                >
-                  <RotateCw className={`w-3.5 h-3.5 text-slate-500 ${refreshing ? 'animate-spin' : ''}`} />
-                  <span>Refresh</span>
-                </button>
-              </div>
+              <button
+                type="button"
+                onClick={() => fetchDashboardStats(true)}
+                className="glass-pill-button px-3.5 py-2 text-[12px] font-semibold text-slate-600 inline-flex items-center gap-1.5 cursor-pointer shrink-0"
+              >
+                <RotateCw className={`w-3.5 h-3.5 text-slate-500 ${refreshing ? 'animate-spin' : ''}`} />
+                <span>Refresh</span>
+              </button>
             </div>
 
-            {/* 2-Column Interior: Left = Vertical Stack of Batches & Inventory Channels, Right = Glossy Stock & Output Graph */}
-            <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 items-stretch">
-              {/* Left Column: Vertical Stack */}
-              <div className="lg:col-span-5 flex flex-col justify-between gap-3">
-                {loading ? (
-                  Array.from({ length: 4 }).map((_, i) => (
+            <div className="flex flex-col gap-3">
+              {loading ? (
+                Array.from({ length: 4 }).map((_, i) => (
+                  <div
+                    key={i}
+                    className="h-[64px] rounded-2xl bg-slate-200/70 animate-pulse"
+                  />
+                ))
+              ) : (
+                <>
+                  {(stats?.productionStats && stats.productionStats.length > 0
+                    ? stats.productionStats
+                    : [{ status: 'Completed', count: totalBatches }]
+                  ).slice(0, 2).map((p: any, i: number) => (
                     <div
                       key={i}
-                      className="h-[68px] rounded-2xl bg-slate-200/70 animate-pulse"
-                    />
-                  ))
-                ) : (
-                  <>
-                    {(stats?.productionStats && stats.productionStats.length > 0
-                      ? stats.productionStats
-                      : [{ status: 'Completed', count: totalBatches }]
-                    ).slice(0, 2).map((p: any, i: number) => (
-                      <div
-                        key={i}
-                        className="flex items-center justify-between px-4 py-3.5 rounded-2xl bg-white/85 border border-white shadow-[0_2px_10px_rgba(15,23,42,0.03)]"
-                      >
-                        <div className="flex items-center gap-2.5">
-                          <span className="w-2.5 h-2.5 rounded-full bg-[#0284c7]" />
-                          <span className="text-[13.5px] font-semibold text-slate-800">{p.status}</span>
-                        </div>
-                        <span className="px-3 py-0.5 rounded-full bg-sky-100/80 text-sky-800 text-[12px] font-bold tabular-nums">
-                          {p.count} batches
-                        </span>
-                      </div>
-                    ))}
-
-                    <Link
-                      to="/inventory"
-                      className="p-3.5 rounded-2xl bg-white/85 hover:bg-white border border-white shadow-[0_2px_10px_rgba(15,23,42,0.03)] transition-all group flex items-center justify-between"
+                      className="flex items-center justify-between px-4 py-3.5 rounded-2xl bg-white/85 border border-white shadow-[0_2px_10px_rgba(15,23,42,0.03)]"
                     >
-                      <div className="flex items-center gap-3 min-w-0">
-                        <div className="w-9 h-9 rounded-xl bg-sky-100/80 text-[#0284c7] flex items-center justify-center shrink-0">
-                          <Package className="w-4 h-4" />
-                        </div>
-                        <div className="min-w-0">
-                          <p className="text-[13px] font-bold text-slate-900 truncate">Finished Goods</p>
-                          <p className="text-[11.5px] text-slate-400 truncate">Main Warehouse</p>
-                        </div>
+                      <div className="flex items-center gap-2.5">
+                        <span className="w-2.5 h-2.5 rounded-full bg-[#0284c7]" />
+                        <span className="text-[13.5px] font-semibold text-slate-800">{p.status}</span>
                       </div>
-                      <ChevronRight className="w-4 h-4 text-slate-400 shrink-0 group-hover:translate-x-0.5 transition-transform" />
-                    </Link>
+                      <span className="px-3 py-0.5 rounded-full bg-sky-100/80 text-sky-800 text-[12px] font-bold tabular-nums">
+                        {p.count} batches
+                      </span>
+                    </div>
+                  ))}
 
-                    <Link
-                      to="/purchases/raw-materials"
-                      className="p-3.5 rounded-2xl bg-white/85 hover:bg-white border border-white shadow-[0_2px_10px_rgba(15,23,42,0.03)] transition-all group flex items-center justify-between"
-                    >
-                      <div className="flex items-center gap-3 min-w-0">
-                        <div className="w-9 h-9 rounded-xl bg-emerald-100/80 text-emerald-600 flex items-center justify-center shrink-0">
-                          <Hammer className="w-4 h-4" />
-                        </div>
-                        <div className="min-w-0">
-                          <p className="text-[13px] font-bold text-slate-900 truncate">Raw Materials</p>
-                          <p className="text-[11.5px] text-slate-400 truncate">Clay &amp; Glaze</p>
-                        </div>
+                  <Link
+                    to="/inventory"
+                    className="p-3.5 rounded-2xl bg-white/85 hover:bg-white border border-white shadow-[0_2px_10px_rgba(15,23,42,0.03)] transition-all group flex items-center justify-between"
+                  >
+                    <div className="flex items-center gap-3 min-w-0">
+                      <div className="w-9 h-9 rounded-xl bg-sky-100/80 text-[#0284c7] flex items-center justify-center shrink-0">
+                        <Package className="w-4 h-4" />
                       </div>
-                      <ChevronRight className="w-4 h-4 text-slate-400 shrink-0 group-hover:translate-x-0.5 transition-transform" />
-                    </Link>
-
-                    <Link
-                      to="/inventory/shop"
-                      className="p-3.5 rounded-2xl bg-white/85 hover:bg-white border border-white shadow-[0_2px_10px_rgba(15,23,42,0.03)] transition-all group flex items-center justify-between"
-                    >
-                      <div className="flex items-center gap-3 min-w-0">
-                        <div className="w-9 h-9 rounded-xl bg-amber-100/80 text-amber-600 flex items-center justify-center shrink-0">
-                          <ShoppingCart className="w-4 h-4" />
-                        </div>
-                        <div className="min-w-0">
-                          <p className="text-[13px] font-bold text-slate-900 truncate">Showroom</p>
-                          <p className="text-[11.5px] text-slate-400 truncate">Retail Units</p>
-                        </div>
+                      <div className="min-w-0">
+                        <p className="text-[13px] font-bold text-slate-900 truncate">Finished Goods</p>
+                        <p className="text-[11.5px] text-slate-400 truncate">Main Warehouse</p>
                       </div>
-                      <ChevronRight className="w-4 h-4 text-slate-400 shrink-0 group-hover:translate-x-0.5 transition-transform" />
-                    </Link>
-                  </>
-                )}
-              </div>
+                    </div>
+                    <ChevronRight className="w-4 h-4 text-slate-400 shrink-0 group-hover:translate-x-0.5 transition-transform" />
+                  </Link>
 
-              {/* Right Column: Glossy Stock & Channel Graph */}
-              <div className="lg:col-span-7 rounded-2xl bg-white/75 border border-white/95 p-4 shadow-[0_4px_20px_rgba(15,23,42,0.03),inset_0_1px_1.5px_rgba(255,255,255,1)] flex flex-col justify-between min-h-[280px]">
-                <div className="flex items-center justify-between mb-2 px-1">
-                  <div>
-                    <p className="text-[13px] font-bold text-slate-900 tracking-tight">Stock &amp; Category Volume</p>
-                    <p className="text-[11.5px] text-slate-400 font-medium">Live unit distribution across channels</p>
-                  </div>
-                  <span className="px-2.5 py-1 rounded-full bg-sky-50 border border-sky-200/70 text-[11px] font-bold text-[#0284c7] tabular-nums">
-                    {(Number(stats?.totalInventoryUnits) || 0).toLocaleString()} total units
-                  </span>
-                </div>
+                  <Link
+                    to="/purchases/raw-materials"
+                    className="p-3.5 rounded-2xl bg-white/85 hover:bg-white border border-white shadow-[0_2px_10px_rgba(15,23,42,0.03)] transition-all group flex items-center justify-between"
+                  >
+                    <div className="flex items-center gap-3 min-w-0">
+                      <div className="w-9 h-9 rounded-xl bg-emerald-100/80 text-emerald-600 flex items-center justify-center shrink-0">
+                        <Hammer className="w-4 h-4" />
+                      </div>
+                      <div className="min-w-0">
+                        <p className="text-[13px] font-bold text-slate-900 truncate">Raw Materials</p>
+                        <p className="text-[11.5px] text-slate-400 truncate">Clay &amp; Glaze</p>
+                      </div>
+                    </div>
+                    <ChevronRight className="w-4 h-4 text-slate-400 shrink-0 group-hover:translate-x-0.5 transition-transform" />
+                  </Link>
 
-                {loading ? (
-                  <div className="h-[230px] w-full rounded-xl bg-slate-200/55 animate-pulse" />
-                ) : (
-                  <div className="w-full flex-1 min-h-[230px]">
-                    <ResponsiveContainer width="100%" height={235}>
-                      {summaryChartStyle === 'glossy-bars' ? (
-                        <BarChart
-                          data={summaryGraphData}
-                          margin={{ top: 14, right: 10, left: -12, bottom: 2 }}
-                          barCategoryGap="22%"
-                        >
-                          <defs>
-                            <linearGradient id={`${summaryUid}-glossSideSheen`} x1="0" y1="0" x2="1" y2="0">
-                              <stop offset="0%" stopColor="#ffffff" stopOpacity={0.45} />
-                              <stop offset="100%" stopColor="#ffffff" stopOpacity={0.0} />
-                            </linearGradient>
-                            <linearGradient id={`${summaryUid}-glossTopInnerGlow`} x1="0" y1="0" x2="0" y2="1">
-                              <stop offset="0%" stopColor="#ffffff" stopOpacity={0.55} />
-                              <stop offset="100%" stopColor="#ffffff" stopOpacity={0.0} />
-                            </linearGradient>
-                            <linearGradient id={`${summaryUid}-glossBorderStroke`} x1="0" y1="0" x2="0" y2="1">
-                              <stop offset="0%" stopColor="#ffffff" stopOpacity={0.95} />
-                              <stop offset="50%" stopColor="#ffffff" stopOpacity={0.45} />
-                              <stop offset="100%" stopColor="#ffffff" stopOpacity={0.15} />
-                            </linearGradient>
-                            <linearGradient id={`${summaryUid}-glossBarFill-frosted-0`} x1="0" y1="0" x2="0" y2="1">
-                              <stop offset="0%" stopColor="#dbeafe" stopOpacity={0.95} />
-                              <stop offset="35%" stopColor="#93c5fd" stopOpacity={0.9} />
-                              <stop offset="70%" stopColor="#c084fc" stopOpacity={0.92} />
-                              <stop offset="100%" stopColor="#818cf8" stopOpacity={0.95} />
-                            </linearGradient>
-                            <linearGradient id={`${summaryUid}-glossBarFill-frosted-1`} x1="0" y1="0" x2="0" y2="1">
-                              <stop offset="0%" stopColor="#bae6fd" stopOpacity={0.95} />
-                              <stop offset="40%" stopColor="#60a5fa" stopOpacity={0.92} />
-                              <stop offset="75%" stopColor="#a855f7" stopOpacity={0.95} />
-                              <stop offset="100%" stopColor="#6366f1" stopOpacity={0.92} />
-                            </linearGradient>
-                            <linearGradient id={`${summaryUid}-glossBarFill-frosted-2`} x1="0" y1="0" x2="0" y2="1">
-                              <stop offset="0%" stopColor="#e0e7ff" stopOpacity={0.95} />
-                              <stop offset="40%" stopColor="#818cf8" stopOpacity={0.92} />
-                              <stop offset="75%" stopColor="#c084fc" stopOpacity={0.95} />
-                              <stop offset="100%" stopColor="#9333ea" stopOpacity={0.92} />
-                            </linearGradient>
-                            <linearGradient id={`${summaryUid}-glossBarFill-frosted-3`} x1="0" y1="0" x2="0" y2="1">
-                              <stop offset="0%" stopColor="#dbeafe" stopOpacity={0.95} />
-                              <stop offset="40%" stopColor="#38bdf8" stopOpacity={0.92} />
-                              <stop offset="75%" stopColor="#e879f9" stopOpacity={0.95} />
-                              <stop offset="100%" stopColor="#7c3aed" stopOpacity={0.92} />
-                            </linearGradient>
-                          </defs>
-                          <XAxis
-                            dataKey="name"
-                            axisLine={false}
-                            tickLine={false}
-                            tick={{ fill: '#64748b', fontSize: 11.5, fontWeight: 600 }}
-                            dy={6}
-                          />
-                          <YAxis
-                            axisLine={false}
-                            tickLine={false}
-                            tick={{ fill: '#64748b', fontSize: 11, fontWeight: 600 }}
-                            width={44}
-                          />
-                          <Tooltip
-                            cursor={{ fill: 'rgba(14,165,233,0.04)', radius: 14 }}
-                            contentStyle={{
-                              backgroundColor: 'rgba(255, 255, 255, 0.94)',
-                              backdropFilter: 'blur(20px)',
-                              borderRadius: '16px',
-                              border: '1px solid rgba(255, 255, 255, 1)',
-                              boxShadow: '0 12px 30px rgba(15, 23, 42, 0.12)',
-                              fontSize: '12.5px',
-                              fontWeight: 600,
-                              color: '#0f172a'
-                            }}
-                            formatter={(val: any) => [`${Number(val).toLocaleString()} units`, 'Stock Volume']}
-                          />
-                          <Bar
-                            dataKey="units"
-                            maxBarSize={56}
-                            shape={(barProps: any) => (
-                              <GlossyGlassBar {...barProps} glossTheme="frosted" uid={summaryUid} />
-                            )}
-                          />
-                        </BarChart>
-                      ) : (
-                        <AreaChart data={summaryGraphData} margin={{ top: 14, right: 10, left: -12, bottom: 4 }}>
-                          <defs>
-                            <linearGradient id={`${summaryUid}-areaGradient`} x1="0" y1="0" x2="0" y2="1">
-                              <stop offset="0%" stopColor="#0284c7" stopOpacity={0.38} />
-                              <stop offset="65%" stopColor="#38bdf8" stopOpacity={0.14} />
-                              <stop offset="100%" stopColor="#38bdf8" stopOpacity={0.0} />
-                            </linearGradient>
-                          </defs>
-                          <XAxis
-                            dataKey="name"
-                            axisLine={false}
-                            tickLine={false}
-                            tick={{ fill: '#64748b', fontSize: 11.5, fontWeight: 600 }}
-                            dy={6}
-                          />
-                          <YAxis
-                            axisLine={false}
-                            tickLine={false}
-                            tick={{ fill: '#64748b', fontSize: 11, fontWeight: 600 }}
-                            width={44}
-                          />
-                          <Tooltip
-                            contentStyle={{
-                              backgroundColor: 'rgba(255, 255, 255, 0.94)',
-                              backdropFilter: 'blur(20px)',
-                              borderRadius: '16px',
-                              border: '1px solid rgba(255, 255, 255, 1)',
-                              boxShadow: '0 12px 30px rgba(15, 23, 42, 0.12)',
-                              fontSize: '12.5px',
-                              fontWeight: 600,
-                              color: '#0f172a'
-                            }}
-                            formatter={(val: any) => [`${Number(val).toLocaleString()} units`, 'Stock Volume']}
-                          />
-                          <Area
-                            type="monotone"
-                            dataKey="units"
-                            stroke="#0284c7"
-                            strokeWidth={3}
-                            fill={`url(#${summaryUid}-areaGradient)`}
-                            dot={{ r: 4.5, fill: '#0284c7', stroke: '#ffffff', strokeWidth: 2 }}
-                            activeDot={{ r: 6.5, fill: '#0284c7', stroke: '#ffffff', strokeWidth: 2 }}
-                          />
-                        </AreaChart>
-                      )}
-                    </ResponsiveContainer>
-                  </div>
-                )}
-              </div>
+                  <Link
+                    to="/inventory/shop"
+                    className="p-3.5 rounded-2xl bg-white/85 hover:bg-white border border-white shadow-[0_2px_10px_rgba(15,23,42,0.03)] transition-all group flex items-center justify-between"
+                  >
+                    <div className="flex items-center gap-3 min-w-0">
+                      <div className="w-9 h-9 rounded-xl bg-amber-100/80 text-amber-600 flex items-center justify-center shrink-0">
+                        <ShoppingCart className="w-4 h-4" />
+                      </div>
+                      <div className="min-w-0">
+                        <p className="text-[13px] font-bold text-slate-900 truncate">Showroom</p>
+                        <p className="text-[11.5px] text-slate-400 truncate">Retail Units</p>
+                      </div>
+                    </div>
+                    <ChevronRight className="w-4 h-4 text-slate-400 shrink-0 group-hover:translate-x-0.5 transition-transform" />
+                  </Link>
+                </>
+              )}
             </div>
           </div>
 
-          <div className="relative z-10 pt-5 mt-5 border-t border-slate-200/50 flex items-center justify-between">
-            <span className="text-xs text-slate-400 font-medium">Real-time factory &amp; warehouse telemetry</span>
+          <div className="pt-5 mt-5 border-t border-slate-200/50 flex items-center justify-between">
+            <span className="text-xs text-slate-400 font-medium">Real-time factory telemetry</span>
             <Link
               to="/factory"
               className="text-xs font-semibold text-[#0284c7] hover:underline inline-flex items-center gap-1"
             >
               <span>Open Production Hub</span>
+              <ChevronRight className="w-3.5 h-3.5" />
+            </Link>
+          </div>
+        </motion.div>
+
+        {/* Card 3 (Right): Stock & Category Volume Graph Card */}
+        <motion.div
+          initial={{ opacity: 0, y: 14 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.4, delay: 0.24 }}
+          className="lg:col-span-4 rounded-[32px] bg-white/[0.74] backdrop-blur-3xl border border-white/95 p-6 sm:p-7 shadow-[0_14px_40px_-8px_rgba(15,23,42,0.05),inset_0_1px_2px_rgba(255,255,255,1)] flex flex-col justify-between relative overflow-hidden"
+        >
+          <div className="pointer-events-none absolute -bottom-20 left-1/2 -translate-x-1/2 w-64 h-48 rounded-full bg-gradient-to-r from-sky-300/25 via-pink-300/20 to-indigo-300/25 blur-3xl" />
+
+          <div className="relative z-10 flex-1 flex flex-col">
+            <div className="flex items-start justify-between gap-3 mb-6">
+              <div className="flex items-center gap-3.5 min-w-0">
+                <div className="w-10 h-10 rounded-2xl bg-white/90 border border-white shadow-[0_4px_12px_rgba(15,23,42,0.05)] flex items-center justify-center text-[#0284c7] shrink-0">
+                  <BarChart3 className="w-4 h-4 stroke-[2.2]" />
+                </div>
+                <div className="min-w-0">
+                  <h3 className="text-[18px] font-bold text-slate-900 tracking-tight leading-snug truncate">
+                    Stock &amp; Category Volume
+                  </h3>
+                  <p className="text-[13px] text-slate-500 truncate">
+                    Live unit distribution across channels
+                  </p>
+                </div>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => setSummaryChartStyle(prev => prev === 'glossy-bars' ? 'area' : 'glossy-bars')}
+                className="glass-pill-button px-3.5 py-2 text-[12px] font-semibold text-slate-600 inline-flex items-center gap-1.5 cursor-pointer shrink-0"
+              >
+                {summaryChartStyle === 'glossy-bars' ? (
+                  <>
+                    <TrendingUp className="w-3.5 h-3.5 text-[#0284c7]" />
+                    <span>Wave View</span>
+                  </>
+                ) : (
+                  <>
+                    <BarChart3 className="w-3.5 h-3.5 text-[#0284c7]" />
+                    <span>Glossy Bars</span>
+                  </>
+                )}
+              </button>
+            </div>
+
+            {loading ? (
+              <div className="h-[260px] w-full rounded-2xl bg-slate-200/55 animate-pulse flex-1" />
+            ) : (
+              <div className="w-full flex-1 min-h-[250px] flex items-center">
+                <ResponsiveContainer width="100%" height={255}>
+                  {summaryChartStyle === 'glossy-bars' ? (
+                    <BarChart
+                      data={summaryGraphData}
+                      margin={{ top: 14, right: 8, left: -14, bottom: 2 }}
+                      barCategoryGap="20%"
+                    >
+                      <defs>
+                        <linearGradient id={`${summaryUid}-glossSideSheen`} x1="0" y1="0" x2="1" y2="0">
+                          <stop offset="0%" stopColor="#ffffff" stopOpacity={0.45} />
+                          <stop offset="100%" stopColor="#ffffff" stopOpacity={0.0} />
+                        </linearGradient>
+                        <linearGradient id={`${summaryUid}-glossTopInnerGlow`} x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="0%" stopColor="#ffffff" stopOpacity={0.55} />
+                          <stop offset="100%" stopColor="#ffffff" stopOpacity={0.0} />
+                        </linearGradient>
+                        <linearGradient id={`${summaryUid}-glossBorderStroke`} x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="0%" stopColor="#ffffff" stopOpacity={0.95} />
+                          <stop offset="50%" stopColor="#ffffff" stopOpacity={0.45} />
+                          <stop offset="100%" stopColor="#ffffff" stopOpacity={0.15} />
+                        </linearGradient>
+                        <linearGradient id={`${summaryUid}-glossBarFill-frosted-0`} x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="0%" stopColor="#dbeafe" stopOpacity={0.95} />
+                          <stop offset="35%" stopColor="#93c5fd" stopOpacity={0.9} />
+                          <stop offset="70%" stopColor="#c084fc" stopOpacity={0.92} />
+                          <stop offset="100%" stopColor="#818cf8" stopOpacity={0.95} />
+                        </linearGradient>
+                        <linearGradient id={`${summaryUid}-glossBarFill-frosted-1`} x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="0%" stopColor="#bae6fd" stopOpacity={0.95} />
+                          <stop offset="40%" stopColor="#60a5fa" stopOpacity={0.92} />
+                          <stop offset="75%" stopColor="#a855f7" stopOpacity={0.95} />
+                          <stop offset="100%" stopColor="#6366f1" stopOpacity={0.92} />
+                        </linearGradient>
+                        <linearGradient id={`${summaryUid}-glossBarFill-frosted-2`} x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="0%" stopColor="#e0e7ff" stopOpacity={0.95} />
+                          <stop offset="40%" stopColor="#818cf8" stopOpacity={0.92} />
+                          <stop offset="75%" stopColor="#c084fc" stopOpacity={0.95} />
+                          <stop offset="100%" stopColor="#9333ea" stopOpacity={0.92} />
+                        </linearGradient>
+                        <linearGradient id={`${summaryUid}-glossBarFill-frosted-3`} x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="0%" stopColor="#dbeafe" stopOpacity={0.95} />
+                          <stop offset="40%" stopColor="#38bdf8" stopOpacity={0.92} />
+                          <stop offset="75%" stopColor="#e879f9" stopOpacity={0.95} />
+                          <stop offset="100%" stopColor="#7c3aed" stopOpacity={0.92} />
+                        </linearGradient>
+                      </defs>
+                      <XAxis
+                        dataKey="name"
+                        axisLine={false}
+                        tickLine={false}
+                        tick={{ fill: '#64748b', fontSize: 11.5, fontWeight: 600 }}
+                        dy={6}
+                      />
+                      <YAxis
+                        axisLine={false}
+                        tickLine={false}
+                        tick={{ fill: '#64748b', fontSize: 11, fontWeight: 600 }}
+                        width={42}
+                      />
+                      <Tooltip
+                        cursor={{ fill: 'rgba(14,165,233,0.04)', radius: 14 }}
+                        contentStyle={{
+                          backgroundColor: 'rgba(255, 255, 255, 0.94)',
+                          backdropFilter: 'blur(20px)',
+                          borderRadius: '16px',
+                          border: '1px solid rgba(255, 255, 255, 1)',
+                          boxShadow: '0 12px 30px rgba(15, 23, 42, 0.12)',
+                          fontSize: '12.5px',
+                          fontWeight: 600,
+                          color: '#0f172a'
+                        }}
+                        formatter={(val: any) => [`${Number(val).toLocaleString()} units`, 'Stock Volume']}
+                      />
+                      <Bar
+                        dataKey="units"
+                        maxBarSize={54}
+                        shape={(barProps: any) => (
+                          <GlossyGlassBar {...barProps} glossTheme="frosted" uid={summaryUid} />
+                        )}
+                      />
+                    </BarChart>
+                  ) : (
+                    <AreaChart data={summaryGraphData} margin={{ top: 14, right: 8, left: -14, bottom: 4 }}>
+                      <defs>
+                        <linearGradient id={`${summaryUid}-areaGradient`} x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="0%" stopColor="#0284c7" stopOpacity={0.38} />
+                          <stop offset="65%" stopColor="#38bdf8" stopOpacity={0.14} />
+                          <stop offset="100%" stopColor="#38bdf8" stopOpacity={0.0} />
+                        </linearGradient>
+                      </defs>
+                      <XAxis
+                        dataKey="name"
+                        axisLine={false}
+                        tickLine={false}
+                        tick={{ fill: '#64748b', fontSize: 11.5, fontWeight: 600 }}
+                        dy={6}
+                      />
+                      <YAxis
+                        axisLine={false}
+                        tickLine={false}
+                        tick={{ fill: '#64748b', fontSize: 11, fontWeight: 600 }}
+                        width={42}
+                      />
+                      <Tooltip
+                        contentStyle={{
+                          backgroundColor: 'rgba(255, 255, 255, 0.94)',
+                          backdropFilter: 'blur(20px)',
+                          borderRadius: '16px',
+                          border: '1px solid rgba(255, 255, 255, 1)',
+                          boxShadow: '0 12px 30px rgba(15, 23, 42, 0.12)',
+                          fontSize: '12.5px',
+                          fontWeight: 600,
+                          color: '#0f172a'
+                        }}
+                        formatter={(val: any) => [`${Number(val).toLocaleString()} units`, 'Stock Volume']}
+                      />
+                      <Area
+                        type="monotone"
+                        dataKey="units"
+                        stroke="#0284c7"
+                        strokeWidth={3}
+                        fill={`url(#${summaryUid}-areaGradient)`}
+                        dot={{ r: 4.5, fill: '#0284c7', stroke: '#ffffff', strokeWidth: 2 }}
+                        activeDot={{ r: 6.5, fill: '#0284c7', stroke: '#ffffff', strokeWidth: 2 }}
+                      />
+                    </AreaChart>
+                  )}
+                </ResponsiveContainer>
+              </div>
+            )}
+          </div>
+
+          <div className="relative z-10 pt-5 mt-5 border-t border-slate-200/50 flex items-center justify-between">
+            <span className="px-2.5 py-0.5 rounded-full bg-sky-50 border border-sky-200/70 text-[11px] font-bold text-[#0284c7] tabular-nums">
+              {(Number(stats?.totalInventoryUnits) || 0).toLocaleString()} total units
+            </span>
+            <Link
+              to="/inventory"
+              className="text-xs font-semibold text-[#0284c7] hover:underline inline-flex items-center gap-1"
+            >
+              <span>Manage Inventory</span>
               <ChevronRight className="w-3.5 h-3.5" />
             </Link>
           </div>
