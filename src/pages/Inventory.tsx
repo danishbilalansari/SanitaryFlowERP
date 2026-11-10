@@ -10,7 +10,7 @@ import {
 import { Link, useNavigate } from 'react-router-dom';
 import { ItemImage } from '../components/ItemImage';
 import { motion } from 'motion/react';
-import { TableSkeletonRows, GlassEmptyState } from '../components/GlassUI';
+import { TableSkeletonRows, GlassEmptyState, GlassCapsuleBar } from '../components/GlassUI';
 
 interface InventoryItem {
   id: number;
@@ -268,8 +268,8 @@ export default function Inventory() {
           </div>
           <div className="relative z-10">
             <h3 className="text-2xl sm:text-[28px] font-extrabold text-slate-900 tracking-tight leading-none tabular-nums mb-3">84%</h3>
-            <div className="w-full bg-white/85 border border-white h-2.5 rounded-full p-0.5 overflow-hidden mb-2.5 shadow-inner">
-              <div className="bg-gradient-to-r from-indigo-500 via-[#0284c7] to-cyan-400 h-full w-[84%] rounded-full" />
+            <div className="mb-2.5">
+              <GlassCapsuleBar pct={84} mode="light" height={12} />
             </div>
             <span className="text-[11.5px] text-slate-500 font-medium">Main facility storage status</span>
           </div>

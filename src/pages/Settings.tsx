@@ -53,7 +53,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useAppContext } from '../store';
 import { CURRENCIES } from '../constants';
-import { GlassSelect } from '../components/GlassUI';
+import { GlassSelect, GlassCapsuleBar } from '../components/GlassUI';
 import { cachedJsonFetch, invalidateApiCache } from '../lib/apiCache';
 
 const SecuritySettingsSection = lazy(() => import('../components/SecuritySettingsSection'));
@@ -1149,13 +1149,8 @@ export default function Settings() {
                       </div>
                     )}
                     {stat.progress && (
-                      <div className="mt-3.5 space-y-1.5">
-                        <div className="w-full bg-white/85 border border-white h-2.5 rounded-full p-0.5 shadow-inner overflow-hidden">
-                          <div
-                            className="bg-gradient-to-r from-[#0284c7] via-sky-400 to-indigo-500 h-full rounded-full transition-all duration-1000"
-                            style={{ width: `${stat.progress}%` }}
-                          />
-                        </div>
+                      <div className="mt-3.5 space-y-2">
+                        <GlassCapsuleBar pct={stat.progress} mode="light" height={12} />
                         <p className="text-[11.5px] text-slate-500 font-medium">Optimal cluster capacity</p>
                       </div>
                     )}
