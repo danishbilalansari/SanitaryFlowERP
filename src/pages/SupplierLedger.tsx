@@ -19,6 +19,7 @@ import {
   X
 } from 'lucide-react';
 import { useAppContext } from '../store';
+import { GlassDatePicker, GlassPagination, GlassModal } from '../components/GlassUI';
 
 export default function SupplierLedger() {
   const { id } = useParams();
@@ -26,6 +27,8 @@ export default function SupplierLedger() {
   const [supplier, setSupplier] = useState<any>(null);
   const [ledger, setLedger] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 8;
 
   const [editingEntry, setEditingEntry] = useState<any>(null);
   const [editForm, setEditForm] = useState({ description: '', debit: '', credit: '', reference_id: '', created_at: '' });
@@ -183,116 +186,144 @@ export default function SupplierLedger() {
 
       {/* Summary Cards */}
       <div className="grid grid-cols-1 md:grid-cols-4 print:flex print:flex-row print:justify-between gap-6 print:gap-4">
-         <div className="print:flex-1 bg-white border border-neutral-200 p-8 print:p-3 rounded-2xl shadow-sm">
-            <p className="text-[11px] font-bold text-neutral-400 uppercase tracking-widest mb-4">Current Balance</p>
-            <h3 className={`text-[32px] print:text-xl font-bold leading-none ${currentBalance > 0 ? 'text-red-500' : 'text-emerald-600'}`}>
+         <div className="print:flex-1 glass-card p-6 sm:p-7 print:p-3 rounded-[28px]">
+            <p className="text-[11px] font-bold text-slate-400 uppercase tracking-[0.14em] mb-3">Current Balance</p>
+            <h3 className={`text-[30px] print:text-xl font-bold tracking-tight leading-none ${currentBalance > 0 ? 'text-rose-500' : 'text-emerald-600'}`}>
                {formatCurrency(Math.abs(currentBalance), currency)}
             </h3>
-            <p className="mt-2 text-[12px] font-medium text-neutral-400">
+            <p className="mt-3 text-[12px] font-medium text-slate-500">
                {currentBalance > 0 ? 'Amount Payable' : 'Credit Balance'}
             </p>
          </div>
 
-         <div className="print:flex-1 bg-white border border-neutral-200 p-8 print:p-3 rounded-2xl shadow-sm">
-            <p className="text-[11px] font-bold text-neutral-400 uppercase tracking-widest mb-4">Total Purchases</p>
-            <h3 className="text-[32px] print:text-xl font-bold text-[#162839] leading-none">{formatCurrency(totalCredit, currency)}</h3>
-            <div className="mt-4 flex items-center gap-1.5 text-emerald-500 text-[13px] font-bold">
+         <div className="print:flex-1 glass-card p-6 sm:p-7 print:p-3 rounded-[28px]">
+            <p className="text-[11px] font-bold text-slate-400 uppercase tracking-[0.14em] mb-3">Total Purchases</p>
+            <h3 className="text-[30px] print:text-xl font-bold text-slate-900 tracking-tight leading-none">{formatCurrency(totalCredit, currency)}</h3>
+            <div className="mt-3 flex items-center gap-1.5 text-emerald-600 text-[12.5px] font-semibold">
                <TrendingUp className="w-4 h-4" />
                <span>Lifetime supply</span>
             </div>
          </div>
 
-         <div className="print:flex-1 bg-white border border-neutral-200 p-8 print:p-3 rounded-2xl shadow-sm">
-            <p className="text-[11px] font-bold text-neutral-400 uppercase tracking-widest mb-4">Total Paid</p>
-            <h3 className="text-[32px] print:text-xl font-bold text-[#162839] leading-none">{formatCurrency(totalDebit, currency)}</h3>
-            <div className="mt-4 flex items-center gap-1.5 text-blue-500 text-[13px] font-bold">
+         <div className="print:flex-1 glass-card p-6 sm:p-7 print:p-3 rounded-[28px]">
+            <p className="text-[11px] font-bold text-slate-400 uppercase tracking-[0.14em] mb-3">Total Paid</p>
+            <h3 className="text-[30px] print:text-xl font-bold text-slate-900 tracking-tight leading-none">{formatCurrency(totalDebit, currency)}</h3>
+            <div className="mt-3 flex items-center gap-1.5 text-[#0284c7] text-[12.5px] font-semibold">
                <Wallet className="w-4 h-4" />
                <span>Settled invoices</span>
             </div>
          </div>
 
-         <div className="print:hidden bg-[#2c3e50] p-8 print:p-3 rounded-2xl shadow-xl flex items-center justify-center">
-             <button onClick={() => setShowPaymentModal(true)} className="flex flex-col items-center gap-3 text-white group">
-                <div className="w-14 h-14 bg-white/10 rounded-2xl flex items-center justify-center group-hover:bg-white/20 transition-all shadow-lg ring-1 ring-white/20">
-                   <Plus className="w-7 h-7" />
+         <div className="print:hidden glass-card p-6 sm:p-7 print:p-3 rounded-[28px] flex items-center justify-center">
+             <button onClick={() => setShowPaymentModal(true)} className="flex flex-col items-center gap-2.5 text-slate-800 hover:text-[#0284c7] group cursor-pointer transition-colors">
+                <div className="w-12 h-12 bg-white/95 border border-white rounded-2xl flex items-center justify-center group-hover:scale-105 transition-all shadow-[0_4px_14px_rgba(15,23,42,0.06)] text-[#0284c7]">
+                   <Plus className="w-6 h-6" />
                 </div>
-                <span className="text-[14px] font-black uppercase tracking-widest text-[#5cb8fd]">Post Payment</span>
+                <span className="text-[12px] font-bold uppercase tracking-[0.16em] text-[#0284c7]">Post Payment</span>
              </button>
          </div>
       </div>
 
       {/* Payment Modal */}
-      {showPaymentModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-neutral-900/60 backdrop-blur-sm animate-in fade-in duration-300">
-           <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden animate-in zoom-in-95 duration-300">
-              <div className="p-6 border-b border-neutral-100 flex justify-between items-center bg-neutral-50/50">
-                 <h3 className="text-[18px] font-bold text-[#162839]">Record Supplier Payment</h3>
-                 <button onClick={() => setShowPaymentModal(false)} className="text-neutral-400 hover:text-neutral-600">&times;</button>
-              </div>
-              <form onSubmit={handlePostPayment} className="p-6 space-y-4">
-                 <div className="space-y-2">
-                    <label className="text-[11px] font-bold text-neutral-400 uppercase tracking-widest">Amount to Pay ({currency})</label>
-                    <input 
-                      required
-                      type="number" 
-                      value={paymentAmount}
-                      onChange={e => setPaymentAmount(e.target.value)}
-                      placeholder="0.00"
-                      className="w-full bg-[#f8f9fa] border border-neutral-200 rounded-xl px-4 py-3.5 text-[18px] font-black text-[#162839] outline-none focus:ring-2 focus:ring-[#5cb8fd]"
-                    />
-                 </div>
-                 <div className="space-y-2">
-                    <label className="text-[11px] font-bold text-neutral-400 uppercase tracking-widest">Description (Optional)</label>
-                    <textarea 
-                      value={paymentDesc}
-                      onChange={e => setPaymentDesc(e.target.value)}
-                      placeholder="Cheque #, Bank Transfer Ref..."
-                      className="w-full bg-[#f8f9fa] border border-neutral-200 rounded-xl px-4 py-3 text-[14px] outline-none focus:ring-2 focus:ring-[#5cb8fd] resize-none"
-                      rows={3}
-                    />
-                 </div>
-                 <button type="submit" className="w-full bg-[#162839] text-white font-bold py-4 rounded-xl hover:opacity-90 transition-opacity shadow-lg">
-                    Confirm Payment
-                 </button>
-              </form>
+      <GlassModal
+        isOpen={showPaymentModal}
+        onClose={() => setShowPaymentModal(false)}
+        maxWidth="max-w-md w-full"
+      >
+        <div className="flex items-center justify-between pb-4 mb-5 border-b border-slate-200/60">
+           <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-white/90 border border-white shadow-[0_2px_10px_rgba(15,23,42,0.05),inset_0_1px_1px_rgba(255,255,255,1)]">
+             <span className="text-[13px] font-semibold text-slate-800">Record Supplier Payment</span>
            </div>
+           <button
+             type="button"
+             onClick={() => setShowPaymentModal(false)}
+             className="w-9 h-9 rounded-full bg-white/90 hover:bg-white border border-white shadow-[0_2px_10px_rgba(15,23,42,0.05)] flex items-center justify-center text-slate-600 hover:text-slate-900 transition-all cursor-pointer"
+           >
+             <X className="w-4 h-4" />
+           </button>
         </div>
-      )}
+        <form onSubmit={handlePostPayment} className="space-y-4">
+           <div className="space-y-1.5">
+              <label className="text-[11px] font-bold text-slate-400 uppercase tracking-[0.1em] block">AMOUNT TO PAY ({currency})</label>
+              <input 
+                required
+                type="number" 
+                value={paymentAmount}
+                onChange={e => setPaymentAmount(e.target.value)}
+                placeholder="0.00"
+                className="w-full rounded-2xl bg-white/90 border border-white px-4 py-3.5 text-[18px] font-bold text-slate-900 shadow-[0_2px_10px_rgba(15,23,42,0.03)] outline-none focus:ring-2 focus:ring-sky-400/40"
+              />
+           </div>
+           <div className="space-y-1.5">
+              <label className="text-[11px] font-bold text-slate-400 uppercase tracking-[0.1em] block">DESCRIPTION (OPTIONAL)</label>
+              <textarea 
+                value={paymentDesc}
+                onChange={e => setPaymentDesc(e.target.value)}
+                placeholder="Cheque #, Bank Transfer Ref..."
+                className="w-full rounded-2xl bg-white/90 border border-white p-4 text-[14px] text-slate-800 shadow-[0_2px_10px_rgba(15,23,42,0.03)] outline-none focus:ring-2 focus:ring-sky-400/40 resize-none"
+                rows={3}
+              />
+           </div>
+           <div className="pt-3 flex items-center justify-end gap-3">
+              <button
+                type="button"
+                onClick={() => setShowPaymentModal(false)}
+                className="px-6 py-2.5 rounded-full bg-white/90 hover:bg-white border border-white text-[13.5px] font-semibold text-slate-700 shadow-[0_4px_12px_rgba(15,23,42,0.05)] transition-all cursor-pointer"
+              >
+                Cancel
+              </button>
+              <button
+                type="submit"
+                className="px-6 py-2.5 rounded-full bg-white/95 hover:bg-white border border-white text-[13.5px] font-semibold text-slate-900 shadow-[0_6px_18px_rgba(15,23,42,0.08)] flex items-center gap-2 transition-all cursor-pointer"
+              >
+                <Check className="w-4 h-4 text-[#0284c7] stroke-[2.5]" />
+                <span>Save Changes</span>
+              </button>
+           </div>
+        </form>
+      </GlassModal>
 
       {/* Ledger Table */}
-      <div className="bg-white border border-neutral-200 rounded-2xl shadow-sm overflow-hidden print:overflow-visible">
-         <div className="px-8 py-6 border-b border-neutral-100 flex justify-between items-center bg-neutral-50/50">
-            <h3 className="font-bold text-[#162839] flex items-center gap-3 text-[18px]">
-                <CalendarDays className="w-5 h-5 text-neutral-400" />
-                All Transactions
-            </h3>
+      <div className="glass-table-container rounded-[30px] overflow-hidden print:overflow-visible">
+         <div className="px-8 py-5 border-b border-slate-200/60 flex justify-between items-center bg-white/40 backdrop-blur-md">
+            <div className="flex items-center gap-3">
+               <div className="w-10 h-10 rounded-2xl bg-white/95 border border-white text-[#0284c7] flex items-center justify-center font-bold shadow-[0_4px_12px_rgba(15,23,42,0.05)]">
+                  <CalendarDays className="w-5 h-5 text-[#0284c7]" />
+               </div>
+               <div>
+                  <h3 className="font-bold text-slate-900 text-[18px] tracking-tight">All Transactions</h3>
+                  <p className="text-[12px] text-slate-500 font-medium">Historical audit of purchases, debits, and credit ledger</p>
+               </div>
+            </div>
             <div className="print:hidden flex gap-4">
                <div className="relative">
-                  <Search className="w-4 h-4 text-neutral-300 absolute left-4 top-1/2 -translate-y-1/2" />
-                  <input type="text" placeholder="Search entries..." className="bg-white border border-neutral-200 rounded-lg pl-10 pr-4 py-2 text-[13px] outline-none focus:ring-1 focus:ring-[#5cb8fd]" />
+                  <Search className="w-4 h-4 text-slate-400 absolute left-4 top-1/2 -translate-y-1/2" />
+                  <input type="text" placeholder="Search entries..." className="rounded-full bg-white/90 border border-white pl-10 pr-4 py-2 text-[13px] text-slate-800 shadow-[0_2px_10px_rgba(15,23,42,0.03)] outline-none focus:ring-2 focus:ring-sky-400/40" />
                </div>
             </div>
          </div>
          <div className="overflow-x-auto print:overflow-visible">
             <table className="w-full text-left print:whitespace-normal print:table-fixed print:text-[11px]">
                <thead>
-                  <tr className="bg-white text-[11px] font-bold text-neutral-400 uppercase tracking-widest border-b border-neutral-100">
-                     <th className="w-[12%] px-8 py-5 print:px-2 print:py-2">Date</th>
-                     <th className="w-[20%] px-8 py-5 print:px-2 print:py-2">Description</th>
-                     <th className="w-[15%] px-8 py-5 print:px-2 print:py-2">Reference</th>
-                     <th className="w-[15%] px-8 py-5 print:px-2 print:py-2 text-right">Debit (Paid)</th>
-                     <th className="w-[15%] px-8 py-5 print:px-2 print:py-2 text-right">Credit (Purchased)</th>
-                     <th className="w-[15%] px-8 py-5 print:px-2 print:py-2 text-right">Running Balance</th>
-                     <th className="w-[8%] px-8 py-5 text-right print:hidden">Actions</th>
+                  <tr className="bg-slate-50/60 text-[11px] font-bold text-slate-500 uppercase tracking-widest border-b border-slate-200/60">
+                     <th className="w-[12%] px-8 py-4 print:px-2 print:py-2">Date</th>
+                     <th className="w-[20%] px-8 py-4 print:px-2 print:py-2">Description</th>
+                     <th className="w-[15%] px-8 py-4 print:px-2 print:py-2">Reference</th>
+                     <th className="w-[15%] px-8 py-4 print:px-2 print:py-2 text-right">Debit (Paid)</th>
+                     <th className="w-[15%] px-8 py-4 print:px-2 print:py-2 text-right">Credit (Purchased)</th>
+                     <th className="w-[15%] px-8 py-4 print:px-2 print:py-2 text-right">Running Balance</th>
+                     <th className="w-[8%] px-8 py-4 text-right print:hidden">Actions</th>
                   </tr>
                </thead>
-               <tbody className="divide-y divide-neutral-50 text-[14px]">
-                  {ledgerWithBalance.map((entry, idx) => (
+               <tbody className="divide-y divide-slate-100/80 text-[14px]">
+                  {ledgerWithBalance
+                     .slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage)
+                     .map((entry, idx) => (
                      <tr key={idx} className="hover:bg-neutral-50/50 transition-colors">
                         {editingEntry === entry.id ? (
                            <>
                               <td className="px-8 py-5 align-top">
-                                 <input type="date" className="w-full min-w-[120px] p-2 border border-neutral-200 rounded text-[13px]" value={editForm.created_at} onChange={e => setEditForm({...editForm, created_at: e.target.value})} />
+                                 <GlassDatePicker className="w-full min-w-[150px]" value={editForm.created_at} onChange={e => setEditForm({...editForm, created_at: e.target.value})} />
                               </td>
                               <td className="px-8 py-5 align-top">
                                  <input type="text" placeholder="Description" className="w-full min-w-[150px] p-2 border border-neutral-200 rounded text-[13px]" value={editForm.description} onChange={e => setEditForm({...editForm, description: e.target.value})} />
@@ -355,6 +386,14 @@ export default function SupplierLedger() {
                </tbody>
             </table>
          </div>
+         <GlassPagination
+            currentPage={currentPage}
+            totalPages={Math.ceil(ledgerWithBalance.length / itemsPerPage)}
+            totalItems={ledgerWithBalance.length}
+            itemsPerPage={itemsPerPage}
+            onPageChange={setCurrentPage}
+            itemLabel="entries"
+         />
       </div>
     </div>
   );

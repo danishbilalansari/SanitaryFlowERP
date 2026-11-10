@@ -1,53 +1,39 @@
-import React, { ReactNode, useState, useEffect } from 'react';
-import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
+import React, { useState, useEffect } from 'react';
+import { NavLink, Outlet, useLocation } from 'react-router-dom';
+import { motion } from 'motion/react';
 import Toast from './Toast';
 import ChangePasswordModal from './ChangePasswordModal';
 import { useAppContext } from '../store';
 import { 
-  LayoutDashboard, 
+  Home,
   Package, 
   ShoppingCart, 
   Users, 
-  Wallet, 
   Factory, 
   Menu, 
-  Search,
   LogOut,
-  User,
   ShoppingBag,
   FileBarChart,
   Settings,
-  CircleUserRound,
   Plus,
   ChevronDown,
   ChevronLeft,
   ChevronRight,
   HardHat,
-  KeyRound
+  KeyRound,
+  Sparkles,
+  BookOpen,
+  PenLine
 } from 'lucide-react';
-
-const MENU_ITEMS = [
-  { name: 'Dashboard', path: '/dashboard', icon: LayoutDashboard },
-  { name: 'Inventory', path: '/inventory', icon: Package },
-  { name: 'Purchases', path: '/purchases', icon: ShoppingBag },
-  { name: 'Sales', path: '/sales', icon: ShoppingCart },
-  { name: 'Customers', path: '/customers', icon: Users },
-  { name: 'Labour', path: '/labour', icon: HardHat },
-  { name: 'Accounts', path: '/accounts', icon: Wallet },
-  { name: 'Production', path: '/factory', icon: Factory },
-  { name: 'Reports', path: '/reports', icon: FileBarChart },
-  { name: 'Settings', path: '/settings', icon: Settings },
-];
 
 export default function Layout() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [isChangePasswordOpen, setIsChangePasswordOpen] = useState(false);
-  const { logoUrl, companyName } = useAppContext();
+  const [profileMenuOpen, setProfileMenuOpen] = useState(false);
+  const { logoUrl, companyName, currentUser, logout } = useAppContext();
   const location = useLocation();
-  const navigate = useNavigate();
 
   const [expandedMenus, setExpandedMenus] = useState<Record<string, boolean>>({});
-  const { currentUser, logout } = useAppContext();
 
   const handleLogout = async () => {
     try {
@@ -58,52 +44,42 @@ export default function Layout() {
   };
 
   const navItems = [
-    { name: 'Dashboard', path: '/dashboard', icon: LayoutDashboard },
+    { name: 'Dashboard', path: '/dashboard', icon: Home, permissionKey: 'Sales' },
     { 
       name: 'Inventory', 
       path: '/inventory', 
       icon: Package,
+      permissionKey: 'Inventory',
       subItems: [
         { name: 'All Inventory', path: '/inventory' },
         { name: 'Shop Inventory', path: '/inventory/shop' },
         { name: 'Transfer Tracking', path: '/inventory/transfer/history' },
       ]
     },
-    { name: 'Production', path: '/factory', icon: Factory },
-    { name: 'Sales', path: '/sales', icon: ShoppingBag },
-    { name: 'Customers', path: '/customers', icon: Users },
-    { name: 'Labour', path: '/labour', icon: HardHat },
+    { name: 'Production', path: '/factory', icon: Factory, permissionKey: 'Production' },
+    { name: 'Sales', path: '/sales', icon: ShoppingBag, permissionKey: 'Sales' },
+    { name: 'Customers', path: '/customers', icon: Users, permissionKey: 'Customers' },
+    { name: 'Labour', path: '/labour', icon: HardHat, permissionKey: 'Labour' },
     { 
       name: 'Purchases', 
       path: '/purchases', 
       icon: ShoppingCart,
+      permissionKey: 'Purchases',
       subItems: [
         { name: 'Purchase Orders', path: '/purchases' },
         { name: 'Suppliers', path: '/suppliers' },
         { name: 'Raw Materials', path: '/purchases/raw-materials' },
       ]
     },
-    { name: 'Reports', path: '/reports', icon: FileBarChart },
-    { name: 'Settings', path: '/settings', icon: Settings },
+    { name: 'Reports', path: '/reports', icon: FileBarChart, permissionKey: 'Reports' },
+    { name: 'Settings', path: '/settings', icon: Settings, permissionKey: 'Settings' },
   ].filter(item => {
     if (!currentUser) return false;
     if (currentUser.role_id === 'admin') return true;
-    const permissionMap: Record<string, string> = {
-      'Dashboard': 'Sales',
-      'Inventory': 'Inventory',
-      'Production': 'Production',
-      'Sales': 'Sales',
-      'Customers': 'Customers',
-      'Labour': 'Labour',
-      'Purchases': 'Purchases',
-      'Reports': 'Reports',
-      'Settings': 'Settings',
-    };
-    return currentUser.permissions.includes(permissionMap[item.name]);
+    return currentUser.permissions.includes(item.permissionKey);
   });
 
   useEffect(() => {
-    // Auto-expand menu if subItem is active
     navItems.forEach(item => {
       if (item.subItems && location.pathname.startsWith(item.path)) {
         setExpandedMenus(prev => ({ ...prev, [item.name]: true }));
@@ -111,34 +87,61 @@ export default function Layout() {
     });
   }, [location.pathname]);
 
+  const userInitials = (currentUser?.name || 'User')
+    .split(' ')
+    .map((n: string) => n[0])
+    .join('')
+    .slice(0, 2)
+    .toUpperCase();
+
   return (
-    <div className="flex print:block h-screen print:h-auto bg-[#f8f9fa] print:bg-white text-[#191c1d] font-sans tracking-normal overflow-hidden print:overflow-visible">
-      {/* Sidebar for Desktop */}
-      <aside className="hidden md:flex w-[260px] flex-col bg-[#162839] z-40 print:hidden shadow-lg transition-all border-r border-[#2c3e50]">
-        <div className="p-8 mb-4">
-          <div className="flex items-center gap-3">
-            {logoUrl && (
-              <img src={logoUrl} alt="Company logo" className="w-9 h-9 rounded-lg object-contain bg-white/10 p-1" />
-            )}
-            <div className="flex flex-col gap-1 items-start">
-            <h1 className="text-[20px] font-bold text-white tracking-tight break-all line-clamp-2">{companyName}</h1>
-            </div>
-          </div>
-          <p className="text-[8px] text-[#5cb8fd] font-medium opacity-80 uppercase tracking-wider">FACTORY & SHOP MANAGEMENT</p>
-        </div>
+    <div className="relative flex print:block h-screen print:h-auto bg-[#f6f8fc] print:bg-white text-slate-900 font-sans tracking-normal overflow-hidden print:overflow-visible selection:bg-sky-500/15 selection:text-sky-900">
+      {/* iOS 26 Liquid Glass Ambient Pastel Canvas & Floating Color Blobs */}
+      <div className="fixed inset-0 pointer-events-none z-0 overflow-hidden print:hidden">
+        {/* Soft luminous base gradient */}
+        <div className="absolute inset-0 bg-gradient-to-br from-[#eef6ff] via-[#f8f9fc] to-[#f3f5fb]" />
         
-        <nav className="flex-1 px-3 space-y-1">
+        {/* Top-left sky/cyan pastel blob */}
+        <div className="absolute -top-[14%] -left-[8%] w-[52vw] h-[52vw] rounded-full bg-gradient-to-br from-sky-300/45 via-cyan-200/35 to-transparent blur-[115px] animate-liquid-1" />
+        
+        {/* Right lavender/pink pastel blob */}
+        <div className="absolute top-[12%] -right-[10%] w-[48vw] h-[52vw] rounded-full bg-gradient-to-bl from-fuchsia-200/45 via-pink-200/35 to-indigo-200/25 blur-[125px] animate-liquid-2" />
+        
+        {/* Bottom-left mint/aqua pastel blob */}
+        <div className="absolute -bottom-[16%] left-[12%] w-[46vw] h-[46vw] rounded-full bg-gradient-to-tr from-emerald-200/40 via-teal-200/30 to-cyan-100/20 blur-[120px] animate-liquid-3" />
+      </div>
+
+      {/* Desktop iOS 26 Liquid Glass Sidebar (Modeled after Lumen Glass Reference) */}
+      <aside className="hidden md:flex w-[252px] flex-col z-20 print:hidden m-4 mr-0 rounded-[32px] bg-white/[0.68] backdrop-blur-3xl border-[1.5px] border-white/95 shadow-[0_12px_40px_-8px_rgba(15,23,42,0.06),0_4px_14px_rgba(15,23,42,0.03),inset_0_1px_2px_rgba(255,255,255,1)] transition-all">
+        {/* Brand Header */}
+        <div className="p-6 pb-5">
+          <NavLink to="/dashboard" className="flex items-center gap-3.5 group">
+            <div className="w-12 h-12 rounded-2xl bg-white/95 backdrop-blur-xl border border-white shadow-[0_4px_12px_rgba(15,23,42,0.06),inset_0_1px_1px_rgba(255,255,255,1)] flex items-center justify-center overflow-hidden p-1.5 group-hover:scale-105 transition-transform shrink-0">
+              <img
+                src={logoUrl || '/assets/aistudio/image_6670885d.png?v=2'}
+                alt="SanitaryFlow Logo"
+                className="w-full h-full object-contain"
+              />
+            </div>
+            <div className="flex flex-col min-w-0">
+              <h1 className="text-[17px] font-bold text-slate-900 tracking-tight truncate leading-tight">
+                {companyName || 'SanitaryFlow'}
+              </h1>
+            </div>
+          </NavLink>
+        </div>
+
+        {/* Navigation Links */}
+        <nav className="flex-1 px-3.5 space-y-1.5 overflow-y-auto py-1">
           {navItems.map((item) => {
             const Icon = item.icon;
-            // Active logic: for items without subItems, match path precisely. 
-            // For items with subItems, we'll let subItems handle their own active state visually.
             const hasSubItems = !!item.subItems;
             let active = false;
             
             if (!hasSubItems) {
               active = location.pathname === item.path || (item.path !== '/dashboard' && location.pathname.startsWith(item.path));
             } else {
-              active = location.pathname.startsWith(item.path) && !item.subItems?.find(sub => sub.path === location.pathname);
+              active = location.pathname.startsWith(item.path);
             }
 
             const isExpanded = expandedMenus[item.name];
@@ -146,7 +149,7 @@ export default function Layout() {
             const toggleExpand = (e: React.MouseEvent) => {
               if (hasSubItems) {
                 e.preventDefault();
-                setExpandedMenus(prev => ({...prev, [item.name]: !prev[item.name]}));
+                setExpandedMenus(prev => ({ ...prev, [item.name]: !prev[item.name] }));
               }
             };
 
@@ -155,39 +158,45 @@ export default function Layout() {
                 <NavLink
                   to={item.path}
                   onClick={toggleExpand}
-                  className={`flex items-center justify-between px-4 py-3 text-[14px] font-bold transition-all duration-200 rounded-lg group ${
-                    (active && !hasSubItems) || (hasSubItems && isExpanded)
-                      ? 'bg-[#2c3e50] text-[#5cb8fd] border-l-4 border-[#5cb8fd] pl-5' 
-                      : 'text-white/60 hover:text-white hover:bg-white/5'
+                  className={`flex items-center justify-between px-4 py-3 text-[14px] transition-all duration-200 rounded-2xl group ${
+                    active
+                      ? 'bg-white/95 text-slate-900 font-semibold shadow-[0_4px_16px_-2px_rgba(15,23,42,0.06),inset_0_1px_1.5px_rgba(255,255,255,1)] border border-white'
+                      : 'text-slate-700 font-medium hover:text-slate-900 hover:bg-white/55 border border-transparent'
                   }`}
                 >
-                  <div className="flex items-center">
-                    <Icon className={`w-5 h-5 mr-3 flex-shrink-0 transition-colors ${((active && !hasSubItems) || (hasSubItems && isExpanded)) ? 'text-[#5cb8fd]' : 'text-white/30 group-hover:text-white/60'}`} />
-                    {item.name}
+                  <div className="flex items-center min-w-0 gap-3.5">
+                    <Icon
+                      className={`w-[18px] h-[18px] flex-shrink-0 transition-colors ${
+                        active ? 'text-[#0284c7] stroke-[2.1]' : 'text-slate-600 group-hover:text-slate-900 stroke-[1.85]'
+                      }`}
+                    />
+                    <span className="truncate">{item.name}</span>
                   </div>
                   {hasSubItems && (
-                    <div className="ml-ml-auto">
-                      {isExpanded ? <ChevronDown className="w-4 h-4 opacity-50" /> : <ChevronRight className="w-4 h-4 opacity-50" />}
+                    <div className="ml-auto text-slate-500 group-hover:text-slate-800 transition-colors">
+                      {isExpanded ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
                     </div>
                   )}
                 </NavLink>
                 
                 {hasSubItems && isExpanded && (
-                  <div className="flex flex-col mt-1 space-y-1">
+                  <div className="flex flex-col mt-1 ml-6 pl-3.5 border-l border-slate-300/70 space-y-1 py-1">
                     {item.subItems.map((sub, idx) => {
                       const isExact = location.pathname === sub.path;
                       const isChild = location.pathname.startsWith(sub.path + '/');
-                      const betterMatch = item.subItems.some(s => s.path !== sub.path && location.pathname.startsWith(s.path) && s.path.length > sub.path.length);
+                      const betterMatch = item.subItems.some(
+                        s => s.path !== sub.path && location.pathname.startsWith(s.path) && s.path.length > sub.path.length
+                      );
                       const isSubActive = (isExact || isChild) && !betterMatch;
                       
                       return (
                         <NavLink
                           key={idx}
                           to={sub.path}
-                          className={`flex items-center pl-12 pr-4 py-2.5 text-[13px] font-medium transition-all duration-200 rounded-lg ${
+                          className={`flex items-center px-3 py-2 text-[13px] transition-all duration-150 rounded-xl ${
                             isSubActive 
-                              ? 'bg-[#2c3e50]/50 text-[#5cb8fd]' 
-                              : 'text-white/50 hover:text-white hover:bg-white/5'
+                              ? 'bg-white/90 text-[#0284c7] font-semibold shadow-xs border border-white' 
+                              : 'text-slate-600 hover:text-slate-900 hover:bg-white/50 font-medium'
                           }`}
                         >
                           {sub.name}
@@ -201,76 +210,108 @@ export default function Layout() {
           })}
         </nav>
 
-        <div className="p-6">
-          <NavLink 
-            to={location.pathname.startsWith('/purchases') ? "/purchases/add" : "/sales/add"} 
-            className="w-full bg-[#006397] text-white py-4 px-4 font-bold rounded-xl flex items-center justify-center gap-2 hover:brightness-110 active:scale-95 transition-all text-[14px] shadow-lg shadow-black/20"
-          >
-            <Plus className="w-5 h-5" />
-            New Order
-          </NavLink>
+        {/* Sidebar Footer: Caption & Frosted User Profile Pill */}
+        <div className="p-4 pt-2 space-y-3">
+          <div className="px-2">
+            <p className="text-[11px] text-slate-500 leading-relaxed font-medium">
+              Enterprise operations &amp; inventory control
+            </p>
+          </div>
+
+          <div className="relative">
+            <button
+              onClick={() => setProfileMenuOpen(prev => !prev)}
+              className="w-full flex items-center gap-3 p-2.5 rounded-2xl bg-white/85 hover:bg-white/95 border border-white shadow-[0_4px_14px_rgba(15,23,42,0.05),inset_0_1px_1px_rgba(255,255,255,1)] transition-all text-left cursor-pointer"
+            >
+              <div className="w-9 h-9 rounded-xl bg-sky-50/90 border border-white flex items-center justify-center text-xs font-bold text-[#0284c7] shadow-2xs shrink-0">
+                {userInitials}
+              </div>
+              <div className="min-w-0 flex-1">
+                <p className="text-[13px] font-semibold text-slate-900 truncate leading-tight">
+                  {currentUser?.name || 'Admin'}
+                </p>
+                <p className="text-[11px] text-slate-500 truncate mt-0.5 font-medium">
+                  {currentUser?.role_name || 'View profile'}
+                </p>
+              </div>
+            </button>
+
+            {profileMenuOpen && (
+              <div className="absolute bottom-full left-0 right-0 mb-2 bg-white/95 backdrop-blur-2xl border border-white rounded-2xl shadow-[0_16px_36px_rgba(15,23,42,0.12),inset_0_1px_1px_rgba(255,255,255,1)] p-1.5 z-50">
+                <div className="px-3 py-2 border-b border-slate-100">
+                  <p className="text-xs font-bold text-slate-900 truncate">{currentUser?.name}</p>
+                  <p className="text-[11px] text-slate-500 truncate">{currentUser?.email}</p>
+                </div>
+                <button
+                  id="dropdown-change-password-btn"
+                  onClick={() => {
+                    setProfileMenuOpen(false);
+                    setIsChangePasswordOpen(true);
+                  }}
+                  className="w-full flex items-center gap-2.5 px-3 py-2 mt-1 text-xs font-semibold text-slate-700 hover:bg-slate-100/80 rounded-xl transition-colors"
+                >
+                  <KeyRound className="w-3.5 h-3.5 text-[#0284c7]" />
+                  <span>Change Password</span>
+                </button>
+                <button
+                  onClick={handleLogout}
+                  className="w-full flex items-center gap-2.5 px-3 py-2 text-xs font-semibold text-rose-600 hover:bg-rose-50/80 rounded-xl transition-colors"
+                >
+                  <LogOut className="w-3.5 h-3.5" />
+                  <span>Log out</span>
+                </button>
+              </div>
+            )}
+          </div>
         </div>
       </aside>
 
       {/* Main Content Area */}
-      <div className="flex-1 flex print:block flex-col min-w-0 overflow-hidden print:overflow-visible">
-        {/* Topbar */}
-        <header className="bg-white sticky top-0 h-16 border-b border-[#edeeef] flex items-center justify-between px-8 z-30 print:hidden shadow-sm">
-          <div className="flex items-center flex-1">
-            <button 
-              className="md:hidden p-2 -ml-2 text-neutral-500 hover:text-neutral-700"
-              onClick={() => setSidebarOpen(true)}
-            >
-              <Menu className="w-5 h-5" />
-            </button>
-          </div>
-          
-          <div className="flex items-center gap-6 ml-4">
-
-            
-            <div className="flex items-center gap-3 pl-2">
-              <div className="text-right hidden md:block">
-                <p className="text-[14px] font-bold text-[#162839] leading-tight">{currentUser?.name || 'Guest'}</p>
-                <p className="text-[10px] text-neutral-400 font-bold uppercase tracking-widest">{currentUser?.role_name || currentUser?.role_id || 'User'}</p>
-              </div>
-              <div className="relative group">
-                <img 
-                  src={currentUser?.avatar_url || "https://lh3.googleusercontent.com/aida-public/AB6AXuAS5Yx_knVKbwiE0_9u6IayJWVsOJMueTTrLHrOhoISHxXcUDKO9Lget5WJIMUsSJqdpEoHoImUAomVa-PjcV8Uc666vsz_6YuWW1XY-LEOyLvxem2aUQLMdLKDy7oV35Sc3NL4RzJW9uev0ZbkknOWi7bfimuuX5k-F5lrU7vtMdZmHYK2IOWcSaNkzDFjH-f8s_VbmQ__IlDGKXbBb37lkcbYCu9pwa-uZZZ8OsB03KtUpOKO1j1KELa4e0losZZxKTEa1UDL53OY"} 
-                  alt="Profile" 
-                  className="w-10 h-10 rounded-full object-cover border border-[#edeeef] shadow-sm hover:ring-2 hover:ring-[#5cb8fd] transition-all cursor-pointer"
-                />
-                <div className="absolute right-0 mt-2 w-48 bg-white border border-[#edeeef] rounded-xl shadow-xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50">
-                  <div className="p-4 border-b border-[#edeeef]">
-                    <p className="text-sm font-bold text-[#162839] truncate">{currentUser?.name}</p>
-                    <p className="text-xs text-neutral-400 truncate">{currentUser?.email}</p>
-                  </div>
-                  <div className="p-2 space-y-1">
-                    <button 
-                      id="dropdown-change-password-btn"
-                      onClick={() => setIsChangePasswordOpen(true)}
-                      className="w-full flex items-center gap-2 px-3 py-2 text-sm text-[#162839] hover:bg-neutral-100 rounded-lg transition-colors font-medium"
-                    >
-                      <KeyRound className="w-4 h-4 text-[#006397]" />
-                      Change Password
-                    </button>
-                    <button 
-                      onClick={handleLogout}
-                      className="w-full flex items-center gap-2 px-3 py-2 text-sm text-red-600 hover:bg-red-50 rounded-lg transition-colors font-medium"
-                    >
-                      <LogOut className="w-4 h-4" />
-                      Logout
-                    </button>
-                  </div>
-                </div>
-              </div>
+      <div className="flex-1 flex print:block flex-col min-w-0 overflow-hidden print:overflow-visible z-10">
+        {/* Mobile Top Header Bar */}
+        <header className="md:hidden sticky top-0 h-14 m-2.5 mb-0 px-4 rounded-2xl bg-white/80 backdrop-blur-2xl border-[1.5px] border-white/95 flex items-center justify-between z-20 print:hidden shadow-[0_6px_20px_rgba(15,23,42,0.05),inset_0_1px_1px_rgba(255,255,255,1)]">
+          <div className="flex items-center gap-2.5 min-w-0">
+            <div className="w-9 h-9 rounded-xl bg-white/95 border border-white shadow-xs flex items-center justify-center overflow-hidden p-1 shrink-0">
+              <img
+                src={logoUrl || '/assets/aistudio/image_6670885d.png?v=2'}
+                alt="SanitaryFlow Logo"
+                className="w-full h-full object-contain"
+              />
             </div>
+            <span className="font-bold text-[15px] text-slate-900 tracking-tight truncate">
+              {companyName || 'SanitaryFlow'}
+            </span>
+          </div>
+          <div className="flex items-center gap-2 shrink-0">
+            <button
+              onClick={() => setIsChangePasswordOpen(true)}
+              className="p-2 rounded-xl bg-white/90 border border-white text-slate-700 hover:text-slate-900 shadow-2xs"
+              aria-label="Change password"
+            >
+              <KeyRound className="w-4 h-4" />
+            </button>
+            <button
+              onClick={() => setSidebarOpen(true)}
+              className="p-2 rounded-xl bg-white/90 border border-white text-slate-800 hover:bg-white shadow-2xs"
+              aria-label="Open menu"
+            >
+              <Menu className="w-4 h-4" />
+            </button>
           </div>
         </header>
 
-        {/* Page Content */}
-        <main className="flex-1 print:block overflow-auto print:overflow-visible p-4 sm:p-8 print:p-0 print:bg-white bg-[#f8f9fa]">
-          <Outlet />
+        {/* Scrollable Viewport with Smooth iOS 26 Spring Screen Transitions */}
+        <main className="flex-1 print:block overflow-y-auto print:overflow-visible px-3.5 py-5 sm:px-7 md:px-10 md:py-8 print:p-0 print:bg-white pb-28 md:pb-12">
+          <motion.div
+            key={location.pathname}
+            initial={{ opacity: 0, y: 10, scale: 0.992 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            transition={{ type: 'spring', stiffness: 340, damping: 30 }}
+          >
+            <Outlet />
+          </motion.div>
         </main>
+        
         <Toast />
         <ChangePasswordModal 
           isOpen={isChangePasswordOpen} 
@@ -278,27 +319,73 @@ export default function Layout() {
         />
       </div>
 
-      {/* Mobile Sidebar Overlay */}
+      {/* Mobile iOS 26 Liquid Glass Bottom Tab Bar */}
+      <div className="md:hidden fixed bottom-3 inset-x-3 z-20 print:hidden">
+        <nav className="glass-nav-light rounded-[26px] p-1.5 shadow-[0_14px_36px_rgba(15,23,42,0.12),inset_0_1px_1.5px_rgba(255,255,255,1)] flex items-center justify-around">
+          {navItems.slice(0, 4).map((item) => {
+            const Icon = item.icon;
+            const isActive = location.pathname === item.path || (item.path !== '/dashboard' && location.pathname.startsWith(item.path));
+            return (
+              <NavLink
+                key={item.path}
+                to={item.path}
+                className={`flex flex-col items-center justify-center py-2 px-3 rounded-2xl transition-all duration-200 ${
+                  isActive 
+                    ? 'bg-white/95 text-[#0284c7] shadow-[0_4px_12px_rgba(15,23,42,0.06)] border border-white' 
+                    : 'text-slate-600 hover:text-slate-900'
+                }`}
+              >
+                <Icon className={`w-4 h-4 ${isActive ? 'text-[#0284c7] stroke-[2.2]' : 'stroke-[1.85]'}`} />
+                <span className={`text-[10.5px] mt-1 ${isActive ? 'font-bold text-slate-900' : 'font-semibold text-slate-700'}`}>
+                  {item.name}
+                </span>
+              </NavLink>
+            );
+          })}
+          <button
+            onClick={() => setSidebarOpen(true)}
+            className="flex flex-col items-center justify-center py-2 px-3 rounded-2xl text-slate-600 hover:text-slate-900"
+          >
+            <Menu className="w-4 h-4 stroke-[1.85]" />
+            <span className="text-[10.5px] font-semibold text-slate-700 mt-1">More</span>
+          </button>
+        </nav>
+      </div>
+
+      {/* Mobile Liquid Glass Drawer */}
       {sidebarOpen && (
-        <div className="md:hidden fixed inset-0 z-50 bg-[#162839]/80 backdrop-blur-sm" onClick={() => setSidebarOpen(false)}>
+        <div
+          className="md:hidden fixed inset-0 z-50 bg-slate-900/20 backdrop-blur-sm"
+          onClick={() => setSidebarOpen(false)}
+        >
           <aside 
-            className="fixed inset-y-0 left-0 w-[280px] bg-[#162839] shadow-2xl flex flex-col transition-transform duration-300 transform translate-x-0"
+            className="fixed inset-y-3 left-3 w-[280px] rounded-[32px] bg-white/85 backdrop-blur-3xl border border-white shadow-[0_20px_50px_rgba(15,23,42,0.15),inset_0_1px_2px_rgba(255,255,255,1)] flex flex-col transition-transform duration-300"
             onClick={e => e.stopPropagation()}
           >
-            <div className="p-8 mb-4 flex justify-between items-start">
-              <div>
-                <h1 className="text-[20px] font-bold text-white tracking-tight mb-1">{companyName}</h1>
-                <p className="text-[8px] text-[#5cb8fd] font-medium opacity-80 uppercase tracking-wider">MANAGEMENT SYSTEM</p>
+            <div className="p-6 pb-4 flex justify-between items-center border-b border-slate-200/50">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-2xl bg-white border border-white shadow-sm flex items-center justify-center overflow-hidden p-1 shrink-0">
+                  <img
+                    src={logoUrl || '/assets/aistudio/image_6670885d.png?v=2'}
+                    alt="SanitaryFlow Logo"
+                    className="w-full h-full object-contain"
+                  />
+                </div>
+                <div>
+                  <h1 className="text-[16px] font-semibold text-slate-900 tracking-tight leading-tight">
+                    {companyName || 'SanitaryFlow'}
+                  </h1>
+                </div>
               </div>
               <button 
-                className="p-2 text-white/50 hover:text-white"
+                className="p-1.5 text-slate-500 hover:text-slate-900 rounded-full bg-white/80 border border-white shadow-2xs"
                 onClick={() => setSidebarOpen(false)}
               >
-                <ChevronLeft className="w-6 h-6" />
+                <ChevronLeft className="w-4 h-4" />
               </button>
             </div>
             
-            <nav className="flex-1 px-3 space-y-1 overflow-y-auto">
+            <nav className="flex-1 px-3.5 space-y-1 overflow-y-auto py-3">
               {navItems.map((item) => {
                 const Icon = item.icon;
                 const hasSubItems = !!item.subItems;
@@ -311,53 +398,48 @@ export default function Layout() {
                       onClick={(e) => {
                         if (hasSubItems) {
                           e.preventDefault();
-                          setExpandedMenus(prev => ({...prev, [item.name]: !prev[item.name]}));
+                          setExpandedMenus(prev => ({ ...prev, [item.name]: !prev[item.name] }));
                         } else {
                           setSidebarOpen(false);
                         }
                       }}
                       className={({ isActive }) =>
-                        `flex items-center justify-between px-4 py-3 rounded-lg text-[14px] font-bold transition-all ${
+                        `flex items-center justify-between px-4 py-2.5 rounded-2xl text-[13.5px] transition-all ${
                           isActive && !hasSubItems
-                            ? 'bg-[#2c3e50] text-[#5cb8fd] border-l-4 border-[#5cb8fd] pl-5' 
-                            : 'text-white/60 hover:text-white hover:bg-white/5'
+                            ? 'bg-white/95 text-slate-900 font-semibold shadow-xs border border-white' 
+                            : 'text-slate-600 font-medium hover:text-slate-900 hover:bg-white/50'
                         }`
                       }
                     >
-                      <div className="flex items-center">
-                        <Icon className={`w-5 h-5 mr-3 ${isExpanded ? 'text-[#5cb8fd]' : ''}`} />
-                        {item.name}
+                      <div className="flex items-center min-w-0 gap-3">
+                        <Icon className="w-4 h-4 flex-shrink-0 text-[#0284c7]" />
+                        <span className="truncate">{item.name}</span>
                       </div>
                       {hasSubItems && (
                         <div>
-                          {isExpanded ? <ChevronDown className="w-4 h-4 opacity-50" /> : <ChevronRight className="w-4 h-4 opacity-50" />}
+                          {isExpanded ? <ChevronDown className="w-4 h-4 text-slate-400" /> : <ChevronRight className="w-4 h-4 text-slate-400" />}
                         </div>
                       )}
                     </NavLink>
                     
                     {hasSubItems && isExpanded && (
-                      <div className="flex flex-col mt-1 space-y-1">
-                        {item.subItems.map((sub, idx) => {
-                          const isExact = location.pathname === sub.path;
-                          const isChild = location.pathname.startsWith(sub.path + '/');
-                          const betterMatch = item.subItems.some(s => s.path !== sub.path && location.pathname.startsWith(s.path) && s.path.length > sub.path.length);
-                          const isSubActive = (isExact || isChild) && !betterMatch;
-                          
-                          return (
-                            <NavLink
-                              key={idx}
-                              to={sub.path}
-                              onClick={() => setSidebarOpen(false)}
-                              className={`flex items-center pl-12 pr-4 py-2 text-[13px] font-medium rounded-lg ${
-                                isSubActive 
-                                  ? 'bg-[#2c3e50]/50 text-[#5cb8fd]' 
-                                  : 'text-white/50 hover:text-white hover:bg-white/5'
-                              }`}
-                            >
-                              {sub.name}
-                            </NavLink>
-                          );
-                        })}
+                      <div className="flex flex-col mt-1 ml-6 pl-3 border-l border-slate-200/70 space-y-1 py-1">
+                        {item.subItems.map((sub, idx) => (
+                          <NavLink
+                            key={idx}
+                            to={sub.path}
+                            onClick={() => setSidebarOpen(false)}
+                            className={({ isActive }) =>
+                              `flex items-center px-3 py-1.5 text-[12.5px] rounded-xl ${
+                                isActive 
+                                  ? 'bg-white text-[#0284c7] font-semibold shadow-2xs' 
+                                  : 'text-slate-500 hover:text-slate-900'
+                              }`
+                            }
+                          >
+                            {sub.name}
+                          </NavLink>
+                        ))}
                       </div>
                     )}
                   </div>
@@ -365,13 +447,22 @@ export default function Layout() {
               })}
             </nav>
 
-            <div className="p-6">
+            <div className="p-4 border-t border-slate-200/50 space-y-2">
+              <div className="flex items-center gap-3 px-2 py-1">
+                <div className="w-8 h-8 rounded-xl bg-slate-100 border border-white flex items-center justify-center text-xs font-bold text-slate-700">
+                  {userInitials}
+                </div>
+                <div className="min-w-0 flex-1">
+                  <p className="text-xs font-semibold text-slate-900 truncate">{currentUser?.name}</p>
+                  <p className="text-[10px] text-slate-400 truncate">{currentUser?.email}</p>
+                </div>
+              </div>
               <button 
                 onClick={handleLogout}
-                className="w-full flex items-center justify-center gap-2 px-4 py-3 text-[14px] font-bold text-red-400 bg-red-400/10 hover:bg-red-400/20 rounded-xl transition-all"
+                className="w-full flex items-center justify-center gap-2 px-4 py-2.5 text-[13px] font-semibold text-rose-600 bg-rose-50/80 hover:bg-rose-100/80 border border-rose-200/60 rounded-full transition-all"
               >
                 <LogOut className="w-4 h-4" />
-                Logout Session
+                <span>Log out</span>
               </button>
             </div>
           </aside>

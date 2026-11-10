@@ -18,6 +18,7 @@ import {
   DollarSign
 } from 'lucide-react';
 import { useAppContext } from '../store';
+import { TableSkeletonRows, GlassEmptyState } from '../components/GlassUI';
 
 export default function Purchases() {
   const { showToast, currentUser, currency } = useAppContext();
@@ -148,99 +149,111 @@ export default function Purchases() {
   };
 
   return (
-    <div className="space-y-8 animate-in fade-in duration-500 pb-12">
+    <div className="space-y-6 pb-12">
       {/* Header section */}
-      <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4">
+      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 p-6 rounded-3xl bg-white/[0.65] backdrop-blur-2xl border border-white/85 shadow-[0_10px_30px_rgba(15,23,42,0.04),inset_0_1px_1.5px_rgba(255,255,255,0.95)]">
         <div>
-          <nav className="flex items-center gap-2 text-[13px] font-medium text-neutral-400 mb-2">
-            <Link to="/" className="hover:text-[#006397] transition-colors">Dashboard</Link>
-            <ChevronRight className="w-3.5 h-3.5" />
-            <span className="text-[#006397] font-bold">Purchases</span>
+          <nav className="flex items-center gap-1.5 text-xs font-semibold text-slate-500 mb-1">
+            <Link to="/" className="hover:text-[#0284c7] transition-colors">Dashboard</Link>
+            <ChevronRight className="w-3 h-3 text-slate-400" />
+            <span className="text-[#0284c7] font-bold">Purchases</span>
           </nav>
-          <h2 className="text-[28px] sm:text-[32px] font-black text-[#001d31] tracking-tight leading-none">Purchase Orders</h2>
-          <p className="text-[14px] sm:text-[16px] text-neutral-500 mt-1">Manage inventory procurement and invoices.</p>
+          <h2 className="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight leading-none mb-1">Purchase Orders</h2>
+          <p className="text-sm text-slate-600">Manage inventory procurement and supplier invoices.</p>
         </div>
-        <div className="flex flex-wrap gap-2 sm:gap-3">
+        <div className="flex flex-wrap gap-2.5">
           <button 
             onClick={handleExport}
-            className="flex-1 sm:flex-none flex items-center justify-center gap-2 px-4 sm:px-6 py-2.5 bg-white border border-neutral-200 text-neutral-900 font-bold rounded-lg hover:bg-neutral-50 transition-all text-[14px] shadow-sm"
+            className="flex items-center justify-center gap-2 px-5 py-2.5 glass-pill-button text-slate-800 font-semibold text-xs"
           >
-            <Download className="w-4 h-4 text-neutral-400" />
-            Export
+            <Download className="w-3.5 h-3.5 text-slate-500" />
+            <span>Export CSV</span>
           </button>
-          <Link to="/purchases/add" className="flex-1 sm:flex-none flex items-center justify-center gap-2 px-4 sm:px-6 py-2.5 bg-neutral-900 hover:bg-neutral-800 text-white font-bold rounded-lg transition-all text-[14px]">
-            <Plus className="w-4 h-4" />
-            New Purchase
+          <Link to="/purchases/add" className="flex items-center justify-center gap-2 px-5 py-2.5 rounded-full bg-gradient-to-r from-[#0284c7] to-sky-500 text-white font-semibold shadow-[0_4px_16px_rgba(2,132,199,0.3)] hover:brightness-105 transition-all text-xs">
+            <Plus className="w-3.5 h-3.5 stroke-[2.5]" />
+            <span>New Purchase</span>
           </Link>
         </div>
       </div>
 
       {/* Header Summary Bento Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-12 gap-6">
-        <div className="md:col-span-4 bg-white border border-neutral-200 p-8 rounded-2xl shadow-sm">
-          <div className="flex justify-between items-start mb-6">
-            <span className="text-[11px] font-bold text-neutral-400 uppercase tracking-widest text-[#006397]">Net Procurement</span>
-            <div className="p-3 bg-blue-50 text-[#006397] rounded-xl"><CreditCard className="w-5 h-5" /></div>
+      <div className="grid grid-cols-1 md:grid-cols-12 gap-5">
+        <div className="md:col-span-4 glass-card p-6">
+          <div className="flex justify-between items-start mb-4">
+            <span className="text-[11px] font-bold text-[#0284c7] uppercase tracking-[0.08em]">Net Procurement</span>
+            <div className="w-10 h-10 rounded-2xl bg-sky-50 border border-white flex items-center justify-center text-[#0284c7] shadow-2xs"><CreditCard className="w-4 h-4" /></div>
           </div>
-          <div className="text-[32px] font-bold text-[#162839] leading-none">{formatCurrency(totalSpend, currency)}</div>
-          <p className="mt-2 text-[13px] text-neutral-400 font-medium">Total value of all purchase orders</p>
+          <div className="text-2xl sm:text-3xl font-extrabold text-slate-900 leading-none tabular-nums">{formatCurrency(totalSpend, currency)}</div>
+          <p className="mt-2 text-xs text-slate-500 font-medium">Total value of all purchase orders</p>
         </div>
 
-        <div className="md:col-span-4 bg-white border border-neutral-200 p-8 rounded-2xl shadow-sm">
-          <div className="flex justify-between items-start mb-6">
-            <span className="text-[11px] font-bold text-neutral-400 uppercase tracking-widest text-indigo-500">Active Invoices</span>
-            <div className="p-3 bg-indigo-50 text-indigo-500 rounded-xl"><Clock className="w-5 h-5" /></div>
+        <div className="md:col-span-4 glass-card p-6">
+          <div className="flex justify-between items-start mb-4">
+            <span className="text-[11px] font-bold text-indigo-600 uppercase tracking-[0.08em]">Active Invoices</span>
+            <div className="w-10 h-10 rounded-2xl bg-indigo-50 border border-white flex items-center justify-center text-indigo-600 shadow-2xs"><Clock className="w-4 h-4" /></div>
           </div>
-          <div className="text-[32px] font-bold text-[#162839] leading-none">{pendingOrders}</div>
-          <p className="mt-2 text-[13px] text-neutral-400 font-medium tracking-tight">Orders awaiting delivery or payment</p>
+          <div className="text-2xl sm:text-3xl font-extrabold text-slate-900 leading-none tabular-nums">{pendingOrders}</div>
+          <p className="mt-2 text-xs text-slate-500 font-medium">Orders awaiting delivery or payment</p>
         </div>
 
-        <div className="md:col-span-4 bg-[#162839] p-8 rounded-2xl shadow-xl border border-[#162839]">
-            <div className="flex justify-between items-start mb-6">
-              <span className="text-[11px] font-bold text-white/40 uppercase tracking-widest">Quick Access</span>
-              <div className="p-3 bg-white/10 text-white rounded-xl"><ShieldCheck className="w-5 h-5" /></div>
-            </div>
-            <div className="flex flex-col gap-2">
-               <Link to="/suppliers" className="text-white hover:text-[#5cb8fd] font-bold text-[18px] flex items-center justify-between group">
-                  Manage Suppliers <ChevronRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
-               </Link>
-               <Link to="/purchases/raw-materials" className="text-white/60 hover:text-white font-medium text-[14px]">View Raw Material Stock</Link>
-            </div>
+        <div className="md:col-span-4 glass-card p-6 flex flex-col justify-between">
+          <div className="flex justify-between items-start mb-3">
+            <span className="text-[11px] font-bold text-emerald-600 uppercase tracking-[0.08em]">Quick Access</span>
+            <div className="w-10 h-10 rounded-2xl bg-emerald-50 border border-white flex items-center justify-center text-emerald-600 shadow-2xs"><ShieldCheck className="w-4 h-4" /></div>
+          </div>
+          <div className="flex flex-col gap-1.5">
+            <Link to="/suppliers" className="text-slate-900 hover:text-[#0284c7] font-bold text-[15px] flex items-center justify-between group">
+              <span>Manage Suppliers</span>
+              <ChevronRight className="w-4 h-4 group-hover:translate-x-1 transition-transform text-[#0284c7]" />
+            </Link>
+            <Link to="/purchases/raw-materials" className="text-slate-500 hover:text-slate-900 font-medium text-xs">View Raw Material Stock</Link>
+          </div>
         </div>
       </div>
 
-      {/* Filter Controls */}
-      <div className="bg-[#f3f4f5] border border-[#edeeef] p-4 rounded-xl shadow-sm mb-6">
-        <div className="flex flex-col md:flex-row gap-4 items-center">
+      {/* Filter Controls — Apple iOS 26 Liquid Glass Search Toolbar */}
+      <div 
+        className="glass-search-toolbar relative z-40"
+        onMouseLeave={() => {
+          setShowStatusMenu(false);
+          setShowDateMenu(false);
+        }}
+      >
+        <div className="flex flex-col md:flex-row gap-3.5 items-center">
           <div className="relative flex-1 group w-full">
-            <Search className="w-5 h-5 text-neutral-400 absolute left-4 top-1/2 -translate-y-1/2 group-focus-within:text-[#006397] transition-colors" />
+            <Search className="w-4 h-4 text-slate-400 absolute left-4 top-1/2 -translate-y-1/2 group-focus-within:text-[#0284c7] transition-colors pointer-events-none z-10" />
             <input 
               type="text" 
               value={searchQuery}
               onChange={e => setSearchQuery(e.target.value)}
-              placeholder="PO Number or Supplier..."
-              className="w-full pl-12 pr-4 py-3 bg-white border border-[#edeeef] rounded-lg text-[14px] focus:ring-2 focus:ring-[#5cb8fd]/20 focus:border-[#5cb8fd] outline-none transition-all"
+              placeholder="Search by PO Number or Supplier..."
+              className="w-full pl-11 pr-5 py-3 rounded-full text-[13.5px] font-medium text-slate-900 placeholder:text-slate-400 outline-none transition-all"
             />
           </div>
-          <div className="flex gap-2 w-full md:w-auto relative">
+          <div className="flex gap-2.5 w-full md:w-auto relative">
             <div className="relative flex-1 md:flex-none">
               <button 
-                onClick={() => setShowStatusMenu(!showStatusMenu)}
-                className="w-full justify-center flex items-center gap-2 px-4 py-3 bg-white border border-[#edeeef] rounded-lg text-[13px] font-bold text-neutral-600 hover:bg-neutral-50 transition-colors whitespace-nowrap"
+                type="button"
+                onClick={() => {
+                  setShowStatusMenu(!showStatusMenu);
+                  setShowDateMenu(false);
+                }}
+                className="w-full justify-center flex items-center gap-2 px-4 py-3 glass-pill-button text-[13px] font-semibold text-slate-700 whitespace-nowrap cursor-pointer"
               >
-                <Filter className="w-4 h-4 text-neutral-400" />
-                Status: {statusFilter === 'All Statuses' ? 'All' : statusFilter}
+                <Filter className="w-3.5 h-3.5 text-[#0284c7]" />
+                <span>Status: {statusFilter === 'All Statuses' ? 'All' : statusFilter}</span>
               </button>
               {showStatusMenu && (
-                <div className="absolute top-full right-0 mt-2 w-48 bg-white border border-[#edeeef] rounded-xl shadow-xl z-50 overflow-hidden">
+                <div className="absolute top-full right-0 mt-2 w-48 rounded-2xl bg-white/95 backdrop-blur-2xl border border-white shadow-[0_20px_50px_rgba(15,23,42,0.14)] z-50 overflow-hidden p-1.5">
                   {['All Statuses', 'Ordered', 'Received', 'Paid'].map(status => (
                     <button
                       key={status}
+                      type="button"
                       onClick={() => {
                         setStatusFilter(status);
                         setShowStatusMenu(false);
                       }}
-                      className={`w-full text-left px-4 py-3 text-[13px] font-bold transition-colors hover:bg-neutral-50 ${statusFilter === status ? 'text-[#006397] bg-blue-50/50' : 'text-neutral-600'}`}
+                      className={`w-full text-left px-3.5 py-2.5 rounded-xl text-[13px] font-semibold transition-colors cursor-pointer ${statusFilter === status ? 'text-[#0284c7] bg-sky-50/90' : 'text-slate-700 hover:bg-slate-100/70'}`}
                     >
                       {status}
                     </button>
@@ -251,22 +264,27 @@ export default function Purchases() {
 
             <div className="relative flex-1 md:flex-none">
               <button 
-                onClick={() => setShowDateMenu(!showDateMenu)}
-                className="w-full justify-center flex items-center gap-2 px-4 py-3 bg-white border border-[#edeeef] rounded-lg text-[13px] font-bold text-neutral-600 hover:bg-neutral-50 transition-colors whitespace-nowrap"
+                type="button"
+                onClick={() => {
+                  setShowDateMenu(!showDateMenu);
+                  setShowStatusMenu(false);
+                }}
+                className="w-full justify-center flex items-center gap-2 px-4 py-3 glass-pill-button text-[13px] font-semibold text-slate-700 whitespace-nowrap cursor-pointer"
               >
-                <Calendar className="w-4 h-4 text-neutral-400" />
-                {dateRange}
+                <Calendar className="w-3.5 h-3.5 text-[#0284c7]" />
+                <span>{dateRange}</span>
               </button>
               {showDateMenu && (
-                <div className="absolute top-full right-0 mt-2 w-48 bg-white border border-[#edeeef] rounded-xl shadow-xl z-50 overflow-hidden">
+                <div className="absolute top-full right-0 mt-2 w-48 rounded-2xl bg-white/95 backdrop-blur-2xl border border-white shadow-[0_20px_50px_rgba(15,23,42,0.14)] z-50 overflow-hidden p-1.5">
                   {['Today', 'Last 7 Days', 'Last 30 Days', 'This Month', 'All Time'].map(range => (
                     <button
                       key={range}
+                      type="button"
                       onClick={() => {
                         setDateRange(range);
                         setShowDateMenu(false);
                       }}
-                      className={`w-full text-left px-4 py-3 text-[13px] font-bold transition-colors hover:bg-neutral-50 ${dateRange === range ? 'text-[#006397] bg-blue-50/50' : 'text-neutral-600'}`}
+                      className={`w-full text-left px-3.5 py-2.5 rounded-xl text-[13px] font-semibold transition-colors cursor-pointer ${dateRange === range ? 'text-[#0284c7] bg-sky-50/90' : 'text-slate-700 hover:bg-slate-100/70'}`}
                     >
                       {range}
                     </button>
@@ -278,57 +296,66 @@ export default function Purchases() {
         </div>
       </div>
 
-      {/* Data Table */}
-      <div className="bg-white border border-[#edeeef] rounded-2xl shadow-sm overflow-hidden">
+      {/* Data Table in Apple iOS 26 Liquid Glass */}
+      <div className="glass-table-container relative z-10">
         <div className="overflow-x-auto">
           <table className="w-full text-left">
             <thead>
-              <tr className="bg-[#f8f9fa] text-[11px] font-bold text-neutral-400 uppercase tracking-widest border-b border-[#edeeef]">
-                <th className="px-8 py-5">PO Number</th>
-                <th className="px-8 py-5">Supplier</th>
-                <th className="px-8 py-5">Date</th>
-                <th className="px-8 py-5 text-right">Total Cost</th>
-                <th className="px-8 py-5 text-right">Paid</th>
-                <th className="px-8 py-5 text-right">Balance</th>
-                <th className="px-8 py-5">Status</th>
-                <th className="px-8 py-5 text-right">Actions</th>
+              <tr>
+                <th className="px-6 py-4">PO Number</th>
+                <th className="px-6 py-4">Supplier</th>
+                <th className="px-6 py-4">Date</th>
+                <th className="px-6 py-4 text-right">Total Cost</th>
+                <th className="px-6 py-4 text-right">Paid</th>
+                <th className="px-6 py-4 text-right">Balance</th>
+                <th className="px-6 py-4">Status</th>
+                <th className="px-6 py-4 text-right">Actions</th>
               </tr>
             </thead>
-            <tbody className="text-[14px] divide-y divide-[#edeeef]">
+            <tbody className="text-[13.5px]">
               {loading ? (
-                <tr><td colSpan={8} className="px-8 py-20 text-center text-neutral-400 italic">Loading purchase history...</td></tr>
+                <TableSkeletonRows columns={8} rows={6} />
               ) : currentItems.length === 0 ? (
-                <tr><td colSpan={8} className="px-8 py-20 text-center text-neutral-400 italic">No purchase orders found.</td></tr>
+                <tr>
+                  <td colSpan={8} className="p-0">
+                    <GlassEmptyState
+                      isSearch={Boolean(searchQuery || statusFilter !== 'All Statuses' || dateRange !== 'All Time')}
+                      title={searchQuery || statusFilter !== 'All Statuses' ? 'No matching purchase orders' : 'No purchase orders yet'}
+                      description="Try clearing your search or widening the date filter to view historical purchase orders."
+                      onReset={(searchQuery || statusFilter !== 'All Statuses' || dateRange !== 'All Time') ? () => { setSearchQuery(''); setStatusFilter('All Statuses'); setDateRange('All Time'); } : undefined}
+                    />
+                  </td>
+                </tr>
               ) : currentItems.map((po, i) => {
                 const total = po.total_cost || 0;
                 const paid = po.paid_amount || 0;
                 const balance = total - paid;
                 return (
-                <tr key={i} className="hover:bg-[#f8f9fa] transition-colors group">
-                  <td className="px-8 py-5 font-bold text-[#006397] group-hover:underline cursor-pointer">
+                <tr key={i} className="group">
+                  <td className="px-6 py-4 font-bold text-[#0284c7] font-mono group-hover:underline cursor-pointer">
                     <Link to={`/purchases/${po.id}`}>{po.po_number}</Link>
                   </td>
-                  <td className="px-8 py-5 font-bold text-[#162839]">{po.supplier_name}</td>
-                  <td className="px-8 py-5 text-neutral-500 font-medium">
+                  <td className="px-6 py-4 font-bold text-slate-900">{po.supplier_name}</td>
+                  <td className="px-6 py-4 text-slate-500 font-medium tabular-nums">
                     {new Date(po.created_at).toLocaleDateString()}
                   </td>
-                  <td className="px-8 py-5 text-right font-black text-[#162839] tracking-tight">
+                  <td className="px-6 py-4 text-right font-extrabold text-slate-900 tabular-nums">
                     {formatCurrency(total, currency)}
                   </td>
-                  <td className="px-8 py-5 text-right font-black text-emerald-600 tracking-tight">
+                  <td className="px-6 py-4 text-right font-extrabold text-emerald-600 tabular-nums">
                     {formatCurrency(paid, currency)}
                   </td>
-                  <td className={`px-8 py-5 text-right font-black tracking-tight ${balance > 0 ? 'text-red-500' : 'text-neutral-500'}`}>
+                  <td className={`px-6 py-4 text-right font-extrabold tabular-nums ${balance > 0 ? 'text-rose-500' : 'text-slate-400'}`}>
                     {formatCurrency(Math.abs(balance), currency)} {balance > 0 && '(Cr)'}
                   </td>
-                  <td className="px-8 py-5">
-                    <span className={`px-3 py-1 text-[10px] font-black rounded-full border uppercase tracking-wider ${getStatusStyles(po.status)}`}>
+                  <td className="px-6 py-4">
+                    <span className={`px-3 py-1 text-[11px] font-semibold rounded-full border ${getStatusStyles(po.status)}`}>
                       {po.status || 'Pending'}
                     </span>
                   </td>
-                  <td className="px-8 py-5 text-right">
+                  <td className="px-6 py-4 text-right">
                     <div className="flex justify-end gap-2">
-                       {po.status !== 'Received' && ( // assuming 'Received' means fully paid or just status
+                       {po.status !== 'Received' && (
                          <button 
                          onClick={() => {
                            if (window.confirm(`Mark this PO as Received and record full payment of ${formatCurrency(balance, currency)}?`)) {
@@ -357,11 +384,11 @@ export default function Purchases() {
                               });
                             }
                          }}
-                         className="p-1.5 text-neutral-900 font-bold hover:text-emerald-600 hover:bg-emerald-50 rounded-lg transition-all" title="Record Payment">
+                         className="w-8 h-8 inline-flex items-center justify-center rounded-full bg-white/85 hover:bg-white border border-white text-emerald-600 shadow-[0_2px_8px_rgba(15,23,42,0.04)] transition-all" title="Record Payment">
                            <DollarSign className="w-4 h-4" />
                         </button>
                        )}
-                      <Link to={`/purchases/${po.id}`} className="p-1.5 text-neutral-300 hover:text-[#006397] hover:bg-neutral-100 rounded-lg transition-all inline-block">
+                      <Link to={`/purchases/${po.id}`} className="w-8 h-8 inline-flex items-center justify-center rounded-full bg-white/85 hover:bg-white border border-white text-slate-500 hover:text-[#0284c7] shadow-[0_2px_8px_rgba(15,23,42,0.04)] transition-all">
                         <MoreVertical className="w-4 h-4" />
                       </Link>
                     </div>
@@ -374,15 +401,15 @@ export default function Purchases() {
 
         {/* Pagination */}
         {totalPages > 1 && (
-          <div className="px-8 py-4 bg-[#f8f9fa] border-t border-[#edeeef] flex justify-between items-center">
-            <span className="text-[13px] font-bold text-neutral-400">
-              Showing <span className="text-[#162839]">{(currentPage - 1) * itemsPerPage + 1}-{Math.min(currentPage * itemsPerPage, filteredOrders.length)}</span> of <span className="text-[#162839]">{filteredOrders.length}</span> orders
+          <div className="px-6 py-4 bg-white/[0.45] backdrop-blur-xl border-t border-white/90 flex justify-between items-center">
+            <span className="text-xs font-medium text-slate-500">
+              Showing <span className="font-bold text-slate-900">{(currentPage - 1) * itemsPerPage + 1}-{Math.min(currentPage * itemsPerPage, filteredOrders.length)}</span> of <span className="font-bold text-slate-900">{filteredOrders.length}</span> orders
             </span>
-            <div className="flex gap-2">
+            <div className="flex gap-1.5">
               <button 
                 onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
                 disabled={currentPage === 1}
-                className="p-2 border border-[#edeeef] rounded-lg hover:bg-white transition-all disabled:opacity-30"
+                className="w-8 h-8 flex items-center justify-center rounded-full border border-white bg-white/85 hover:bg-white text-slate-600 transition-all disabled:opacity-35 shadow-[0_2px_8px_rgba(15,23,42,0.04)]"
               >
                 <ChevronLeft className="w-4 h-4" />
               </button>
@@ -390,7 +417,7 @@ export default function Purchases() {
                 <button 
                   key={page}
                   onClick={() => setCurrentPage(page)}
-                  className={`w-9 h-9 flex items-center justify-center rounded-lg text-[13px] font-bold transition-all ${currentPage === page ? 'bg-[#006397] text-white shadow-md' : 'border border-[#edeeef] hover:bg-white text-neutral-600'}`}
+                  className={`w-8 h-8 flex items-center justify-center rounded-full text-xs font-bold transition-all ${currentPage === page ? 'bg-gradient-to-r from-[#0284c7] to-sky-500 text-white shadow-[0_4px_12px_rgba(2,132,199,0.3)]' : 'border border-white bg-white/75 hover:bg-white text-slate-700'}`}
                 >
                   {page}
                 </button>
@@ -398,7 +425,7 @@ export default function Purchases() {
               <button 
                 onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
                 disabled={currentPage === totalPages}
-                className="p-2 border border-[#edeeef] rounded-lg hover:bg-white transition-all disabled:opacity-30"
+                className="w-8 h-8 flex items-center justify-center rounded-full border border-white bg-white/85 hover:bg-white text-slate-600 transition-all disabled:opacity-35 shadow-[0_2px_8px_rgba(15,23,42,0.04)]"
               >
                 <ChevronRight className="w-4 h-4" />
               </button>

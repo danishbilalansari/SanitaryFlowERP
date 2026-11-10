@@ -6,6 +6,7 @@ import {
 } from 'lucide-react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { ItemImage } from '../components/ItemImage';
+import { GlassSelect, GlassDatePicker, GlassModal } from '../components/GlassUI';
 import { motion, AnimatePresence } from 'motion/react';
 import { useAppContext } from '../store';
 
@@ -145,52 +146,52 @@ export default function StockTransfer() {
   return (
     <div className="space-y-8 animate-in fade-in duration-500 pb-12">
       {/* Breadcrumbs & Header */}
-      <div className="flex flex-col gap-1">
-        <nav className="flex items-center gap-2 text-[11px] font-bold text-neutral-400 uppercase tracking-widest">
-          <span className="cursor-pointer hover:text-[#006397]" onClick={() => navigate('/inventory')}>Inventory</span>
-          <span className="text-neutral-300">/</span>
-          <span className="text-[#006397]">Stock Transfer</span>
-        </nav>
-        <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 mt-2">
-          <div>
-            <h2 className="text-[30px] leading-tight font-bold text-[#162839] tracking-tight">{isStockOut ? 'Stock Out' : 'New Transfer Request'}</h2>
-            <p className="text-[16px] text-neutral-500 mt-1">{isStockOut ? 'Record products leaving the factory for retail outlets or distribution.' : 'Manage inter-warehouse stock movements from factory production lines to retail outlets.'}</p>
-          </div>
-          <div className="flex gap-3">
-            <button 
-              onClick={() => handleSave(true)}
-              disabled={isSubmitting}
-              className="px-6 py-2.5 bg-white border border-[#c4c6cd] text-[#162839] text-[14px] font-bold rounded-lg hover:bg-neutral-50 transition-colors disabled:opacity-50"
-            >
-              {isSubmitting ? '...' : 'Save as Draft'}
-            </button>
-            <button 
-              onClick={() => handleSave(false)}
-              disabled={isSubmitting}
-              className="flex items-center gap-2 px-6 py-2.5 bg-[#162839] text-white text-[14px] font-bold rounded-lg hover:opacity-90 transition-opacity shadow-sm disabled:opacity-50"
-            >
-              <Send className="w-4 h-4" />
-              {isSubmitting ? 'Submitting...' : 'Submit Request'}
-            </button>
-          </div>
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 p-6 rounded-3xl bg-white/[0.65] backdrop-blur-2xl border border-white/85 shadow-[0_10px_30px_rgba(15,23,42,0.04),inset_0_1px_1.5px_rgba(255,255,255,0.95)]">
+        <div>
+          <nav className="flex items-center gap-1.5 text-xs font-semibold text-slate-500 mb-1">
+            <span className="cursor-pointer hover:text-[#0284c7] transition-colors" onClick={() => navigate('/inventory')}>Inventory</span>
+            <ChevronRight className="w-3 h-3 text-slate-400" />
+            <span className="text-[#0284c7] font-bold">Stock Transfer</span>
+          </nav>
+          <h2 className="text-2xl sm:text-3xl leading-tight font-extrabold text-slate-900 tracking-tight">{isStockOut ? 'Stock Out' : 'New Transfer Request'}</h2>
+          <p className="text-sm text-slate-600 mt-0.5">{isStockOut ? 'Record products leaving the factory for retail outlets or distribution.' : 'Manage inter-warehouse stock movements from factory production lines to retail outlets.'}</p>
+        </div>
+        <div className="flex gap-2.5">
+          <button 
+            type="button"
+            onClick={() => handleSave(true)}
+            disabled={isSubmitting}
+            className="px-5 py-2.5 glass-pill-button text-slate-700 text-[13px] font-semibold rounded-full disabled:opacity-50 cursor-pointer"
+          >
+            {isSubmitting ? '...' : 'Save as Draft'}
+          </button>
+          <button 
+            type="button"
+            onClick={() => handleSave(false)}
+            disabled={isSubmitting}
+            className="flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-[#0284c7] to-sky-500 text-white text-[13px] font-semibold rounded-full hover:brightness-105 transition-all shadow-[0_4px_16px_rgba(2,132,199,0.3)] disabled:opacity-50 cursor-pointer"
+          >
+            <Send className="w-4 h-4" />
+            <span>{isSubmitting ? 'Submitting...' : 'Submit Request'}</span>
+          </button>
         </div>
       </div>
 
       {/* Progress Tracker */}
-      <div className="bg-[#f3f4f5] border border-[#edeeef] rounded-xl p-8 shadow-sm">
+      <div className="glass-card p-6 sm:p-8">
         <div className="flex justify-between items-center max-w-4xl mx-auto relative">
-          <div className="absolute top-[20px] left-[5%] right-[5%] h-[2px] bg-[#e1e3e4]" />
-          <div className="absolute top-[20px] left-[5%] w-[28%] h-[2px] bg-[#006397]" />
+          <div className="absolute top-[20px] left-[5%] right-[5%] h-[2px] bg-slate-200/80" />
+          <div className="absolute top-[20px] left-[5%] w-[28%] h-[2px] bg-gradient-to-r from-[#0284c7] to-sky-400" />
           
-          {steps.map((step, i) => (
+          {steps.map((step) => (
             <div key={step.id} className="flex flex-col items-center gap-3 relative z-10">
               <div className={`w-10 h-10 rounded-full flex items-center justify-center font-bold transition-colors ${
-                step.status === 'active' ? 'bg-[#006397] text-white' : 'bg-[#e1e3e4] text-neutral-500 border border-[#c4c6cd]'
+                step.status === 'active' ? 'bg-gradient-to-r from-[#0284c7] to-sky-500 text-white shadow-[0_4px_12px_rgba(2,132,199,0.3)]' : 'bg-white/90 text-slate-400 border border-white shadow-2xs'
               }`}>
                 {step.id}
               </div>
-              <span className={`text-[10px] font-bold uppercase tracking-wider ${
-                step.status === 'active' ? 'text-[#006397]' : 'text-neutral-400'
+              <span className={`text-[10.5px] font-bold uppercase tracking-wider ${
+                step.status === 'active' ? 'text-[#0284c7]' : 'text-slate-400'
               }`}>
                 {step.label}
               </span>
@@ -203,15 +204,20 @@ export default function StockTransfer() {
         {/* Main Form Area */}
         <div className="col-span-12 lg:col-span-8 flex flex-col gap-8">
           {/* Routing Details */}
-          <div className="bg-white border border-[#edeeef] rounded-xl shadow-sm overflow-hidden">
-            <div className="bg-[#f3f4f5] px-6 py-4 border-b border-[#edeeef] flex items-center gap-3">
-              <MapPin className="w-5 h-5 text-[#162839]" />
-              <h3 className="text-[18px] font-bold text-[#162839]">Routing Details</h3>
+          <div className="glass-card p-7 sm:p-8 rounded-[30px] space-y-6">
+            <div className="flex items-center gap-3.5 border-b border-slate-200/60 pb-5">
+              <div className="w-11 h-11 rounded-2xl bg-white/95 border border-white text-[#0284c7] flex items-center justify-center font-bold shadow-[0_4px_12px_rgba(15,23,42,0.05)]">
+                <MapPin className="w-5 h-5" />
+              </div>
+              <div>
+                <h3 className="text-[18px] font-bold text-slate-900 tracking-tight">Routing Details</h3>
+                <p className="text-[13px] text-slate-500 font-medium">Select source facility and target destination warehouse.</p>
+              </div>
             </div>
-            <div className="p-6 grid grid-cols-2 gap-12 relative">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-8 relative items-center">
               <div className="space-y-2">
-                <label className="text-[11px] font-bold text-neutral-500 uppercase tracking-widest">SOURCE WAREHOUSE</label>
-                <select 
+                <label className="text-[11px] font-bold text-slate-500 uppercase tracking-[0.14em] block">SOURCE WAREHOUSE</label>
+                <GlassSelect 
                   value={sourceWarehouse}
                   onChange={e => {
                     const newSource = e.target.value;
@@ -236,28 +242,27 @@ export default function StockTransfer() {
                         .catch(() => setLoadingInventory(false));
                     }
                   }}
-                  className="w-full border-[#c4c6cd] rounded-lg text-[14px] py-2.5 focus:ring-2 focus:ring-[#5cb8fd] focus:border-[#5cb8fd] cursor-pointer disabled:bg-neutral-50 disabled:cursor-not-allowed"
                 >
                   <option>Main Factory (A-1)</option>
                   <option>Secondary Storage (B-4)</option>
                   <option>Regional Hub (North)</option>
                   <option>Central WH</option>
                   <option>Shop Display</option>
-                </select>
-                <div className="flex items-center gap-1.5 text-[12px] text-neutral-500 italic mt-1">
-                  <Info className="w-3.5 h-3.5" />
+                </GlassSelect>
+                <div className="flex items-center gap-1.5 text-[12px] text-slate-500 font-medium italic mt-1">
+                  <Info className="w-3.5 h-3.5 text-sky-500" />
                   Currently active for production distributions.
                 </div>
               </div>
 
               {/* Connection Indicator */}
-              <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 bg-white p-2 rounded-full border border-[#edeeef] z-10 shadow-sm">
-                <ArrowRight className="w-5 h-5 text-[#006397]" />
+              <div className="hidden md:flex absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-white/95 border border-white z-10 shadow-[0_4px_12px_rgba(15,23,42,0.06)] items-center justify-center text-[#0284c7]">
+                <ArrowRight className="w-4 h-4" />
               </div>
 
               <div className="space-y-2">
-                <label className="text-[11px] font-bold text-neutral-500 uppercase tracking-widest">DESTINATION SHOP</label>
-                <select 
+                <label className="text-[11px] font-bold text-slate-500 uppercase tracking-[0.14em] block">DESTINATION SHOP</label>
+                <GlassSelect 
                   value={destinationShop}
                   onChange={e => {
                     if (e.target.value === sourceWarehouse) {
@@ -266,16 +271,15 @@ export default function StockTransfer() {
                     }
                     setDestinationShop(e.target.value);
                   }}
-                  className="w-full border-[#c4c6cd] rounded-lg text-[14px] py-2.5 focus:ring-2 focus:ring-[#5cb8fd] focus:border-[#5cb8fd] cursor-pointer disabled:bg-neutral-50 disabled:cursor-not-allowed"
                 >
                   <option>Central WH</option>
                   <option>Secondary Storage (B-4)</option>
                   <option>Regional Hub (North)</option>
                   <option>Shop Display</option>
                   <option>Main Factory (A-1)</option>
-                </select>
-                <div className="flex items-center gap-1.5 text-[12px] text-red-500 italic mt-1">
-                  <AlertTriangle className="w-3.5 h-3.5" />
+                </GlassSelect>
+                <div className="flex items-center gap-1.5 text-[12px] text-amber-600 font-medium italic mt-1">
+                  <AlertTriangle className="w-3.5 h-3.5 text-amber-500" />
                   Real-time stock alerts active for targets.
                 </div>
               </div>
@@ -283,18 +287,22 @@ export default function StockTransfer() {
           </div>
 
           {/* Item Selection */}
-          <div className="bg-white border border-[#edeeef] rounded-xl shadow-sm overflow-hidden flex-1 min-h-[400px]">
-            <div className="bg-[#f3f4f5] px-6 py-4 border-b border-[#edeeef] flex justify-between items-center">
-              <div className="flex items-center gap-3">
-                <div className="p-1 bg-white rounded">
-                   <ClipboardList className="w-4 h-4 text-[#162839]" />
+          <div className="glass-table-container rounded-[30px] overflow-hidden flex-1 min-h-[400px]">
+            <div className="p-6 sm:p-7 border-b border-slate-200/60 bg-white/40 flex justify-between items-center">
+              <div className="flex items-center gap-3.5">
+                <div className="w-11 h-11 rounded-2xl bg-white/95 border border-white text-[#0284c7] flex items-center justify-center font-bold shadow-[0_4px_12px_rgba(15,23,42,0.05)]">
+                   <ClipboardList className="w-5 h-5" />
                 </div>
-                <h3 className="text-[18px] font-bold text-[#162839]">Item Selection</h3>
+                <div>
+                  <h3 className="text-[18px] font-bold text-slate-900 tracking-tight">Item Selection</h3>
+                  <p className="text-[13px] text-slate-500 font-medium">SKUs and quantities selected for transit</p>
+                </div>
               </div>
               <div className="flex gap-2">
                 <button 
+                  type="button"
                   onClick={() => setShowProductSelector(true)}
-                  className="flex items-center gap-1.5 px-3 py-1.5 bg-[#006397] text-white rounded text-[11px] font-bold hover:opacity-90 transition-opacity uppercase tracking-wider shadow-sm"
+                  className="flex items-center gap-1.5 px-5 py-2.5 rounded-full bg-gradient-to-r from-[#0284c7] to-sky-500 text-white text-[13px] font-semibold hover:brightness-105 transition-all shadow-[0_4px_14px_rgba(2,132,199,0.28)] cursor-pointer"
                 >
                   Add Product
                 </button>
@@ -359,42 +367,48 @@ export default function StockTransfer() {
         {/* Info Sidebar */}
         <div className="col-span-12 lg:col-span-4 flex flex-col gap-8">
           {/* Summary Card */}
-          <div className="bg-white border border-[#edeeef] rounded-xl shadow-sm overflow-hidden text-[#162839]">
-            <div className="bg-[#162839] px-6 py-4 text-white">
-              <h3 className="text-[18px] font-bold">Transfer Summary</h3>
+          <div className="glass-card overflow-hidden text-slate-900">
+            <div className="bg-white/60 border-b border-white px-6 py-4">
+              <h3 className="text-[17px] font-bold text-slate-900">Transfer Summary</h3>
             </div>
             <div className="p-6 space-y-4">
-              <div className="flex justify-between items-center text-[14px]">
-                <span className="text-neutral-500 font-medium">Total Items Selected:</span>
-                <span className="font-bold">{items.length} Skus</span>
+              <div className="flex justify-between items-center text-[13.5px]">
+                <span className="text-slate-500 font-medium">Total Items Selected:</span>
+                <span className="font-bold text-slate-900">{items.length} Skus</span>
               </div>
-              <div className="flex justify-between items-center text-[14px]">
-                <span className="text-neutral-500 font-medium">Total Units:</span>
-                <span className="font-bold">{items.reduce((acc, item) => acc + item.qty, 0)} units</span>
+              <div className="flex justify-between items-center text-[13.5px]">
+                <span className="text-slate-500 font-medium">Total Units:</span>
+                <span className="font-bold text-slate-900">{items.reduce((acc, item) => acc + item.qty, 0)} units</span>
               </div>
-              <div className="flex justify-between items-center text-[14px]">
-                <span className="text-neutral-500 font-medium">Estimated Weight:</span>
-                <span className="font-bold">-</span>
+              <div className="flex justify-between items-center text-[13.5px]">
+                <span className="text-slate-500 font-medium">Estimated Weight:</span>
+                <span className="font-bold text-slate-900">-</span>
               </div>
-              <div className="h-[1px] bg-[#edeeef] my-2" />
-              <div className="flex justify-between items-start text-[#162839]">
-                <span className="text-[14px] font-bold mt-1">Priority Level:</span>
-                <div className="flex gap-1.5">
+              <div className="h-[1px] bg-slate-200/60 my-2" />
+              <div className="flex justify-between items-center text-slate-900">
+                <span className="text-[13.5px] font-bold">Priority Level:</span>
+                <div className="flex gap-2">
                   <button 
+                    type="button"
                     onClick={() => setPriority('NORMAL')}
-                    className={`px-3 py-1 rounded-full text-[10px] font-bold border transition-all ${
-                      priority === 'NORMAL' ? 'bg-[#162839] text-white border-transparent' : 'bg-[#f3f4f5] text-neutral-500 border-[#edeeef] hover:bg-neutral-100'
+                    className={`px-3.5 py-1.5 rounded-full text-[11px] font-semibold transition-all cursor-pointer ${
+                      priority === 'NORMAL'
+                        ? 'bg-sky-100/95 border-[1.5px] border-sky-300 text-[#0284c7] shadow-[0_2px_10px_rgba(2,132,199,0.12)]'
+                        : 'glass-pill-button text-slate-500 hover:text-slate-800'
                     }`}
                   >
-                    NORMAL
+                    Normal
                   </button>
                   <button 
+                    type="button"
                     onClick={() => setPriority('URGENT')}
-                    className={`px-3 py-1 rounded-full text-[10px] font-bold border transition-all ${
-                      priority === 'URGENT' ? 'bg-red-500 text-white border-transparent shadow-sm' : 'bg-[#f3f4f5] text-neutral-500 border-[#edeeef] hover:bg-neutral-100'
+                    className={`px-3.5 py-1.5 rounded-full text-[11px] font-semibold transition-all cursor-pointer ${
+                      priority === 'URGENT'
+                        ? 'bg-rose-100/95 border-[1.5px] border-rose-300 text-rose-600 shadow-[0_2px_10px_rgba(244,63,94,0.14)]'
+                        : 'glass-pill-button text-slate-500 hover:text-slate-800'
                     }`}
                   >
-                    URGENT
+                    Urgent
                   </button>
                 </div>
               </div>
@@ -402,74 +416,77 @@ export default function StockTransfer() {
           </div>
 
           {/* Logistics Details */}
-          <div className="bg-white border border-[#edeeef] rounded-xl shadow-sm overflow-hidden text-[#162839]">
-            <div className="bg-[#f3f4f5] px-6 py-4 border-b border-[#edeeef]">
-              <h3 className="text-[18px] font-bold text-[#162839]">Logistics Details</h3>
+          <div className="glass-card overflow-hidden text-slate-900">
+            <div className="bg-white/60 px-6 py-4 border-b border-white">
+              <h3 className="text-[17px] font-bold text-slate-900">Logistics Details</h3>
             </div>
             <div className="p-6 space-y-6">
               <div className="space-y-3">
-                <label className="text-[11px] font-bold text-neutral-500 uppercase tracking-widest">TRANSPORT MODE</label>
+                <label className="text-[11px] font-bold text-slate-500 uppercase tracking-widest">TRANSPORT MODE</label>
                 <div className="grid grid-cols-2 gap-3">
                   <button 
+                    type="button"
                     onClick={() => setTransport('in-house')}
-                    className={`flex flex-col items-center justify-center gap-1.5 p-3 rounded-lg border-2 transition-all ${
-                      transport === 'in-house' ? 'bg-[#e3f2fd] border-[#006397] text-[#006397]' : 'bg-white border-[#edeeef] text-neutral-400 hover:bg-neutral-50'
+                    className={`flex flex-col items-center justify-center gap-2 p-4 rounded-2xl transition-all cursor-pointer ${
+                      transport === 'in-house'
+                        ? 'bg-sky-100/85 border-[1.5px] border-sky-300 text-[#0284c7] shadow-[0_6px_18px_rgba(2,132,199,0.12),inset_0_1px_1px_rgba(255,255,255,1)]'
+                        : 'bg-white/85 border-[1.5px] border-white text-slate-500 hover:bg-white hover:text-slate-800 shadow-[0_4px_12px_rgba(15,23,42,0.04)]'
                     }`}
                   >
                     <Truck className="w-5 h-5" />
-                    <span className="text-[11px] font-bold">In-house Truck</span>
+                    <span className="text-[12px] font-semibold">In-house Truck</span>
                   </button>
                   <button 
+                    type="button"
                     onClick={() => setTransport('third-party')}
-                    className={`flex flex-col items-center justify-center gap-1.5 p-3 rounded-lg border-2 transition-all ${
-                      transport === 'third-party' ? 'bg-[#e3f2fd] border-[#006397] text-[#006397]' : 'bg-white border-[#edeeef] text-neutral-400 hover:bg-neutral-50'
+                    className={`flex flex-col items-center justify-center gap-2 p-4 rounded-2xl transition-all cursor-pointer ${
+                      transport === 'third-party'
+                        ? 'bg-sky-100/85 border-[1.5px] border-sky-300 text-[#0284c7] shadow-[0_6px_18px_rgba(2,132,199,0.12),inset_0_1px_1px_rgba(255,255,255,1)]'
+                        : 'bg-white/85 border-[1.5px] border-white text-slate-500 hover:bg-white hover:text-slate-800 shadow-[0_4px_12px_rgba(15,23,42,0.04)]'
                     }`}
                   >
                     <HardHat className="w-5 h-5" />
-                    <span className="text-[11px] font-bold">Third-party Courier</span>
+                    <span className="text-[12px] font-semibold">Third-party Courier</span>
                   </button>
                 </div>
               </div>
 
               <div className="space-y-2">
-                <label className="text-[11px] font-bold text-neutral-500 uppercase tracking-widest">EXPECTED ARRIVAL</label>
-                <div className="relative">
-                   <Calendar className="w-4 h-4 absolute right-3 top-1/2 -translate-y-1/2 text-neutral-400 pointer-events-none" />
-                   <input 
-                    type="date" 
-                    value={expectedArrival}
-                    onChange={e => setExpectedArrival(e.target.value)}
-                    className="w-full bg-[#f8f9fa] border-2 border-[#edeeef] rounded-xl px-4 py-3 text-[14px] font-bold text-[#162839] outline-none focus:ring-2 focus:ring-[#5cb8fd] focus:border-[#5cb8fd] transition-all"
-                  />
-                </div>
+                <label className="text-[11px] font-bold text-slate-500 uppercase tracking-widest">EXPECTED ARRIVAL</label>
+                <GlassDatePicker
+                  value={expectedArrival}
+                  onChange={e => setExpectedArrival(e.target.value)}
+                />
               </div>
 
               <div className="space-y-2">
-                <label className="text-[11px] font-bold text-neutral-500 uppercase tracking-widest">INTERNAL NOTES</label>
+                <label className="text-[11px] font-bold text-slate-500 uppercase tracking-widest">INTERNAL NOTES</label>
                 <textarea 
                   value={internalNotes}
                   onChange={e => setInternalNotes(e.target.value)}
                   placeholder="Reason for transfer, handling instructions..."
-                  className="w-full bg-[#f8f9fa] border-2 border-[#edeeef] rounded-xl p-4 text-[13px] font-medium text-[#162839] h-32 outline-none focus:ring-2 focus:ring-[#5cb8fd] focus:border-[#5cb8fd] transition-all resize-none"
+                  className="w-full rounded-2xl p-4 text-[13.5px] font-medium text-slate-900 h-32 outline-none transition-all resize-none"
                 />
               </div>
 
-              <div className="flex flex-col gap-4 pt-4">
+              <div className="flex flex-col gap-3 pt-2">
                 <button 
+                  type="button"
                   onClick={() => handleSave(true)}
                   disabled={isSubmitting}
-                  className="w-full py-4 bg-[#f3f4f5] border border-[#edeeef] text-[#162839] font-black rounded-xl hover:bg-neutral-200 transition-all uppercase tracking-widest text-[12px] flex items-center justify-center gap-2 disabled:opacity-50"
+                  className="w-full py-3.5 glass-pill-button text-slate-800 font-semibold rounded-full text-[13.5px] flex items-center justify-center gap-2 disabled:opacity-50 cursor-pointer"
                 >
-                  <Save className="w-4 h-4" />
-                  Save as Draft
+                  <Save className="w-4 h-4 text-[#0284c7]" />
+                  <span>Save as Draft</span>
                 </button>
                 <button 
+                  type="button"
                   onClick={() => handleSave(false)}
                   disabled={isSubmitting}
-                  className="w-full py-5 bg-[#006397] text-white font-black rounded-xl hover:opacity-95 shadow-lg shadow-blue-900/20 transition-all uppercase tracking-widest text-[13px] flex items-center justify-center gap-2 disabled:opacity-50"
+                  className="w-full py-3.5 rounded-full bg-gradient-to-r from-[#0284c7] to-sky-500 text-white font-semibold hover:brightness-105 shadow-[0_6px_20px_rgba(2,132,199,0.28)] transition-all text-[13.5px] flex items-center justify-center gap-2 disabled:opacity-50 cursor-pointer"
                 >
                   <Send className="w-4 h-4" />
-                  {isSubmitting ? 'Processing...' : 'Submit Request'}
+                  <span>{isSubmitting ? 'Processing...' : 'Submit Request'}</span>
                 </button>
               </div>
             </div>
@@ -478,96 +495,87 @@ export default function StockTransfer() {
       </div>
 
       {/* Product Selector Modal */}
-      <AnimatePresence>
-        {showProductSelector && (
-          <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
-            <motion.div 
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              onClick={() => setShowProductSelector(false)}
-              className="absolute inset-0 bg-[#162839]/60 backdrop-blur-sm"
-            />
-            <motion.div 
-              initial={{ opacity: 0, scale: 0.95, y: 20 }}
-              animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.95, y: 20 }}
-              className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl overflow-hidden relative z-10 flex flex-col max-h-[80vh]"
-            >
-              <div className="p-6 border-b border-[#edeeef] flex justify-between items-center bg-[#f8f9fa]">
-                <h3 className="text-[20px] font-black text-[#162839]">Select Products</h3>
-                <button 
-                  onClick={() => setShowProductSelector(false)}
-                  className="p-2 hover:bg-neutral-200 rounded-full transition-colors"
-                >
-                  <X className="w-5 h-5 text-neutral-500" />
-                </button>
-              </div>
-
-              <div className="p-6 border-b border-[#edeeef]">
-                <div className="relative">
-                  <Search className="w-5 h-5 text-neutral-400 absolute left-4 top-1/2 -translate-y-1/2" />
-                  <input 
-                    type="text" 
-                    autoFocus
-                    value={searchQuery}
-                    onChange={e => setSearchQuery(e.target.value)}
-                    placeholder="Search by name or SKU..."
-                    className="w-full bg-[#f3f4f5] border-none rounded-xl pl-12 pr-4 py-4 text-[15px] outline-none focus:ring-2 focus:ring-[#5cb8fd] transition-all"
-                  />
-                </div>
-              </div>
-
-              <div className="flex-1 overflow-y-auto p-2">
-                {loadingInventory ? (
-                  <div className="p-12 text-center text-neutral-400">Loading products...</div>
-                ) : filteredInventory.length === 0 ? (
-                  <div className="p-12 text-center text-neutral-400">No products found matching "{searchQuery}"</div>
-                ) : (
-                  <div className="grid gap-2">
-                    {filteredInventory.map(product => (
-                      <div 
-                        key={product.id}
-                        onClick={() => addItem(product)}
-                        className="flex items-center justify-between p-4 hover:bg-[#f8f9fa] rounded-xl cursor-pointer group transition-colors border border-transparent hover:border-[#edeeef]"
-                      >
-                        <div className="flex items-center gap-4">
-                          <div className="w-12 h-12 rounded-lg bg-[#f3f4f5] flex items-center justify-center overflow-hidden">
-                            <ItemImage src={product.image} name={product.name} className="w-full h-full object-cover" />
-                          </div>
-                          <div>
-                            <p className="font-bold text-[#162839]">{product.name}</p>
-                            <p className="text-[12px] text-neutral-500">{product.description || product.product_line || 'No description'}</p>
-                            <p className="text-[12px] text-neutral-500 font-mono">{product.sku} • {product.category} • Size: {product.size || '-'} • Color: {product.color || '-'} • Stock: {product.stock ?? 0}</p>
-                          </div>
-                        </div>
-                        <div className="flex items-center gap-6">
-                          <div className="text-right">
-                            <p className="text-[13px] font-black text-[#162839]">{product.stock} Units</p>
-                            <p className="text-[11px] font-bold text-neutral-400 uppercase tracking-widest">Available</p>
-                          </div>
-                          <div className="p-2 bg-[#d1e4fb] text-[#162839] rounded-lg opacity-0 group-hover:opacity-100 transition-opacity">
-                            <Plus className="w-5 h-5" />
-                          </div>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-
-              <div className="p-6 bg-[#f8f9fa] border-t border-[#edeeef] flex justify-end">
-                <button 
-                   onClick={() => setShowProductSelector(false)}
-                   className="px-8 py-3 bg-[#162839] text-white font-black rounded-xl hover:opacity-90 transition-all text-[13px] uppercase tracking-widest"
-                >
-                  Done
-                </button>
-              </div>
-            </motion.div>
+      {/* Product Selector Modal (renders in Portal at z-[99999] so sidebar is blurred behind) */}
+      <GlassModal
+        isOpen={showProductSelector}
+        onClose={() => setShowProductSelector(false)}
+        maxWidth="max-w-2xl"
+        className="max-h-[82vh]"
+      >
+        <div className="flex items-center justify-between pb-4 mb-4 border-b border-slate-200/60">
+          <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-white/90 border border-white shadow-[0_2px_10px_rgba(15,23,42,0.05),inset_0_1px_1px_rgba(255,255,255,1)]">
+            <span className="text-[13px] font-semibold text-slate-800">Select Products</span>
           </div>
-        )}
-      </AnimatePresence>
+          <button 
+            onClick={() => setShowProductSelector(false)}
+            className="w-9 h-9 rounded-full bg-white/90 hover:bg-white border border-white shadow-[0_2px_10px_rgba(15,23,42,0.05)] flex items-center justify-center text-slate-600 hover:text-slate-900 transition-all cursor-pointer"
+          >
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+
+        <div className="mb-4">
+          <div className="relative">
+            <Search className="w-4 h-4 text-slate-400 absolute left-4 top-1/2 -translate-y-1/2" />
+            <input 
+              type="text" 
+              autoFocus
+              value={searchQuery}
+              onChange={e => setSearchQuery(e.target.value)}
+              placeholder="Search by name or SKU..."
+              className="w-full rounded-2xl bg-white/90 border border-white pl-11 pr-4 py-3.5 text-[14px] font-medium text-slate-900 placeholder:text-slate-400 shadow-[0_2px_10px_rgba(15,23,42,0.03)] outline-none focus:ring-2 focus:ring-sky-400/40 transition-all"
+            />
+          </div>
+        </div>
+
+        <div className="flex-1 overflow-y-auto space-y-2 pr-1">
+          {loadingInventory ? (
+            <div className="p-12 text-center text-slate-400">Loading products...</div>
+          ) : filteredInventory.length === 0 ? (
+            <div className="p-12 text-center text-slate-400">No products found matching "{searchQuery}"</div>
+          ) : (
+            <div className="grid gap-2">
+              {filteredInventory.map(product => (
+                <div 
+                  key={product.id}
+                  onClick={() => addItem(product)}
+                  className="flex items-center justify-between p-3.5 bg-white/85 hover:bg-white rounded-2xl cursor-pointer group transition-all border border-white shadow-2xs"
+                >
+                  <div className="flex items-center gap-3.5">
+                    <div className="w-11 h-11 rounded-xl bg-slate-100/80 border border-white flex items-center justify-center overflow-hidden">
+                      <ItemImage src={product.image} name={product.name} className="w-full h-full object-cover" />
+                    </div>
+                    <div>
+                      <p className="font-bold text-slate-900 text-[14px]">{product.name}</p>
+                      <p className="text-[12px] text-slate-500">{product.description || product.product_line || 'No description'}</p>
+                      <p className="text-[11px] text-slate-400 font-mono">{product.sku} • {product.category} • Stock: {product.stock ?? 0}</p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-4">
+                    <div className="text-right">
+                      <p className="text-[13px] font-bold text-slate-900">{product.stock} Units</p>
+                      <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Available</p>
+                    </div>
+                    <div className="w-8 h-8 rounded-full bg-sky-100/80 text-[#0284c7] flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                      <Plus className="w-4 h-4" />
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
+        <div className="pt-4 mt-3 border-t border-slate-200/60 flex justify-end">
+          <button 
+             onClick={() => setShowProductSelector(false)}
+             className="px-6 py-2.5 rounded-full bg-white/95 hover:bg-white border border-white text-[13.5px] font-semibold text-slate-900 shadow-[0_6px_18px_rgba(15,23,42,0.08)] flex items-center gap-2 transition-all cursor-pointer"
+          >
+            <span className="text-[#0284c7] font-bold">✓</span>
+            <span>Done</span>
+          </button>
+        </div>
+      </GlassModal>
     </div>
   );
 }

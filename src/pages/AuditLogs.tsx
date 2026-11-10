@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { ChevronRight, History, Search, Filter, Download } from 'lucide-react';
 import { useAppContext } from '../store';
+import { TableSkeletonRows, GlassEmptyState } from '../components/GlassUI';
 
 interface AuditLog {
   id: number;
@@ -18,13 +19,17 @@ export default function AuditLogs() {
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [moduleFilter, setModuleFilter] = useState('All');
+  const [showModuleMenu, setShowModuleMenu] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const [totalLogs, setTotalLogs] = useState(0);
   const logsPerPage = 10;
 
   useEffect(() => {
-    const fetchLogs = async () => {
-      setLoading(true);
+    const fetchLogs = async (isBackground = false) => {
+      if (isBackground && typeof document !== 'undefined' && document.visibilityState === 'hidden') {
+        return;
+      }
+      if (!isBackground) setLoading(true);
       try {
         const queryParams = new URLSearchParams({
           page: currentPage.toString(),
@@ -32,19 +37,19 @@ export default function AuditLogs() {
           ...(searchQuery && { search: searchQuery }),
           ...(moduleFilter !== 'All' && { module: moduleFilter })
         });
-        const res = await fetch(`/api/audit-logs?${queryParams}`, { cache: 'no-cache' });
+        const res = await fetch(`/api/audit-logs?${queryParams}`);
         const data = await res.json();
-        setLogs(data.logs);
-        setTotalLogs(Number(data.totalCount));
-        setLoading(false);
+        setLogs(data.logs || []);
+        setTotalLogs(Number(data.totalCount || 0));
       } catch (err) {
         console.error('Error fetching logs:', err);
-        setLoading(false);
+      } finally {
+        if (!isBackground) setLoading(false);
       }
     };
 
-    fetchLogs();
-    const interval = setInterval(fetchLogs, 5000);
+    fetchLogs(false);
+    const interval = setInterval(() => fetchLogs(true), 30_000);
     return () => clearInterval(interval);
   }, [currentPage, searchQuery, moduleFilter]);
 
@@ -93,31 +98,34 @@ export default function AuditLogs() {
   const availableModules = ['All', 'Inventory', 'Production', 'Security', 'Sales', 'Customers', 'Suppliers']; // Simplified list for now based on screenshot
 
   return (
-    <div className="space-y-8 animate-in fade-in duration-500 pb-12">
-      <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
+    <div className="space-y-6 pb-12">
+      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 p-6 rounded-3xl bg-white/[0.65] backdrop-blur-2xl border border-white/85 shadow-[0_10px_30px_rgba(15,23,42,0.04),inset_0_1px_1.5px_rgba(255,255,255,0.95)]">
         <div>
-          <nav className="flex items-center gap-2 text-[13px] font-medium text-neutral-400 mb-2">
-            <Link to="/" className="hover:text-[#006397] transition-colors">Dashboard</Link>
-            <ChevronRight className="w-3.5 h-3.5" />
-            <span className="text-[#006397] font-bold">Audit Logs</span>
+          <nav className="flex items-center gap-1.5 text-xs font-semibold text-slate-500 mb-1">
+            <Link to="/" className="hover:text-[#0284c7] transition-colors">Dashboard</Link>
+            <ChevronRight className="w-3 h-3 text-slate-400" />
+            <span className="text-[#0284c7] font-bold">Audit Logs</span>
           </nav>
-          <h2 className="text-[32px] font-black text-[#001d31] tracking-tight leading-none">System Audit Logs</h2>
-          <p className="text-[16px] text-neutral-500 mt-1">Track every action across the ERP system for security and accountability.</p>
+          <h2 className="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight leading-none mb-1">System Audit Logs</h2>
+          <p className="text-sm text-slate-600">Track every action across the ERP system for security and accountability.</p>
         </div>
-        <div className="flex gap-3">
+        <div className="flex gap-2.5">
           <button 
             onClick={handleExport}
-            className="flex items-center gap-2 px-6 py-2.5 bg-white border border-[#edeeef] text-[#162839] font-bold rounded-lg hover:bg-neutral-50 transition-all text-[14px] shadow-sm uppercase tracking-widest text-[11px]"
+            className="flex items-center gap-2 px-5 py-2.5 glass-pill-button text-slate-800 font-semibold text-xs"
           >
-            <Download className="w-4 h-4" />
-            Export CSV
+            <Download className="w-3.5 h-3.5 text-slate-500" />
+            <span>Export CSV</span>
           </button>
         </div>
       </div>
 
-      <div className="bg-[#f3f4f5] border border-[#edeeef] p-4 rounded-xl shadow-sm flex flex-col md:flex-row gap-4 items-center">
-        <div className="relative flex-1 group">
-          <Search className="w-5 h-5 text-neutral-400 absolute left-4 top-1/2 -translate-y-1/2 group-focus-within:text-[#006397] transition-colors" />
+      <div 
+        className="glass-search-toolbar relative z-40 flex flex-col md:flex-row gap-3.5 items-center"
+        onMouseLeave={() => setShowModuleMenu(false)}
+      >
+        <div className="relative flex-1 group w-full">
+          <Search className="w-4 h-4 text-slate-400 absolute left-4 top-1/2 -translate-y-1/2 group-focus-within:text-[#0284c7] transition-colors pointer-events-none z-10" />
           <input 
             type="text" 
             placeholder="Search logs by user, action, or module..."
@@ -126,10 +134,10 @@ export default function AuditLogs() {
               setSearchQuery(e.target.value);
               setCurrentPage(1);
             }}
-            className="w-full pl-12 pr-4 py-3 bg-white border border-[#edeeef] rounded-lg text-[14px] focus:ring-2 focus:ring-[#5cb8fd]/20 focus:border-[#5cb8fd] outline-none transition-all"
+            className="w-full pl-11 pr-5 py-3 rounded-full text-[13.5px] font-medium text-slate-900 placeholder:text-slate-400 outline-none transition-all"
           />
         </div>
-        <div className="flex gap-2">
+        <div className="flex gap-2.5 w-full md:w-auto relative">
           <button
             onClick={async () => {
               if (confirm('Are you sure you want to clear all audit logs?')) {
@@ -138,28 +146,48 @@ export default function AuditLogs() {
                 setTotalLogs(0);
               }
             }}
-            className="flex items-center gap-2 px-4 py-3 bg-white border border-red-200 rounded-lg text-[13px] font-bold text-red-600 hover:bg-neutral-50 transition-colors outline-none cursor-pointer"
+            className="flex items-center gap-2 px-4 py-3 rounded-full bg-rose-50/90 hover:bg-rose-100/90 border border-rose-200/80 text-[13px] font-semibold text-rose-600 transition-colors cursor-pointer whitespace-nowrap"
           >
             Clear All Logs
           </button>
-          <select
-            value={moduleFilter}
-            onChange={(e) => {
-              setModuleFilter(e.target.value);
-              setCurrentPage(1);
-            }}
-            className="flex items-center gap-2 px-4 py-3 bg-white border border-[#edeeef] rounded-lg text-[13px] font-bold text-neutral-600 hover:bg-neutral-50 transition-colors outline-none cursor-pointer"
-          >
-            {availableModules.map(module => <option key={module} value={module}>{module}</option>)}
-          </select>
+          <div className="relative flex-1 md:flex-none">
+            <button
+              type="button"
+              onClick={() => setShowModuleMenu(!showModuleMenu)}
+              className="w-full justify-center items-center gap-2 px-4 py-3 glass-pill-button text-[13px] font-semibold text-slate-700 whitespace-nowrap flex cursor-pointer"
+            >
+              <Filter className="w-3.5 h-3.5 text-[#0284c7]" />
+              <span>Module: {moduleFilter}</span>
+            </button>
+            {showModuleMenu && (
+              <div className="absolute top-full right-0 mt-2 w-48 rounded-2xl bg-white/95 backdrop-blur-2xl border border-white shadow-[0_20px_50px_rgba(15,23,42,0.14)] z-50 overflow-hidden p-1.5">
+                {availableModules.map(module => (
+                  <button
+                    key={module}
+                    type="button"
+                    onClick={() => {
+                      setModuleFilter(module);
+                      setCurrentPage(1);
+                      setShowModuleMenu(false);
+                    }}
+                    className={`w-full text-left px-3.5 py-2.5 rounded-xl text-[13px] font-semibold transition-colors cursor-pointer ${
+                      moduleFilter === module ? 'text-[#0284c7] bg-sky-50/90' : 'text-slate-700 hover:bg-slate-100/70'
+                    }`}
+                  >
+                    {module}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
         </div>
       </div>
 
-      <div className="bg-white border border-[#edeeef] rounded-xl shadow-sm overflow-hidden">
+      <div className="glass-table-container">
         <div className="overflow-x-auto">
           <table className="w-full text-left">
             <thead>
-              <tr className="bg-[#f3f4f5] text-[11px] font-bold text-neutral-500 uppercase tracking-widest border-b border-[#edeeef]">
+              <tr>
                 <th className="px-6 py-4">Timestamp</th>
                 <th className="px-6 py-4">User</th>
                 <th className="px-6 py-4">Action</th>
@@ -167,43 +195,48 @@ export default function AuditLogs() {
                 <th className="px-6 py-4">Details</th>
               </tr>
             </thead>
-            <tbody className="text-[13px] divide-y divide-[#edeeef]">
+            <tbody className="text-[13px]">
               {loading ? (
-                <tr>
-                  <td colSpan={5} className="px-6 py-12 text-center text-neutral-400">Loading logs...</td>
-                </tr>
+                <TableSkeletonRows columns={5} rows={6} />
               ) : logs.length === 0 ? (
                 <tr>
-                  <td colSpan={5} className="px-6 py-12 text-center text-neutral-400">No logs found.</td>
+                  <td colSpan={5} className="p-0">
+                    <GlassEmptyState
+                      isSearch={Boolean(searchQuery || moduleFilter !== 'All')}
+                      title={searchQuery || moduleFilter !== 'All' ? 'No matching audit logs' : 'No audit logs recorded'}
+                      description="System activity across inventory, production, sales, and security will appear here."
+                      onReset={(searchQuery || moduleFilter !== 'All') ? () => { setSearchQuery(''); setModuleFilter('All'); } : undefined}
+                    />
+                  </td>
                 </tr>
               ) : logs.map((log) => (
-                <tr key={log.id} className="hover:bg-[#f8f9fa] transition-colors">
-                  <td className="px-6 py-4 text-neutral-500 whitespace-nowrap text-[12px]">{new Date(log.timestamp).toLocaleString()}</td>
-                  <td className="px-6 py-4 font-bold text-[#162839]">{log.user}</td>
+                <tr key={log.id}>
+                  <td className="px-6 py-4 text-slate-500 whitespace-nowrap text-xs tabular-nums">{new Date(log.timestamp).toLocaleString()}</td>
+                  <td className="px-6 py-4 font-bold text-slate-900">{log.user}</td>
                   <td className="px-6 py-4">
-                    <span className="px-2 py-1 bg-neutral-100 text-neutral-600 rounded text-[11px] font-bold uppercase tracking-wider">{log.action}</span>
+                    <span className="px-3 py-1 bg-sky-50/90 border border-sky-200/80 text-[#0284c7] rounded-full text-[11px] font-semibold uppercase tracking-wider">{log.action}</span>
                   </td>
-                  <td className="px-6 py-4 font-medium text-neutral-500">{log.module}</td>
-                  <td className="px-6 py-4 text-neutral-500 max-w-xs truncate" title={log.details}>{log.details}</td>
+                  <td className="px-6 py-4 font-semibold text-slate-600">{log.module}</td>
+                  <td className="px-6 py-4 text-slate-500 max-w-xs truncate" title={log.details}>{log.details}</td>
                 </tr>
               ))}
             </tbody>
           </table>
         </div>
         {totalPages > 1 && (
-          <div className="p-4 border-t border-[#edeeef] flex justify-center items-center gap-2">
+          <div className="px-6 py-4 bg-white/[0.45] backdrop-blur-xl border-t border-white/90 flex justify-center items-center gap-3">
             <button 
               disabled={currentPage === 1}
               onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
-              className="px-4 py-2 bg-white border border-[#edeeef] rounded-lg text-sm font-bold text-[#006397] hover:bg-neutral-50 disabled:opacity-50"
+              className="px-4 py-2 glass-pill-button text-xs font-semibold text-[#0284c7] disabled:opacity-40"
             >
               Previous
             </button>
-            <span className="text-sm font-bold text-neutral-600">Page {currentPage} of {totalPages}</span>
+            <span className="text-xs font-semibold text-slate-600">Page <strong className="text-slate-900">{currentPage}</strong> of <strong className="text-slate-900">{totalPages}</strong></span>
             <button 
               disabled={currentPage === totalPages}
               onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
-              className="px-4 py-2 bg-white border border-[#edeeef] rounded-lg text-sm font-bold text-[#006397] hover:bg-neutral-50 disabled:opacity-50"
+              className="px-4 py-2 glass-pill-button text-xs font-semibold text-[#0284c7] disabled:opacity-40"
             >
               Next
             </button>

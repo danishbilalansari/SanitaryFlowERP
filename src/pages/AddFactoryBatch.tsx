@@ -1,7 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { ArrowLeft, CheckCircle2, ChevronRight, Search } from 'lucide-react';
+import { ArrowLeft, CheckCircle2, ChevronRight, Search, Factory, Package } from 'lucide-react';
 import { useAppContext } from '../store';
+import { GlassSelect } from '../components/GlassUI';
+import { cachedJsonFetch } from '../lib/apiCache';
 
 export default function AddFactoryBatch() {
   const { showToast } = useAppContext();
@@ -22,12 +24,7 @@ export default function AddFactoryBatch() {
   const [error, setError] = useState('');
 
   useEffect(() => {
-    fetch('/api/inventory')
-      .then(async res => {
-        if (!res.ok) throw new Error('Failed to fetch inventory');
-        const text = await res.text();
-        return text ? JSON.parse(text) : [];
-      })
+    cachedJsonFetch('/api/inventory', undefined, 60_000)
       .then(data => {
         setInventory(Array.isArray(data) ? data : []);
         setLoading(false);
@@ -125,22 +122,27 @@ export default function AddFactoryBatch() {
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
         {/* Basic Info */}
-        <div className="bg-white rounded-2xl border border-neutral-200/60 shadow-sm overflow-hidden flex flex-col">
-          <div className="p-6 border-b border-neutral-100 bg-neutral-50/50">
-             <h3 className="font-bold text-[#162839] text-[16px]">Batch Information</h3>
+        <div className="glass-card p-7 sm:p-8 rounded-[30px] space-y-6 flex flex-col">
+          <div className="flex items-center gap-3.5 border-b border-slate-200/60 pb-5">
+            <div className="w-11 h-11 rounded-2xl bg-white/95 border border-white text-[#0284c7] flex items-center justify-center font-bold shadow-[0_4px_12px_rgba(15,23,42,0.05)]">
+              <Factory className="w-5 h-5" />
+            </div>
+            <div>
+              <h3 className="text-[18px] font-bold text-slate-900 tracking-tight">Batch Information</h3>
+              <p className="text-[13px] text-slate-500 font-medium">Production target specifications</p>
+            </div>
           </div>
-          <div className="p-6 space-y-6 flex-1">
+          <div className="space-y-5 flex-1">
             {error && (
-              <div className="bg-red-50 text-red-700 p-3 rounded-lg text-sm mb-4">
+              <div className="bg-rose-50 border border-rose-200 text-rose-700 p-3.5 rounded-2xl text-[13px] font-medium mb-4">
                 {error}
               </div>
             )}
-            <div className="space-y-1.5">
-              <label className="text-[11px] font-bold text-neutral-400 uppercase tracking-widest block">Product Type (Sanitary Item)</label>
-              <select 
+            <div className="space-y-2">
+              <label className="text-[11px] font-bold text-slate-500 uppercase tracking-[0.14em] block">Product Type (Sanitary Item)</label>
+              <GlassSelect 
                 value={formData.category}
                 onChange={e => setFormData({...formData, category: e.target.value})}
-                className="w-full border border-neutral-200/80 rounded-xl py-3 px-4 text-[14px] font-bold outline-none focus:ring-2 focus:ring-[#5cb8fd] transition-all"
               >
                 <option value="Toilet">Toilet (Commode)</option>
                 <option value="Sink">Sink / Pedestal</option>
@@ -148,80 +150,85 @@ export default function AddFactoryBatch() {
                 <option value="Bidet">Bidet</option>
                 <option value="Tiles">Tiles & Ceramics</option>
                 <option value="Fittings">Fittings & Accessories</option>
-              </select>
+              </GlassSelect>
             </div>
 
-            <div className="space-y-1.5">
-              <label className="text-[11px] font-bold text-neutral-400 uppercase tracking-widest block">Specific Product *</label>
-              <select 
+            <div className="space-y-2">
+              <label className="text-[11px] font-bold text-slate-500 uppercase tracking-[0.14em] block">Specific Product <span className="text-red-500">*</span></label>
+              <GlassSelect 
                 value={formData.product_id}
                 onChange={e => setFormData({...formData, product_id: e.target.value})}
-                className="w-full border border-neutral-200/80 rounded-xl py-3 px-4 text-[14px] font-bold outline-none focus:ring-2 focus:ring-[#5cb8fd] transition-all bg-neutral-50 focus:bg-white"
               >
                 <option value="">Select SKU...</option>
                 {inventory.filter(i => i.category !== 'Raw Material').map(item => (
                   <option key={item.id} value={item.id}>{item.name} {item.color ? `- ${item.color}` : ''} ({item.sku})</option>
                 ))}
-              </select>
+              </GlassSelect>
             </div>
 
             <div className="grid grid-cols-1 gap-4">
-              <div className="space-y-1.5">
-                <label className="text-[11px] font-bold text-neutral-400 uppercase tracking-widest block">Target Yield *</label>
+              <div className="space-y-2">
+                <label className="text-[11px] font-bold text-slate-500 uppercase tracking-[0.14em] block">Target Yield <span className="text-red-500">*</span></label>
                 <input 
                   type="number" 
                   min="1"
                   value={formData.target_qty}
                   onChange={e => setFormData({...formData, target_qty: Math.max(1, Number(e.target.value))})}
-                  className="w-full border border-neutral-200/80 rounded-xl py-3 px-4 text-[14px] font-bold outline-none focus:ring-2 focus:ring-[#5cb8fd] transition-all" 
+                  className="w-full rounded-2xl px-4 py-3 text-[14px] font-bold text-slate-900 outline-none transition-all" 
                   placeholder="e.g. 500" 
                 />
               </div>
             </div>
 
-            <div className="space-y-1.5">
-              <label className="text-[11px] font-bold text-neutral-400 uppercase tracking-widest block">System Batch ID</label>
+            <div className="space-y-2">
+              <label className="text-[11px] font-bold text-slate-500 uppercase tracking-[0.14em] block">System Batch ID</label>
               <input 
                 type="text" 
                 readOnly
                 value={formData.batch_number}
-                className="w-full border border-neutral-100 rounded-xl py-3 px-4 text-[14px] bg-neutral-50 text-neutral-400 outline-none font-mono" 
+                className="w-full rounded-2xl px-4 py-3 text-[14px] bg-white/70 text-slate-500 outline-none font-mono font-bold" 
               />
             </div>
           </div>
         </div>
 
         {/* Material Consumption */}
-        <div className="bg-white rounded-2xl border border-neutral-200/60 shadow-sm overflow-hidden flex flex-col">
-          <div className="p-6 border-b border-neutral-100 bg-neutral-50/50">
-             <h3 className="font-bold text-[#162839] text-[16px]">Raw Material Consumption</h3>
+        <div className="glass-card p-7 sm:p-8 rounded-[30px] space-y-6 flex flex-col">
+          <div className="flex items-center gap-3.5 border-b border-slate-200/60 pb-5">
+            <div className="w-11 h-11 rounded-2xl bg-white/95 border border-white text-emerald-600 flex items-center justify-center font-bold shadow-[0_4px_12px_rgba(15,23,42,0.05)]">
+              <Package className="w-5 h-5" />
+            </div>
+            <div>
+              <h3 className="text-[18px] font-bold text-slate-900 tracking-tight">Raw Material Consumption</h3>
+              <p className="text-[13px] text-slate-500 font-medium">Deduct components from storage</p>
+            </div>
           </div>
-          <div className="p-6 flex-1 space-y-6">
+          <div className="flex-1 space-y-5">
              <div className="relative">
-                <div className="absolute left-4 top-1/2 -translate-y-1/2">
-                  <Search className="w-4 h-4 text-neutral-400" />
+                <div className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400">
+                  <Search className="w-4 h-4" />
                 </div>
                 <input 
                   type="text"
                   value={materialSearch}
                   onChange={e => setMaterialSearch(e.target.value)}
                   placeholder="Search raw materials..."
-                  className="w-full border border-neutral-200/80 rounded-xl py-3 pl-11 pr-4 text-[14px] outline-none focus:ring-2 focus:ring-[#5cb8fd] transition-all"
+                  className="w-full rounded-2xl py-3 pl-11 pr-4 text-[14px] font-medium text-slate-900 outline-none transition-all"
                 />
                 {materialSearch && (
-                  <div className="absolute z-10 left-0 right-0 mt-2 bg-white border border-neutral-200 rounded-xl shadow-xl max-h-48 overflow-y-auto divide-y">
+                  <div className="absolute z-20 left-0 right-0 mt-2 bg-white/95 backdrop-blur-2xl border border-white rounded-2xl shadow-[0_12px_32px_rgba(15,23,42,0.1)] max-h-48 overflow-y-auto divide-y divide-slate-100">
                      {filteredMaterials.map(m => (
                        <button 
                         key={m.id}
                         type="button"
                         onClick={() => addMaterial(m)}
-                        className="w-full px-4 py-3 text-left hover:bg-neutral-50 flex justify-between items-center group"
+                        className="w-full px-4 py-3 text-left hover:bg-sky-50/60 flex justify-between items-center group transition-colors cursor-pointer"
                        >
                           <div>
-                            <p className="text-[14px] font-bold text-[#162839]">{m.name}</p>
-                            <p className="text-[11px] text-neutral-400 uppercase tracking-tight">{m.sku} • Stock: {m.stock}</p>
+                            <p className="text-[14px] font-bold text-slate-900">{m.name}</p>
+                            <p className="text-[11px] text-slate-400 uppercase tracking-tight">{m.sku} • Stock: {m.stock}</p>
                           </div>
-                          <span className="text-[11px] font-black text-[#5cb8fd] opacity-0 group-hover:opacity-100 transition-opacity">ADD ITEM</span>
+                          <span className="text-[11px] font-bold text-[#0284c7] opacity-0 group-hover:opacity-100 transition-opacity">ADD ITEM</span>
                        </button>
                      ))}
                   </div>
@@ -230,10 +237,10 @@ export default function AddFactoryBatch() {
 
              <div className="space-y-3">
                 {selectedMaterials.map(m => (
-                  <div key={m.inventory_id} className="p-4 bg-neutral-50 border border-neutral-100 rounded-xl flex items-center gap-4">
+                  <div key={m.inventory_id} className="p-4 bg-white/80 border border-white rounded-2xl flex items-center gap-4 shadow-2xs">
                      <div className="flex-1">
-                        <p className="text-[13px] font-bold text-[#162839]">{m.name}</p>
-                        <p className="text-[11px] text-neutral-400">Available: {m.stock}</p>
+                        <p className="text-[13.5px] font-bold text-slate-900">{m.name}</p>
+                        <p className="text-[11.5px] text-slate-400 font-medium">Available: {m.stock}</p>
                      </div>
                      <div className="w-24">
                         <input 
@@ -241,20 +248,20 @@ export default function AddFactoryBatch() {
                           value={m.qty_consumed}
                           onChange={e => updateMaterialQty(m.inventory_id, Number(e.target.value))}
                           placeholder="Qty"
-                          className="w-full bg-white border border-neutral-200 rounded-lg px-2 py-1.5 text-[13px] font-bold outline-none focus:ring-2 focus:ring-[#5cb8fd]"
+                          className="w-full rounded-xl px-3 py-1.5 text-[13px] font-bold outline-none"
                         />
                      </div>
                      <button 
                       type="button"
                       onClick={() => removeMaterial(m.inventory_id)}
-                      className="text-neutral-300 hover:text-red-500 transition-colors"
+                      className="text-slate-400 hover:text-rose-500 transition-colors cursor-pointer text-lg px-1"
                      >
                         &times;
                      </button>
                   </div>
                 ))}
                 {selectedMaterials.length === 0 && (
-                  <div className="border-2 border-dashed border-neutral-100 rounded-2xl py-12 text-center text-neutral-400 italic text-[13px]">
+                  <div className="border border-dashed border-slate-200/80 rounded-2xl py-12 text-center text-slate-400 italic text-[13px]">
                      No materials added yet. Consumption will be recorded against the batch.
                   </div>
                 )}
@@ -263,19 +270,19 @@ export default function AddFactoryBatch() {
         </div>
       </div>
 
-      <div className="flex justify-end gap-3 pt-4">
-        <Link to="/factory" className="px-8 py-3.5 text-[14px] font-bold text-neutral-500 hover:text-neutral-900 transition-colors">
+      <div className="flex justify-end items-center gap-3 pt-4">
+        <Link to="/factory" className="px-6 py-3 glass-pill-button text-[13.5px] font-semibold text-slate-700 hover:text-slate-900 rounded-full transition-all">
           Cancel
         </Link>
         <button 
           type="submit" 
           disabled={saving}
-          className="px-10 py-3.5 text-[14px] font-black text-white bg-[#162839] hover:brightness-110 rounded-xl transition-all shadow-lg shadow-[#162839]/20 flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+          className="px-7 py-3 text-[13.5px] font-semibold text-white bg-gradient-to-r from-[#0284c7] to-sky-500 hover:brightness-105 rounded-full transition-all shadow-[0_6px_20px_rgba(2,132,199,0.28)] flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
         >
           {saving && (
              <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
           )}
-          {saving ? 'PROCESSING Batch...' : 'LOG PRODUCTION ENTRY'}
+          <span>{saving ? 'Processing Batch...' : 'Log Production Entry'}</span>
         </button>
       </div>
     </form>

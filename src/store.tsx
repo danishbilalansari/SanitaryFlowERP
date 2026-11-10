@@ -151,7 +151,12 @@ export function AppProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     localStorage.setItem('app_currency', 'PKR');
   }, []);
-  const [logoUrl, setLogoUrl] = useState<string | null>(() => localStorage.getItem('app_logo'));
+  const DEFAULT_LOGO = '/assets/aistudio/image_6670885d.png?v=2';
+  const [logoUrl, setLogoUrl] = useState<string | null>(() => {
+    const saved = localStorage.getItem('app_logo');
+    if (!saved || saved === '/assets/aistudio/image_6670885d.png') return DEFAULT_LOGO;
+    return saved;
+  });
   const [companyName, setCompanyName] = useState<string>(() => {
     const saved = localStorage.getItem('company_name');
     if (saved === 'SanitaryFlow Solutions Ltd.' || saved === 'SanitaryFlow Solutions Ltd' || saved === 'SanitaryFlow SOlutions Ltd') {

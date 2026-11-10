@@ -21,6 +21,8 @@ import {
 } from 'lucide-react';
 import { useAppContext } from '../store';
 import { formatCurrency } from '../lib/currency';
+import { GlassSelect } from '../components/GlassUI';
+import { invalidateApiCache } from '../lib/apiCache';
 
 export default function AddInventory() {
   const { id } = useParams();
@@ -110,7 +112,7 @@ export default function AddInventory() {
       const url = isEdit ? `/api/inventory/${id}` : '/api/inventory';
       const method = isEdit ? 'PUT' : 'POST';
       
-      const finalCategory = showNewCategoryInput ? newCategory : formData.category;
+      const finalCategory = showNewCategoryInput ? newCategory : formData.category || '';
       if (showNewCategoryInput && !newCategory) {
         showToast('Please enter a category name', 'error');
         setSaving(false);
@@ -130,6 +132,8 @@ export default function AddInventory() {
       });
 
       if (response.ok) {
+        invalidateApiCache('/api/inventory');
+        invalidateApiCache('/api/analytics/dashboard');
         showToast(isEdit ? 'Item details updated.' : 'Shipment received and inventory updated.', 'success');
         navigate(isEdit ? `/inventory/${id}` : '/inventory');
       } else {
@@ -161,83 +165,81 @@ export default function AddInventory() {
     <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500 pb-12">
       {/* Breadcrumbs & Header */}
       <div>
-        <nav className="flex items-center gap-2 text-[13px] font-medium text-neutral-400 mb-2">
-          <Link to="/inventory" className="hover:text-[#006397] transition-colors">Inventory</Link>
+        <nav className="flex items-center gap-2 text-[13px] font-medium text-slate-400 mb-2">
+          <Link to="/inventory" className="hover:text-[#0284c7] transition-colors">Inventory</Link>
           <ChevronRight className="w-3.5 h-3.5" />
           {isEdit && (
             <>
-              <Link to={`/inventory/${id}`} className="hover:text-[#006397] transition-colors">Item Detail</Link>
+              <Link to={`/inventory/${id}`} className="hover:text-[#0284c7] transition-colors">Item Detail</Link>
               <ChevronRight className="w-3.5 h-3.5" />
             </>
           )}
-          <span className="text-[#006397] font-bold">{isEdit ? 'Edit Item' : 'Add New Item'}</span>
+          <span className="text-[#0284c7] font-bold">{isEdit ? 'Edit Item' : 'Add New Item'}</span>
         </nav>
         <div className="flex items-center gap-4">
-          <button onClick={() => navigate(-1)} className="p-2 border border-neutral-200 rounded-lg hover:bg-neutral-50 transition-colors">
-            <ArrowLeft className="w-5 h-5 text-neutral-500" />
+          <button onClick={() => navigate(-1)} className="w-10 h-10 rounded-full bg-white/90 border border-white flex items-center justify-center shadow-[0_4px_12px_rgba(15,23,42,0.05)] hover:bg-white transition-all">
+            <ArrowLeft className="w-5 h-5 text-slate-700" />
           </button>
-          <h1 className="text-[32px] font-bold text-[#162839] tracking-tight leading-none">{isEdit ? 'Edit Item' : 'Add New Inventory Item'}</h1>
+          <h1 className="text-[32px] font-bold text-slate-900 tracking-tight leading-none">{isEdit ? 'Edit Item' : 'Add New Inventory Item'}</h1>
         </div>
-        <p className="text-[16px] text-neutral-500 mt-2">{isEdit ? 'Update details and specifications for this inventory item.' : 'Create a SKU with product line, size, packing, rate, and category details.'}</p>
+        <p className="text-[15px] text-slate-500 mt-2">{isEdit ? 'Update details and specifications for this inventory item.' : 'Create a SKU with product line, size, packing, rate, and category details.'}</p>
       </div>
 
       <div className="grid grid-cols-12 gap-8">
         <div className="col-span-12 lg:col-span-8 space-y-8">
-          <section className="bg-white rounded-2xl border border-[#edeeef] shadow-sm overflow-hidden">
-            <div className="p-6 border-b border-[#edeeef] flex items-center gap-4 bg-[#f8f9fa]">
-              <div className="w-10 h-10 rounded-xl bg-white shadow-sm flex items-center justify-center text-[#006397]">
+          <section className="glass-card rounded-[30px] overflow-hidden">
+            <div className="p-6 border-b border-slate-200/60 flex items-center gap-4 bg-white/40">
+              <div className="w-10 h-10 rounded-2xl bg-white/95 border border-white shadow-[0_4px_12px_rgba(15,23,42,0.05)] flex items-center justify-center text-[#0284c7]">
                 <Package className="w-5 h-5" />
               </div>
-              <h3 className="text-[17px] font-bold text-[#162839]">Identified Information</h3>
+              <h3 className="text-[17px] font-bold text-slate-900">Identified Information</h3>
             </div>
             
             <div className="p-8 space-y-8">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div className="space-y-2">
-                  <label className="text-[13px] font-bold text-[#162839] block">Item Name</label>
+                  <label className="text-[11px] font-bold text-slate-500 uppercase tracking-[0.14em] block">Item Name</label>
                   <input 
                     type="text" 
                     value={formData.name}
                     onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                    className="w-full bg-[#f3f4f5] border border-transparent rounded-xl px-4 py-3.5 text-[14px] font-medium outline-none focus:ring-2 focus:ring-[#5cb8fd] focus:bg-white transition-all shadow-inner"
+                    className="w-full rounded-2xl px-4 py-3.5 text-[14px] font-medium outline-none transition-all"
                     placeholder="e.g. Toilet Set (Ivory)" 
                   />
                 </div>
 
                 <div className="space-y-2">
-                  <label className="text-[13px] font-bold text-[#162839] block">SKU Code / Model</label>
+                  <label className="text-[11px] font-bold text-slate-500 uppercase tracking-[0.14em] block">SKU Code / Model</label>
                   <div className="relative">
-                    <Barcode className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-neutral-400" />
+                    <Barcode className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
                     <input 
                       type="text" 
                       value={formData.sku}
                       onChange={(e) => setFormData({ ...formData, sku: e.target.value })}
-                      className="w-full bg-[#f3f4f5] border border-transparent rounded-xl pl-11 pr-4 py-3.5 text-[14px] font-medium outline-none focus:ring-2 focus:ring-[#5cb8fd] focus:bg-white transition-all shadow-inner"
+                      className="w-full rounded-2xl pl-11 pr-4 py-3.5 text-[14px] font-medium outline-none transition-all"
                       placeholder="e.g. SKU-001-I" 
                     />
                   </div>
                 </div>
 
                 <div className="space-y-2">
-                  <label className="text-[13px] font-bold text-[#162839] block">Category</label>
+                  <label className="text-[11px] font-bold text-slate-500 uppercase tracking-[0.14em] block">Category</label>
                   <div className="space-y-2">
                     <div className="relative">
-                      <select 
-                        value={showNewCategoryInput ? 'ADD_NEW' : formData.category}
+                      <GlassSelect 
+                        value={showNewCategoryInput ? 'ADD_NEW' : formData.category || ''}
                         onChange={handleCategoryChange}
-                        className="w-full bg-[#f3f4f5] border-none rounded-xl px-4 py-3.5 text-[14px] font-medium outline-none appearance-none pr-10 focus:ring-2 focus:ring-[#5cb8fd] focus:bg-white transition-all shadow-inner"
                       >
                         {categories.map(c => <option key={c} value={c}>{c}</option>)}
                         <option value="ADD_NEW">+ Add New Category...</option>
-                      </select>
-                      <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 w-4 h-4 text-neutral-400 pointer-events-none" />
+                      </GlassSelect>
                     </div>
                     {showNewCategoryInput && (
                       <input 
                         type="text" 
                         value={newCategory}
                         onChange={(e) => setNewCategory(e.target.value)}
-                        className="w-full bg-white border-2 border-[#5cb8fd] rounded-xl px-4 py-3.5 text-[14px] font-bold outline-none animate-in slide-in-from-top-2 duration-300"
+                        className="w-full rounded-2xl px-4 py-3.5 text-[14px] font-bold outline-none animate-in slide-in-from-top-2 duration-300"
                         placeholder="Type new category name..."
                         autoFocus
                       />
@@ -246,112 +248,110 @@ export default function AddInventory() {
                 </div>
 
                 <div className="space-y-2">
-                  <label className="text-[13px] font-bold text-[#162839] block">Status</label>
-                  <select 
+                  <label className="text-[11px] font-bold text-slate-500 uppercase tracking-[0.14em] block">Status</label>
+                  <GlassSelect 
                     value={formData.status}
                     onChange={(e) => setFormData({ ...formData, status: e.target.value })}
-                    className="w-full bg-[#f3f4f5] border-none rounded-xl px-4 py-3.5 text-[14px] font-medium outline-none appearance-none pr-10 focus:ring-2 focus:ring-[#5cb8fd] focus:bg-white transition-all shadow-inner"
                   >
                     <option>IN STOCK</option>
                     <option>OUT OF STOCK</option>
                     <option>DISCONTINUED</option>
                     <option>ACTIVE</option>
-                  </select>
+                  </GlassSelect>
                 </div>
               </div>
             </div>
           </section>
 
-          <section className="bg-white rounded-2xl border border-[#edeeef] shadow-sm overflow-hidden">
-             <div className="p-6 border-b border-[#edeeef] flex items-center gap-4 bg-[#f8f9fa]">
-                <div className="w-10 h-10 rounded-xl bg-white shadow-sm flex items-center justify-center text-[#ff6a00]">
+          <section className="glass-card rounded-[30px] overflow-hidden">
+             <div className="p-6 border-b border-slate-200/60 flex items-center gap-4 bg-white/40">
+                <div className="w-10 h-10 rounded-2xl bg-white/95 border border-white shadow-[0_4px_12px_rgba(15,23,42,0.05)] flex items-center justify-center text-amber-500">
                   <Info className="w-5 h-5" />
                 </div>
-                <h3 className="text-[17px] font-bold text-[#162839]">Technical Specifications</h3>
+                <h3 className="text-[17px] font-bold text-slate-900">Technical Specifications</h3>
              </div>
              
              <div className="p-8 grid grid-cols-1 md:grid-cols-3 gap-6">
                 <div className="space-y-2">
-                  <label className="text-[13px] font-bold text-[#162839] block">Brand</label>
+                  <label className="text-[11px] font-bold text-slate-500 uppercase tracking-[0.14em] block">Brand</label>
                   <input
                     type="text"
                     value={formData.brand}
                     onChange={(e) => setFormData({ ...formData, brand: e.target.value })}
-                    className="w-full bg-[#f3f4f5] border-none rounded-xl px-4 py-3.5 text-[14px] font-medium outline-none focus:ring-2 focus:ring-[#5cb8fd] focus:bg-white transition-all shadow-inner"
+                    className="w-full rounded-2xl px-4 py-3.5 text-[14px] font-medium outline-none transition-all"
                     placeholder="e.g. World"
                   />
                 </div>
                 <div className="space-y-2">
-                  <label className="text-[13px] font-bold text-[#162839] block">Color</label>
+                  <label className="text-[11px] font-bold text-slate-500 uppercase tracking-[0.14em] block">Color</label>
                   <input
                     type="text"
                     value={formData.color}
                     onChange={(e) => setFormData({ ...formData, color: e.target.value })}
-                    className="w-full bg-[#f3f4f5] border-none rounded-xl px-4 py-3.5 text-[14px] font-medium outline-none focus:ring-2 focus:ring-[#5cb8fd] focus:bg-white transition-all shadow-inner"
+                    className="w-full rounded-2xl px-4 py-3.5 text-[14px] font-medium outline-none transition-all"
                     placeholder="e.g. Ivory"
                   />
                 </div>
                 <div className="space-y-2">
-                  <label className="text-[13px] font-bold text-[#162839] block">Size</label>
+                  <label className="text-[11px] font-bold text-slate-500 uppercase tracking-[0.14em] block">Size</label>
                   <input
                     type="text"
                     value={formData.size}
                     onChange={(e) => setFormData({ ...formData, size: e.target.value })}
-                    className="w-full bg-[#f3f4f5] border-none rounded-xl px-4 py-3.5 text-[14px] font-medium outline-none focus:ring-2 focus:ring-[#5cb8fd] focus:bg-white transition-all shadow-inner"
+                    className="w-full rounded-2xl px-4 py-3.5 text-[14px] font-medium outline-none transition-all"
                     placeholder="e.g. Standard"
                   />
                 </div>
              </div>
           </section>
 
-          <section className="bg-white rounded-2xl border border-[#edeeef] shadow-sm overflow-hidden">
-             <div className="p-6 border-b border-[#edeeef] flex items-center gap-4 bg-[#f8f9fa]">
-                <div className="w-10 h-10 rounded-xl bg-white shadow-sm flex items-center justify-center text-emerald-600">
+          <section className="glass-card rounded-[30px] overflow-hidden">
+             <div className="p-6 border-b border-slate-200/60 flex items-center gap-4 bg-white/40">
+                <div className="w-10 h-10 rounded-2xl bg-white/95 border border-white shadow-[0_4px_12px_rgba(15,23,42,0.05)] flex items-center justify-center text-emerald-600">
                   <Warehouse className="w-5 h-5" />
                 </div>
-                <h3 className="text-[17px] font-bold text-[#162839]">Inventory & Rates</h3>
+                <h3 className="text-[17px] font-bold text-slate-900">Inventory & Rates</h3>
              </div>
              
              <div className="p-8 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
                 <div className="space-y-2">
-                  <label className="text-[13px] font-bold text-[#162839] block">Stock Qty</label>
+                  <label className="text-[11px] font-bold text-slate-500 uppercase tracking-[0.14em] block">Stock Qty</label>
                   <input 
                     type="number" 
                     value={formData.stock}
                     onChange={(e) => setFormData({ ...formData, stock: parseInt(e.target.value) || 0 })}
-                    className="w-full bg-[#f3f4f5] border-none rounded-xl px-4 py-3.5 text-[14px] font-black outline-none focus:ring-2 focus:ring-emerald-500 transition-all text-emerald-700"
+                    className="w-full rounded-2xl px-4 py-3.5 text-[14px] font-bold outline-none transition-all text-emerald-700"
                   />
                 </div>
                 <div className="space-y-2">
-                  <label className="text-[13px] font-bold text-[#162839] block">Unit Price ({currency})</label>
+                  <label className="text-[11px] font-bold text-slate-500 uppercase tracking-[0.14em] block">Unit Price ({currency})</label>
                   <input 
                     type="number" 
                     value={formData.price}
                     onChange={(e) => setFormData({ ...formData, price: parseFloat(e.target.value) || 0 })}
-                    className="w-full bg-[#f3f4f5] border-none rounded-xl px-4 py-3.5 text-[14px] font-black outline-none focus:ring-2 focus:ring-blue-500 transition-all text-[#162839]"
+                    className="w-full rounded-2xl px-4 py-3.5 text-[14px] font-bold outline-none transition-all text-slate-900"
                   />
                 </div>
                 <div className="space-y-2">
-                  <label className="text-[13px] font-bold text-[#162839] block">Packing</label>
+                  <label className="text-[11px] font-bold text-slate-500 uppercase tracking-[0.14em] block">Packing</label>
                   <input 
                     type="text" 
                     value={formData.packing}
                     onChange={(e) => setFormData({ ...formData, packing: e.target.value })}
-                    className="w-full bg-[#f3f4f5] border-none rounded-xl px-4 py-3.5 text-[14px] outline-none"
+                    className="w-full rounded-2xl px-4 py-3.5 text-[14px] outline-none"
                     placeholder="e.g. 1 Box"
                   />
                 </div>
                 <div className="space-y-2">
-                  <label className="text-[13px] font-bold text-[#162839] block">Unit</label>
-                  <select 
+                  <label className="text-[11px] font-bold text-slate-500 uppercase tracking-[0.14em] block">Unit</label>
+                  <GlassSelect 
                     value={formData.unit}
                     onChange={(e) => setFormData({ ...formData, unit: e.target.value })}
-                    className="w-full bg-[#f3f4f5] border-none rounded-xl px-4 py-3.5 text-[14px] outline-none"
                   >
                     <option>Piece</option>
                     <option>Set</option>
                     <option>Box</option>
-                  </select>
+                  </GlassSelect>
                 </div>
              </div>
           </section>
@@ -359,19 +359,19 @@ export default function AddInventory() {
           <div className="flex justify-end gap-4 pt-6">
             <button 
               onClick={() => navigate(-1)}
-              className="px-10 py-4 border border-[#c4c6cd] text-[#162839] font-bold rounded-xl hover:bg-neutral-50 transition-all uppercase tracking-widest text-[14px]"
+              className="px-8 py-3.5 glass-pill-button text-slate-700 font-semibold rounded-full transition-all text-[14px]"
             >
               Discard Changes
             </button>
             <button 
               onClick={handleConfirm}
               disabled={saving}
-              className="px-12 py-4 bg-[#162839] text-white font-black rounded-xl hover:brightness-125 transition-all shadow-xl shadow-[#162839]/20 flex items-center gap-3 uppercase tracking-widest text-[14px] disabled:opacity-50 disabled:cursor-not-allowed"
+              className="px-10 py-3.5 glass-pill-button text-slate-900 font-semibold rounded-full transition-all flex items-center gap-3 text-[14px] disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {saving ? (
-                <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                <div className="w-4 h-4 border-2 border-slate-300 border-t-[#0284c7] rounded-full animate-spin" />
               ) : (
-                <CheckCircle className="w-5 h-5 text-[#5cb8fd]" />
+                <CheckCircle className="w-4 h-4 text-[#0284c7]" />
               )}
               {saving ? 'Processing...' : (isEdit ? 'Update SKU' : 'Record SKU')}
             </button>
@@ -379,13 +379,13 @@ export default function AddInventory() {
         </div>
 
         <div className="col-span-12 lg:col-span-4 space-y-8">
-          <section className="bg-white rounded-2xl border border-[#edeeef] shadow-sm overflow-hidden">
-            <div className="p-6 border-b border-[#edeeef] bg-[#f8f9fa] flex items-center justify-between">
-              <h3 className="text-[17px] font-bold text-[#162839]">Product Image</h3>
+          <section className="glass-card rounded-[30px] overflow-hidden">
+            <div className="p-6 border-b border-slate-200/60 bg-white/40 flex items-center justify-between">
+              <h3 className="text-[17px] font-bold text-slate-900">Product Image</h3>
             </div>
             <div className="p-8">
               <div 
-                className="w-full aspect-square bg-neutral-50 rounded-2xl border-2 border-dashed border-neutral-200 flex flex-col items-center justify-center relative overflow-hidden group cursor-pointer hover:border-[#006397] transition-all"
+                className="w-full aspect-square bg-white/60 rounded-2xl border-2 border-dashed border-slate-200/80 flex flex-col items-center justify-center relative overflow-hidden group cursor-pointer hover:border-[#38bdf8] transition-all"
                 onClick={() => document.getElementById('image-upload')?.click()}
               >
                 {formData.image ? (
@@ -399,18 +399,18 @@ export default function AddInventory() {
                         e.stopPropagation();
                         setFormData({ ...formData, image: '' });
                       }}
-                      className="absolute top-4 right-4 p-2 bg-white/90 rounded-lg text-red-600 hover:bg-red-50 transition-colors shadow-sm"
+                      className="absolute top-4 right-4 p-2 bg-white/90 rounded-full text-red-600 hover:bg-red-50 transition-colors shadow-sm"
                     >
                       <Trash2 className="w-4 h-4" />
                     </button>
                   </>
                 ) : (
                   <>
-                    <div className="w-16 h-16 rounded-2xl bg-white shadow-sm border border-neutral-100 flex items-center justify-center text-neutral-400 mb-4 group-hover:scale-110 transition-transform">
-                      <Plus className="w-8 h-8" />
+                    <div className="w-16 h-16 rounded-2xl bg-white/95 shadow-sm border border-white flex items-center justify-center text-slate-400 mb-4 group-hover:scale-110 transition-transform">
+                      <Plus className="w-8 h-8 text-[#0284c7]" />
                     </div>
-                    <p className="text-[14px] font-bold text-neutral-500">Upload Image</p>
-                    <p className="text-[12px] text-neutral-400 mt-1 pb-4">JPG, PNG up to 2MB</p>
+                    <p className="text-[14px] font-bold text-slate-600">Upload Image</p>
+                    <p className="text-[12px] text-slate-400 mt-1 pb-4">JPG, PNG up to 2MB</p>
                   </>
                 )}
                 <input 
@@ -424,12 +424,12 @@ export default function AddInventory() {
             </div>
           </section>
 
-          <section className="bg-neutral-50 p-6 rounded-2xl border border-dashed border-neutral-300">
-             <h4 className="font-bold text-[#162839] mb-4 flex items-center gap-2">
-               <Info className="w-5 h-5 text-[#006397]" />
+          <section className="glass-card p-6 rounded-[28px]">
+             <h4 className="font-bold text-slate-900 mb-4 flex items-center gap-2">
+               <Info className="w-5 h-5 text-[#0284c7]" />
                Entry Guidance
              </h4>
-             <ul className="space-y-3 text-[13px] text-neutral-600">
+             <ul className="space-y-3 text-[13px] text-slate-600">
                <li>• SKU must be unique across the entire inventory system.</li>
                <li>• Use product line/class for B Class, Medium, 10ft, and fitting families.</li>
                <li>• Enter size exactly as printed on supplier price lists.</li>

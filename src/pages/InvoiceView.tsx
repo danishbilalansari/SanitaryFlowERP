@@ -39,22 +39,22 @@ export default function InvoiceView() {
       <div className="flex flex-col items-center justify-center min-h-[60vh] text-center text-neutral-500">
         <h2 className="text-2xl font-bold text-[#162839] mb-2">Invoice Not Found</h2>
         <p className="mb-8 max-w-sm text-neutral-400">The invoice record you're looking for doesn't exist.</p>
-        <Link to="/sales" className="px-8 py-3 bg-[#006397] text-white font-bold rounded-xl shadow-lg hover:opacity-90">Back to Sales</Link>
+        <Link to="/sales" className="px-7 py-3 rounded-full bg-gradient-to-r from-[#0284c7] to-sky-500 text-white font-semibold shadow-[0_6px_20px_rgba(2,132,199,0.28)] hover:opacity-95 transition-all">Back to Sales</Link>
       </div>
     );
   }
 
   return (
-    <div className="pt-8 pb-12">
-      <div className="max-w-5xl mx-auto px-gutter">
+    <div className="pb-12">
+      <div className="w-full">
         <div className="no-print flex justify-between items-center mb-8">
           <div className="flex items-center gap-4">
             <Link 
               to="/sales" 
-              className="p-2 hover:bg-neutral-100 rounded-lg transition-colors text-neutral-500"
+              className="glass-pill-button w-11 h-11 rounded-full flex items-center justify-center text-slate-700 hover:text-slate-900 transition-all"
               title="Back to Sales"
             >
-              <ArrowLeft className="w-6 h-6" />
+              <ArrowLeft className="w-5 h-5" />
             </Link>
             <div>
               <nav className="flex items-center gap-2 text-[13px] text-neutral-500 mb-1">
@@ -66,22 +66,22 @@ export default function InvoiceView() {
             </div>
           </div>
           <div className="flex gap-3">
-            <button className="flex items-center gap-2 px-6 py-2.5 bg-white border border-[#edeeef] text-primary font-semibold rounded-lg hover:bg-neutral-50 transition-colors" onClick={() => window.print()}>
-              <Printer className="w-5 h-5" />
+            <button className="glass-pill-button flex items-center gap-2 px-6 py-2.5 text-slate-700 font-semibold text-[14px] rounded-full hover:bg-white/95 transition-all cursor-pointer" onClick={() => window.print()}>
+              <Printer className="w-4 h-4 text-[#0284c7]" />
               Print Invoice
             </button>
-            <button className="flex items-center gap-2 px-6 py-2.5 bg-[#006397] text-white font-semibold rounded-lg shadow-sm hover:brightness-110 transition-all">
-              <FileText className="w-5 h-5" />
+            <button className="flex items-center gap-2 px-6 py-2.5 rounded-full bg-gradient-to-r from-[#0284c7] to-sky-500 hover:from-[#0369a1] hover:to-sky-600 text-white font-semibold text-[14px] shadow-[0_6px_20px_rgba(2,132,199,0.28)] hover:-translate-y-0.5 active:translate-y-0 transition-all cursor-pointer">
+              <FileText className="w-4 h-4" />
               Download PDF
             </button>
           </div>
         </div>
 
-        <div className="print-area bg-white border border-[#edeeef] rounded-xl shadow-sm overflow-hidden flex flex-col p-8 mb-8">
-          <div className="flex justify-between items-start bg-gradient-to-r from-[#162839] to-[#2c3e50] p-8 text-white rounded-xl">
+        <div className="print-area glass-card rounded-[30px] shadow-sm overflow-hidden flex flex-col p-8 mb-8 print:bg-white print:border-none print:shadow-none print:p-0">
+          <div className="flex justify-between items-start bg-gradient-to-r from-slate-900 to-slate-800 p-8 text-white rounded-2xl shadow-sm">
             <div className="flex items-start gap-4">
               {logoUrl && (
-                <div className="w-16 h-16 bg-white rounded-lg p-2 flex items-center justify-center shrink-0 shadow-sm">
+                <div className="w-16 h-16 bg-white rounded-xl p-2 flex items-center justify-center shrink-0 shadow-sm border border-white">
                   <img src={logoUrl} alt="Logo" className="max-w-full max-h-full object-contain" />
                 </div>
               )}
@@ -100,12 +100,12 @@ export default function InvoiceView() {
             </div>
           </div>
           
-          <div className="py-8 grid grid-cols-2 gap-12 border-b border-outline-variant/30">
+          <div className="py-8 grid grid-cols-2 gap-12 border-b border-slate-200/60">
             <div>
-              <h3 className="text-[11px] font-bold text-[#006397] mb-4 uppercase tracking-[0.1em]">Bill To</h3>
-              <div className="text-on-surface">
-                <p className="font-extrabold text-[17px] mb-1">{sale.customer_name || 'N/A'}</p>
-                <div className="text-[13px] text-neutral-600 leading-relaxed">
+              <h3 className="text-[11px] font-bold text-[#0284c7] mb-4 uppercase tracking-[0.14em]">Bill To</h3>
+              <div className="text-slate-900">
+                <p className="font-bold text-[17px] mb-1">{sale.customer_name || 'N/A'}</p>
+                <div className="text-[13px] text-slate-600 leading-relaxed">
                   {sale.customer_address ? (
                     <p className="whitespace-pre-line">{sale.customer_address}</p>
                   ) : (
@@ -113,26 +113,26 @@ export default function InvoiceView() {
                   )}
                 </div>
                 {sale.customer_phone && (
-                  <p className="mt-4 text-[13px] font-bold text-neutral-800">
-                    <span className="text-neutral-500 font-medium">Contact:</span> {sale.customer_phone}
+                  <p className="mt-4 text-[13px] font-bold text-slate-800">
+                    <span className="text-slate-500 font-medium">Contact:</span> {sale.customer_phone}
                   </p>
                 )}
               </div>
             </div>
             <div>
-              <h3 className="text-[11px] font-bold text-[#006397] mb-4 uppercase tracking-[0.1em]">Project / Ref</h3>
-              <div className="bg-[#f8f9fa] border border-[#edeeef] rounded-lg p-5 space-y-2.5">
+              <h3 className="text-[11px] font-bold text-[#0284c7] mb-4 uppercase tracking-[0.14em]">Project / Ref</h3>
+              <div className="bg-white/70 border border-white/90 rounded-2xl p-5 space-y-2.5 shadow-[0_2px_8px_rgba(15,23,42,0.02)]">
                 <div className="flex justify-between text-[13px]">
-                  <span className="text-neutral-500 font-semibold">Sales Type:</span>
-                  <span className="text-neutral-800 font-bold capitalize">General</span>
+                  <span className="text-slate-500 font-semibold">Sales Type:</span>
+                  <span className="text-slate-800 font-bold capitalize">General</span>
                 </div>
                 <div className="flex justify-between text-[13px]">
-                  <span className="text-neutral-500 font-semibold">Reference ID:</span>
-                  <span className="text-neutral-800 font-bold">{sale.order_number || sale.id}</span>
+                  <span className="text-slate-500 font-semibold">Reference ID:</span>
+                  <span className="text-slate-800 font-bold">{sale.order_number || sale.id}</span>
                 </div>
                 <div className="flex justify-between text-[13px]">
-                  <span className="text-neutral-500 font-semibold">Status:</span>
-                  <span className="text-neutral-800 font-bold">{sale.status || 'Pending'}</span>
+                  <span className="text-slate-500 font-semibold">Status:</span>
+                  <span className="text-slate-800 font-bold">{sale.status || 'Pending'}</span>
                 </div>
               </div>
             </div>

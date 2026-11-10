@@ -25,6 +25,7 @@ import {
 import { Link } from 'react-router-dom';
 import { motion } from 'motion/react';
 import { useAppContext } from '../store';
+import { TableSkeletonRows, GlassEmptyState } from '../components/GlassUI';
 
 export default function Sales() {
   const { showToast, currentUser, currency } = useAppContext();
@@ -48,13 +49,13 @@ export default function Sales() {
   
   useEffect(() => {
     Promise.all([
-      fetch(`/api/sales?_t=${Date.now()}`, { credentials: 'include' }).then(async res => {
+      fetch('/api/sales', { credentials: 'include' }).then(async res => {
         if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
         const contentType = res.headers.get('content-type');
         if (!contentType || !contentType.includes('application/json')) throw new Error('Not JSON response');
         return res.json();
       }),
-      fetch(`/api/sales/stats?_t=${Date.now()}`, { credentials: 'include' }).then(async res => {
+      fetch('/api/sales/stats', { credentials: 'include' }).then(async res => {
         if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
         const contentType = res.headers.get('content-type');
         if (!contentType || !contentType.includes('application/json')) throw new Error('Not JSON response');
@@ -188,102 +189,113 @@ export default function Sales() {
   }, [filteredSales, currentPage]);
 
   return (
-    <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500 pb-12">
+    <div className="space-y-6 pb-12">
       {/* Header Section */}
-      <div className="flex flex-col lg:flex-row lg:items-end justify-between gap-6">
+      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 p-6 rounded-3xl bg-white/[0.65] backdrop-blur-2xl border border-white/80 shadow-[0_10px_30px_rgba(0,0,0,0.04),inset_0_1px_1px_rgba(255,255,255,0.9)]">
         <div>
-          <nav className="flex items-center gap-2 text-[13px] font-medium text-neutral-400 mb-2">
-            <Link to="/" className="hover:text-[#006397] transition-colors">Dashboard</Link>
-            <ChevronRight className="w-3.5 h-3.5" />
-            <span className="text-[#006397] font-bold">Sales</span>
+          <nav className="flex items-center gap-1.5 text-xs font-semibold text-slate-500 mb-1">
+            <Link to="/" className="hover:text-blue-600 transition-colors">Dashboard</Link>
+            <ChevronRight className="w-3 h-3 text-slate-400" />
+            <span className="text-blue-600 font-bold">Sales & Orders</span>
           </nav>
-          <h1 className="text-[28px] sm:text-[32px] font-black text-[#001d31] tracking-tight leading-none mb-2">Sales Dashboard</h1>
-          <p className="text-[14px] sm:text-[16px] text-neutral-500">Manage transactions and track performance.</p>
+          <h1 className="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight leading-none mb-1">Sales Hub</h1>
+          <p className="text-sm text-slate-600">Commercial transactions, customer orders and revenue tracking.</p>
         </div>
-        <div className="flex flex-wrap gap-2 sm:gap-3">
+        <div className="flex flex-wrap items-center gap-2.5">
           <Link 
             to="/sales/tracking/city"
-            className="flex-1 sm:flex-none flex items-center justify-center gap-2 px-4 sm:px-6 py-2.5 bg-white border border-[#c4c6cd] text-[#162839] font-bold rounded-lg hover:bg-neutral-50 transition-all text-[11px] shadow-sm uppercase tracking-widest"
+            className="flex items-center justify-center gap-2 px-4 py-2.5 bg-white/70 hover:bg-white text-slate-800 font-semibold rounded-2xl border border-white/90 shadow-[0_2px_8px_rgba(0,0,0,0.03)] backdrop-blur-md transition-all text-xs"
           >
-            Cities
+            <span>City Tracking</span>
           </Link>
           <button 
             onClick={handleExport}
-            className="flex-1 sm:flex-none flex items-center justify-center gap-2 px-4 sm:px-6 py-2.5 bg-white border border-[#c4c6cd] text-[#162839] font-bold rounded-lg hover:bg-neutral-50 transition-all text-[11px] shadow-sm uppercase tracking-widest"
+            className="flex items-center justify-center gap-2 px-4 py-2.5 bg-white/70 hover:bg-white text-slate-800 font-semibold rounded-2xl border border-white/90 shadow-[0_2px_8px_rgba(0,0,0,0.03)] backdrop-blur-md transition-all text-xs"
           >
-            <FileDown className="w-4 h-4" />
-            Export
+            <FileDown className="w-3.5 h-3.5 text-slate-500" />
+            <span>Export CSV</span>
           </button>
           <Link 
             to="/sales/add"
-            className="flex-1 sm:flex-none flex items-center justify-center gap-2 px-4 sm:px-6 py-2.5 bg-[#006397] text-white font-bold rounded-lg hover:opacity-90 transition-all text-[11px] shadow-lg uppercase tracking-widest"
+            className="flex items-center justify-center gap-2 px-4 py-2.5 bg-gradient-to-r from-blue-500 to-cyan-500 text-white font-semibold rounded-2xl border border-white/40 shadow-[0_4px_16px_rgba(10,132,255,0.35)] backdrop-blur-md transition-all text-xs"
           >
-            <ShoppingCart className="w-4 h-4" />
-            Add Sale
+            <ShoppingCart className="w-3.5 h-3.5 stroke-[2.5]" />
+            <span>Create Invoice</span>
           </Link>
         </div>
       </div>
 
       {/* KPI Bento Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
         {kpis.map((kpi) => (
-          <div key={kpi.id} className="bg-white p-6 rounded-2xl border border-[#edeeef] shadow-sm flex flex-col justify-between relative overflow-hidden h-38">
-            <div className="flex justify-between items-start z-10">
-              <span className="text-[11px] font-black text-neutral-400 uppercase tracking-widest">{kpi.label}</span>
-              {kpi.trend && (
-                <span className={`px-2 py-0.5 rounded text-[11px] font-bold ${kpi.trendBg} ${kpi.trendColor}`}>
-                  {kpi.trend}
-                </span>
-              )}
+          <motion.div 
+            key={kpi.id} 
+            whileHover={{ y: -3, scale: 1.01 }}
+            transition={{ type: 'spring', stiffness: 350, damping: 25 }}
+            className="relative overflow-hidden p-6 rounded-3xl bg-white/[0.72] backdrop-blur-2xl border border-white/85 shadow-[0_12px_30px_-6px_rgba(15,23,42,0.06),inset_0_1px_1px_rgba(255,255,255,0.95)] flex flex-col justify-between"
+          >
+            <div className="flex justify-between items-start mb-3">
+              <span className="text-[11.5px] font-bold text-slate-500 uppercase tracking-wider">{kpi.label}</span>
+              <div className="p-2.5 rounded-2xl bg-blue-500/15 text-blue-600 border border-blue-400/20 shadow-sm">
+                <kpi.icon className="w-4 h-4" />
+              </div>
             </div>
-            <div className="z-10">
-              <h3 className={`text-[24px] font-black tracking-tight leading-none ${kpi.valueColor || 'text-[#162839]'}`}>
+            <div>
+              <h3 className="text-2xl sm:text-3xl font-extrabold tracking-tight leading-none text-slate-900 tabular-nums">
                 {kpi.value}
               </h3>
               {kpi.subValue && (
-                <p className={`text-[13px] font-bold mt-1 ${kpi.subValueColor || 'text-[#006397]'}`}>
+                <p className="text-xs font-semibold mt-2 text-blue-600">
                   {kpi.subValue}
                 </p>
               )}
             </div>
-            <div className="absolute -right-4 -bottom-4 opacity-[0.03] text-[#162839]">
-              <kpi.icon size={80} strokeWidth={3} />
-            </div>
-          </div>
+          </motion.div>
         ))}
       </div>
 
-      {/* Search & Filters */}
-      <div className="bg-[#f3f4f5] border border-[#edeeef] p-4 rounded-xl shadow-sm flex flex-col md:flex-row gap-4 items-center mb-6">
+      {/* Search & Filters — Apple iOS 26 Liquid Glass Toolbar */}
+      <div 
+        className="glass-search-toolbar relative z-40 flex flex-col md:flex-row gap-3.5 items-center"
+        onMouseLeave={() => {
+          setShowStatusMenu(false);
+          setShowDateMenu(false);
+        }}
+      >
         <div className="relative flex-1 group w-full">
-          <Search className="w-5 h-5 text-neutral-400 absolute left-4 top-1/2 -translate-y-1/2 group-focus-within:text-[#006397] transition-colors" />
+          <Search className="w-4 h-4 text-slate-400 absolute left-4 top-1/2 -translate-y-1/2 group-focus-within:text-[#0284c7] transition-colors pointer-events-none z-10" />
           <input 
             type="text" 
             placeholder="Search by sale ID or customer name..."
             value={searchQuery}
             onChange={e => setSearchQuery(e.target.value)}
-            className="w-full pl-12 pr-4 py-3 bg-white border border-[#edeeef] rounded-lg text-[14px] focus:ring-2 focus:ring-[#5cb8fd]/20 focus:border-[#5cb8fd] outline-none transition-all"
+            className="w-full pl-11 pr-5 py-3 rounded-full text-[13.5px] font-medium text-slate-900 placeholder:text-slate-400 outline-none transition-all"
           />
         </div>
-        <div className="flex gap-2 w-full md:w-auto relative">
+        <div className="flex gap-2.5 w-full md:w-auto relative">
           <div className="relative flex-1 md:flex-none">
             <button 
-              onClick={() => setShowStatusMenu(!showStatusMenu)}
-              className="w-full justify-center flex items-center gap-2 px-4 py-3 bg-white border border-[#edeeef] rounded-lg text-[13px] font-bold text-neutral-600 hover:bg-neutral-50 transition-colors whitespace-nowrap"
+              type="button"
+              onClick={() => {
+                setShowStatusMenu(!showStatusMenu);
+                setShowDateMenu(false);
+              }}
+              className="w-full justify-center flex items-center gap-2 px-4 py-3 glass-pill-button text-[13px] font-semibold text-slate-700 whitespace-nowrap cursor-pointer"
             >
-              <Filter className="w-4 h-4 text-neutral-400" />
-              Status: {activeTab === 'All Sales' ? 'All' : activeTab}
+              <Filter className="w-3.5 h-3.5 text-[#0284c7]" />
+              <span>Status: {activeTab === 'All Sales' ? 'All' : activeTab}</span>
             </button>
             {showStatusMenu && (
-              <div className="absolute top-full right-0 mt-2 w-48 bg-white border border-[#edeeef] rounded-xl shadow-xl z-50 overflow-hidden">
+              <div className="absolute top-full right-0 mt-2 w-48 rounded-2xl bg-white/95 backdrop-blur-2xl border border-white shadow-[0_20px_50px_rgba(15,23,42,0.14)] z-50 overflow-hidden p-1.5">
                 {['All Sales', 'Pending', 'Completed'].map(tab => (
                   <button
                     key={tab}
+                    type="button"
                     onClick={() => {
                       setActiveTab(tab);
                       setShowStatusMenu(false);
                     }}
-                    className={`w-full text-left px-4 py-3 text-[13px] font-bold transition-colors hover:bg-neutral-50 ${activeTab === tab ? 'text-[#006397] bg-blue-50/50' : 'text-neutral-600'}`}
+                    className={`w-full text-left px-3.5 py-2.5 rounded-xl text-[13px] font-semibold transition-colors cursor-pointer ${activeTab === tab ? 'text-[#0284c7] bg-sky-50/90' : 'text-slate-700 hover:bg-slate-100/70'}`}
                   >
                     {tab === 'All Sales' ? 'All Statuses' : tab}
                   </button>
@@ -294,22 +306,27 @@ export default function Sales() {
 
           <div className="relative flex-1 md:flex-none">
             <button 
-              onClick={() => setShowDateMenu(!showDateMenu)}
-              className="w-full justify-center flex items-center gap-2 px-4 py-3 bg-white border border-[#edeeef] rounded-lg text-[13px] font-bold text-neutral-600 hover:bg-neutral-50 transition-colors whitespace-nowrap"
+              type="button"
+              onClick={() => {
+                setShowDateMenu(!showDateMenu);
+                setShowStatusMenu(false);
+              }}
+              className="w-full justify-center flex items-center gap-2 px-4 py-3 glass-pill-button text-[13px] font-semibold text-slate-700 whitespace-nowrap cursor-pointer"
             >
-              <Calendar className="w-4 h-4 text-neutral-400" />
-              {dateRange}
+              <Calendar className="w-3.5 h-3.5 text-[#0284c7]" />
+              <span>{dateRange}</span>
             </button>
             {showDateMenu && (
-              <div className="absolute top-full right-0 mt-2 w-48 bg-white border border-[#edeeef] rounded-xl shadow-xl z-50 overflow-hidden">
+              <div className="absolute top-full right-0 mt-2 w-48 rounded-2xl bg-white/95 backdrop-blur-2xl border border-white shadow-[0_20px_50px_rgba(15,23,42,0.14)] z-50 overflow-hidden p-1.5">
                 {['Today', 'Last 7 Days', 'Last 30 Days', 'This Month', 'All Time'].map(range => (
                   <button
                     key={range}
+                    type="button"
                     onClick={() => {
                       setDateRange(range);
                       setShowDateMenu(false);
                     }}
-                    className={`w-full text-left px-4 py-3 text-[13px] font-bold transition-colors hover:bg-neutral-50 ${dateRange === range ? 'text-[#006397] bg-blue-50/50' : 'text-neutral-600'}`}
+                    className={`w-full text-left px-3.5 py-2.5 rounded-xl text-[13px] font-semibold transition-colors cursor-pointer ${dateRange === range ? 'text-[#0284c7] bg-sky-50/90' : 'text-slate-700 hover:bg-slate-100/70'}`}
                   >
                     {range}
                   </button>
@@ -320,88 +337,90 @@ export default function Sales() {
         </div>
       </div>
 
-      {/* Main Content: Table Section */}
-      <div className="bg-white rounded-2xl border border-[#edeeef] shadow-sm overflow-hidden flex flex-col">
-        {/* Table Controls (Tabs) */}
-        <div className="px-6 py-4 border-b border-[#edeeef]">
-          <div className="flex gap-4">
+      {/* Main Content: Table Section in Apple iOS 26 Liquid Glass */}
+      <div className="glass-table-container relative z-10 flex flex-col">
+        {/* Table Controls (Segmented Pill Tabs) */}
+        <div className="px-6 py-4 border-b border-white/90 bg-white/[0.45] backdrop-blur-xl flex items-center justify-between">
+          <div className="inline-flex items-center gap-1.5 p-1 rounded-full bg-slate-200/50 border border-white/90">
             {['All Sales', 'Pending', 'Completed'].map((tab) => (
               <button
                 key={tab}
                 onClick={() => setActiveTab(tab)}
-                className={`relative py-2 text-[13px] font-bold transition-all ${
+                className={`px-4 py-1.5 rounded-full text-[12.5px] font-semibold transition-all ${
                   activeTab === tab 
-                    ? 'text-[#006397]' 
-                    : 'text-neutral-400 hover:text-neutral-600'
+                    ? 'bg-white text-slate-900 shadow-[0_2px_10px_rgba(15,23,42,0.06),inset_0_1px_1px_rgba(255,255,255,1)]' 
+                    : 'text-slate-600 hover:text-slate-900'
                 }`}
               >
                 {tab}
-                {activeTab === tab && (
-                  <motion.div 
-                    layoutId="activeTab"
-                    className="absolute bottom-0 left-0 right-0 h-0.5 bg-[#006397]"
-                  />
-                )}
               </button>
             ))}
           </div>
+          <span className="text-xs font-semibold text-slate-400 hidden sm:inline">
+            {filteredSales.length} {filteredSales.length === 1 ? 'record' : 'records'}
+          </span>
         </div>
 
         {/* Data Table */}
         <div className="overflow-x-auto">
           <table className="w-full text-left">
-            <thead className="bg-[#f8f9fa] border-b border-[#edeeef]">
+            <thead>
               <tr>
-                <th className="px-8 py-4 text-[12px] font-bold text-neutral-500 uppercase tracking-widest">Sale ID</th>
-                <th className="px-8 py-4 text-[12px] font-bold text-neutral-500 uppercase tracking-widest">Customer</th>
-                <th className="px-8 py-4 text-[12px] font-bold text-neutral-500 uppercase tracking-widest">Date</th>
-                <th className="px-8 py-4 text-[12px] font-bold text-neutral-500 uppercase tracking-widest">Total</th>
-                <th className="px-8 py-4 text-[12px] font-bold text-neutral-500 uppercase tracking-widest">Paid</th>
-                <th className="px-8 py-4 text-[12px] font-bold text-neutral-500 uppercase tracking-widest">Balance</th>
-                <th className="px-8 py-4 text-[12px] font-bold text-neutral-500 uppercase tracking-widest">Status</th>
-                <th className="px-8 py-4 text-right"></th>
+                <th className="px-6 py-4">Sale ID</th>
+                <th className="px-6 py-4">Customer</th>
+                <th className="px-6 py-4">Date</th>
+                <th className="px-6 py-4">Total</th>
+                <th className="px-6 py-4">Paid</th>
+                <th className="px-6 py-4">Balance</th>
+                <th className="px-6 py-4">Status</th>
+                <th className="px-6 py-4 text-right">Actions</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-[#edeeef]">
+            <tbody>
               {loading ? (
-                <tr>
-                  <td colSpan={8} className="px-8 py-12 text-center text-neutral-400 font-medium">Loading sales...</td>
-                </tr>
+                <TableSkeletonRows columns={8} rows={6} />
               ) : currentItems.length === 0 ? (
                 <tr>
-                  <td colSpan={8} className="px-8 py-12 text-center text-neutral-400 font-medium">No sales found matching your criteria.</td>
+                  <td colSpan={8} className="p-0">
+                    <GlassEmptyState
+                      isSearch={Boolean(searchQuery || activeTab !== 'All Sales' || dateRange !== 'All Time')}
+                      title={searchQuery || activeTab !== 'All Sales' ? 'No matching sales found' : 'No sales recorded yet'}
+                      description="Try clearing your search or widening the date range to see more sales records."
+                      onReset={(searchQuery || activeTab !== 'All Sales' || dateRange !== 'All Time') ? () => { setSearchQuery(''); setActiveTab('All Sales'); setDateRange('All Time'); } : undefined}
+                    />
+                  </td>
                 </tr>
               ) : currentItems.map((sale) => {
                 const total = sale.total_amount || 0;
                 const paid = sale.paid_amount || 0;
                 const balance = total - paid;
                 return (
-                <tr key={sale.id} className="group hover:bg-[#f8f9fa]/50 transition-colors">
-                  <td className="px-8 py-6 text-[14px] font-black text-[#162839]">{sale.order_number || sale.id}</td>
-                  <td className="px-8 py-6">
+                <tr key={sale.id} className="group">
+                  <td className="px-6 py-4 text-[13.5px] font-bold text-slate-900 font-mono">{sale.order_number || sale.id}</td>
+                  <td className="px-6 py-4">
                     <div className="flex items-center gap-3">
-                      <div className={`w-8 h-8 rounded-lg flex items-center justify-center font-bold text-[11px] shadow-sm bg-neutral-100 text-neutral-500`}>
+                      <div className="w-9 h-9 rounded-2xl flex items-center justify-center font-bold text-[11px] bg-sky-100/80 text-[#0284c7] border border-white shadow-2xs">
                         {sale.customer_name?.substring(0, 2).toUpperCase() || 'CU'}
                       </div>
-                      <span className="text-[14px] font-bold text-[#162839]">{sale.customer_name}</span>
+                      <span className="text-[13.5px] font-bold text-slate-900">{sale.customer_name}</span>
                     </div>
                   </td>
-                  <td className="px-8 py-6 text-[14px] text-neutral-500 font-medium">
+                  <td className="px-6 py-4 text-[13px] text-slate-500 font-medium tabular-nums">
                     {new Date(sale.created_at).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}
                   </td>
-                  <td className="px-8 py-6 text-[14px] font-black text-[#162839]">{formatCurrency(total, currency)}</td>
-                  <td className="px-8 py-6 text-[14px] font-black text-emerald-600">{formatCurrency(paid, currency)}</td>
-                  <td className={`px-8 py-6 text-[14px] font-black ${balance > 0 ? 'text-red-500' : 'text-neutral-500'}`}>{formatCurrency(Math.abs(balance), currency)} {balance > 0 && '(Dr)'}</td>
-                  <td className="px-8 py-6">
-                    <span className={`px-3 py-1 text-[11px] font-black rounded-full uppercase tracking-widest ${
-                      sale.status?.toLowerCase() === 'completed' ? 'bg-green-50 text-green-700 border border-green-200' :
-                      sale.status?.toLowerCase() === 'pending' || sale.status?.toLowerCase() === 'processing' ? 'bg-yellow-50 text-yellow-700 border border-yellow-200' :
-                      'bg-red-50 text-red-700 border border-red-200'
+                  <td className="px-6 py-4 text-[13.5px] font-extrabold text-slate-900 tabular-nums">{formatCurrency(total, currency)}</td>
+                  <td className="px-6 py-4 text-[13.5px] font-extrabold text-emerald-600 tabular-nums">{formatCurrency(paid, currency)}</td>
+                  <td className={`px-6 py-4 text-[13.5px] font-extrabold tabular-nums ${balance > 0 ? 'text-rose-500' : 'text-slate-400'}`}>{formatCurrency(Math.abs(balance), currency)} {balance > 0 && '(Dr)'}</td>
+                  <td className="px-6 py-4">
+                    <span className={`px-3 py-1 text-[11px] font-semibold rounded-full border ${
+                      sale.status?.toLowerCase() === 'completed' ? 'bg-emerald-50/90 text-emerald-700 border-emerald-200/80' :
+                      sale.status?.toLowerCase() === 'pending' || sale.status?.toLowerCase() === 'processing' ? 'bg-amber-50/90 text-amber-700 border-amber-200/80' :
+                      'bg-rose-50/90 text-rose-700 border-rose-200/80'
                     }`}>
                       {sale.status}
                     </span>
                   </td>
-                  <td className="px-8 py-6 text-right">
+                  <td className="px-6 py-4 text-right">
                     <div className="flex justify-end gap-2">
                       {sale.status?.toLowerCase() !== 'completed' && (
                         <button 
@@ -440,12 +459,12 @@ export default function Sales() {
                              });
                            }
                          }}
-                         className="p-2 text-[#006397] font-bold hover:bg-blue-50 rounded-lg transition-all" title="Complete Sale & Record Full Payment">
+                         className="w-8 h-8 inline-flex items-center justify-center rounded-full bg-white/85 hover:bg-white border border-white text-[#0284c7] shadow-[0_2px_8px_rgba(15,23,42,0.04)] transition-all" title="Complete Sale & Record Full Payment">
                             <DollarSign className="w-4 h-4" />
                         </button>
                       )}
                       
-                      <Link to={`/invoice/${sale.id}`} className="p-2 text-neutral-900 font-bold hover:text-[#006397] hover:bg-[#d1e4fb]/20 rounded-lg transition-all" title="View Invoice">
+                      <Link to={`/invoice/${sale.id}`} className="w-8 h-8 inline-flex items-center justify-center rounded-full bg-white/85 hover:bg-white border border-white text-slate-600 hover:text-[#0284c7] shadow-[0_2px_8px_rgba(15,23,42,0.04)] transition-all" title="View Invoice">
                         <Printer className="w-4 h-4" />
                       </Link>
                     </div>
@@ -458,15 +477,15 @@ export default function Sales() {
 
         {/* Table Pagination */}
         {totalPages > 1 && (
-          <div className="p-6 border-t border-[#edeeef] flex justify-between items-center bg-[#f8f9fa]/50">
-            <span className="text-[13px] font-bold text-neutral-400">
-              Showing <span className="text-[#162839]">{(currentPage - 1) * itemsPerPage + 1}-{Math.min(currentPage * itemsPerPage, filteredSales.length)}</span> of <span className="text-[#162839]">{filteredSales.length}</span> sales
+          <div className="px-6 py-4 border-t border-white/90 flex justify-between items-center bg-white/[0.45] backdrop-blur-xl">
+            <span className="text-xs font-medium text-slate-500">
+              Showing <span className="font-bold text-slate-900">{(currentPage - 1) * itemsPerPage + 1}-{Math.min(currentPage * itemsPerPage, filteredSales.length)}</span> of <span className="font-bold text-slate-900">{filteredSales.length}</span> sales
             </span>
-            <div className="flex gap-2">
+            <div className="flex gap-1.5">
               <button 
                 onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
                 disabled={currentPage === 1}
-                className="p-2 border border-[#edeeef] rounded-lg hover:bg-white transition-all disabled:opacity-30"
+                className="w-8 h-8 flex items-center justify-center rounded-full border border-white bg-white/85 hover:bg-white text-slate-600 transition-all disabled:opacity-35 shadow-[0_2px_8px_rgba(15,23,42,0.04)]"
               >
                 <ChevronLeft className="w-4 h-4" />
               </button>
@@ -474,7 +493,7 @@ export default function Sales() {
                 <button 
                   key={page}
                   onClick={() => setCurrentPage(page)}
-                  className={`px-4 py-1 rounded-lg text-[13px] font-bold transition-all ${currentPage === page ? 'bg-[#006397] text-white shadow-md' : 'border border-[#edeeef] hover:bg-white text-neutral-600'}`}
+                  className={`w-8 h-8 rounded-full text-xs font-bold transition-all ${currentPage === page ? 'bg-gradient-to-r from-[#0284c7] to-sky-500 text-white shadow-[0_4px_12px_rgba(2,132,199,0.3)]' : 'bg-white/75 hover:bg-white border border-white text-slate-700'}`}
                 >
                   {page}
                 </button>
@@ -482,7 +501,7 @@ export default function Sales() {
               <button 
                 onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
                 disabled={currentPage === totalPages}
-                className="p-2 border border-[#edeeef] rounded-lg hover:bg-white transition-all disabled:opacity-30"
+                className="w-8 h-8 flex items-center justify-center rounded-full border border-white bg-white/85 hover:bg-white text-slate-600 transition-all disabled:opacity-35 shadow-[0_2px_8px_rgba(15,23,42,0.04)]"
               >
                 <ChevronRight className="w-4 h-4" />
               </button>

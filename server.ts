@@ -205,7 +205,8 @@ app.use(async (req, res, next) => {
   next();
 });
 
-const PORT = Number(process.env.PORT) || 3000;
+// In this environment, PORT=8080 is reserved for nginx reverse proxy and DEFAULT_APP_PORT=3000 is used for the app
+const PORT = Number(process.env.APP_PORT || process.env.DEFAULT_APP_PORT || (process.env.PORT && process.env.PORT !== '8080' ? process.env.PORT : 3000));
 
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ limit: '50mb', extended: true }));

@@ -10,9 +10,13 @@ import {
   Plus, 
   ShoppingCart,
   Package,
-  Truck
+  Truck,
+  ChevronDown,
+  ChevronRight
 } from 'lucide-react';
 import { useAppContext } from '../store';
+import { GlassSelect } from '../components/GlassUI';
+import { cachedJsonFetch } from '../lib/apiCache';
 
 export default function AddPurchase() {
   const { showToast, currency } = useAppContext();
@@ -24,24 +28,29 @@ export default function AddPurchase() {
   const [selectedItems, setSelectedItems] = useState<any[]>([]);
   const [selectedSupplierId, setSelectedSupplierId] = useState<number | ''>('');
   const [searchQuery, setSearchQuery] = useState('');
+  const [showDropdown, setShowDropdown] = useState(false);
   const [saving, setSaving] = useState(false);
+  const searchBoxRef = React.useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (searchBoxRef.current && !searchBoxRef.current.contains(event.target as Node)) {
+        setShowDropdown(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
 
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const [invRes, supRes] = await Promise.all([
-          fetch('/api/inventory'),
-          fetch('/api/suppliers')
+        const [invData, supData] = await Promise.all([
+          cachedJsonFetch('/api/inventory', undefined, 60_000),
+          cachedJsonFetch('/api/suppliers', undefined, 60_000)
         ]);
-        
-        if (!invRes.ok) throw new Error('Inventory fetch failed');
-        if (!supRes.ok) throw new Error('Suppliers fetch failed');
-        
-        const invData = await invRes.text();
-        const supData = await supRes.text();
-        
-        setInventory(invData ? JSON.parse(invData) : []);
-        setSuppliers(supData ? JSON.parse(supData) : []);
+        setInventory(Array.isArray(invData) ? invData : []);
+        setSuppliers(Array.isArray(supData) ? supData : []);
         setLoading(false);
       } catch (err) {
         console.error('Fetch error:', err);
@@ -92,6 +101,8 @@ export default function AddPurchase() {
         qty: 1
       }]);
     }
+    setSearchQuery('');
+    setShowDropdown(false);
   };
 
   const handleUpdateQty = (productId: number, delta: number) => {
@@ -160,70 +171,96 @@ export default function AddPurchase() {
   const selectedSupplier = suppliers.find(s => s.id === Number(selectedSupplierId));
 
   return (
-    <div className="space-y-8 animate-in fade-in duration-500 pb-12 text-[#162839]">
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+    <div className="space-y-6 animate-in fade-in duration-500 pb-12 text-slate-900">
+      {/* Header Section */}
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 p-6 rounded-3xl bg-white/[0.65] backdrop-blur-2xl border border-white/85 shadow-[0_10px_30px_rgba(15,23,42,0.04),inset_0_1px_1.5px_rgba(255,255,255,0.95)]">
         <div>
-          <h2 className="text-[30px] leading-tight font-bold tracking-tight">New Purchase Order</h2>
-          <p className="text-[16px] text-neutral-500 mt-1">Restock inventory from suppliers</p>
+          <nav className="flex items-center gap-1.5 text-xs font-semibold text-slate-500 mb-1">
+            <Link to="/purchases" className="hover:text-[#0284c7] transition-colors">Purchases</Link>
+            <ChevronRight className="w-3 h-3 text-slate-400" />
+            <span className="text-[#0284c7] font-bold">New Order</span>
+          </nav>
+          <h2 className="text-2xl sm:text-3xl leading-tight font-extrabold tracking-tight text-slate-900">New Purchase Order</h2>
+          <p className="text-sm text-slate-600 mt-0.5">Restock inventory from suppliers</p>
         </div>
         <div className="flex gap-3">
-          <Link to="/purchases" className="flex items-center gap-2 px-5 py-2 bg-[#162839] text-white text-[13px] font-bold rounded-lg hover:opacity-90 transition-opacity">
-            <History className="w-4 h-4" />
-            Purchase History
+          <Link 
+            to="/purchases" 
+            className="flex items-center gap-2 px-5 py-2.5 glass-pill-button text-slate-800 text-[13px] font-semibold rounded-full"
+          >
+            <History className="w-4 h-4 text-[#0284c7]" />
+            <span>Purchase History</span>
           </Link>
         </div>
       </div>
 
-      <div className="grid grid-cols-12 gap-8">
+      <div className="grid grid-cols-12 gap-6">
         <section className="col-span-12 lg:col-span-7 space-y-6">
-         <div className="bg-white border border-[#edeeef] p-5 rounded-xl shadow-sm space-y-5">
-            <div className="flex items-center justify-between gap-4">
-              <div className="relative flex-1">
-                <Search className="w-4 h-4 text-neutral-400 absolute left-4 top-1/2 -translate-y-1/2" />
+          {/* Search & Filter Toolbar */}
+          <div ref={searchBoxRef} className="glass-search-toolbar relative z-40">
+            <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
+              <div className="relative flex-1 group">
+                <Search className="w-4 h-4 text-slate-400 absolute left-4 top-1/2 -translate-y-1/2 group-focus-within:text-[#0284c7] transition-colors pointer-events-none z-10" />
                 <input 
                   type="text" 
                   value={searchQuery}
-                  onChange={e => setSearchQuery(e.target.value)}
+                  onFocus={() => setShowDropdown(true)}
+                  onChange={e => {
+                    setSearchQuery(e.target.value);
+                    setShowDropdown(true);
+                  }}
                   placeholder="Search inventory items..." 
-                  className="w-full bg-[#f3f4f5] border-none rounded-lg pl-11 pr-4 py-3.5 text-[14px] focus:ring-2 focus:ring-[#5cb8fd] outline-none transition-all"
+                  className="w-full rounded-full pl-11 pr-4 py-3 text-[13.5px] font-medium text-slate-900 placeholder:text-slate-400 outline-none transition-all"
                 />
               </div>
               <button 
                 type="button"
                 onClick={() => setSearchOnlyRaw(!searchOnlyRaw)}
-                className={`px-4 py-3 rounded-lg text-[12px] font-bold tracking-tight transition-all uppercase whitespace-nowrap ${
-                  searchOnlyRaw ? 'bg-[#162839] text-white shadow-md' : 'bg-neutral-100 text-neutral-400 hover:bg-neutral-200'
+                className={`px-4 py-3 rounded-full text-[12px] font-bold tracking-wide transition-all uppercase whitespace-nowrap cursor-pointer flex items-center justify-center gap-2 ${
+                  searchOnlyRaw 
+                    ? 'bg-sky-100/95 border-[1.5px] border-sky-300 text-[#0284c7] shadow-[0_4px_14px_rgba(2,132,199,0.14),inset_0_1px_1px_rgba(255,255,255,1)]' 
+                    : 'glass-pill-button text-slate-500 hover:text-slate-800'
                 }`}
               >
-                Raw Materials focus
+                <span className={`w-2 h-2 rounded-full ${searchOnlyRaw ? 'bg-[#0284c7]' : 'bg-slate-300'}`} />
+                <span>Raw Materials Focus</span>
               </button>
             </div>
-            {searchQuery && (
-              <div className="max-h-60 overflow-y-auto border rounded-xl divide-y">
-                {filteredItems.map(item => (
-                  <div key={item.id} onClick={() => handleAddItem(item)} className="p-3 hover:bg-blue-50 cursor-pointer flex justify-between items-center gap-4">
+
+            {showDropdown && searchQuery && (
+              <div className="absolute top-full left-0 right-0 mt-2 max-h-72 overflow-y-auto rounded-2xl bg-white/95 backdrop-blur-2xl border border-white shadow-[0_20px_50px_rgba(15,23,42,0.15)] divide-y divide-slate-100 z-50 p-1.5">
+                {filteredItems.length > 0 ? filteredItems.map(item => (
+                  <div 
+                    key={item.id} 
+                    onClick={() => handleAddItem(item)} 
+                    className="p-3 hover:bg-sky-50/80 rounded-xl cursor-pointer flex justify-between items-center gap-4 transition-colors"
+                  >
                     <div className="flex items-center gap-3 min-w-0">
-                      <div className="w-10 h-10 bg-neutral-100 rounded flex items-center justify-center shrink-0 overflow-hidden">
+                      <div className="w-10 h-10 bg-slate-100 rounded-xl border border-white flex items-center justify-center shrink-0 overflow-hidden shadow-2xs">
                         <ItemImage src={item.image} name={item.name} className="w-full h-full object-cover text-[10px]" />
                       </div>
                       <div className="min-w-0">
-                      <p className="font-bold">{item.name}</p>
-                      <p className="text-xs text-neutral-500 truncate">{item.description || item.product_line || 'No description'}</p>
-                      <p className="text-xs text-neutral-400">
-                        {item.sku} • Size: {item.size || '-'} • Color: {item.color || '-'} • Weight: {item.weight || '-'} • Current Stock: {item.stock ?? 0}
-                      </p>
+                        <p className="font-bold text-slate-900 text-[13.5px]">{item.name}</p>
+                        <p className="text-xs text-slate-500 truncate">{item.description || item.product_line || 'No description'}</p>
+                        <p className="text-[11px] text-slate-400">
+                          {item.sku} • Size: {item.size || '-'} • Color: {item.color || '-'} • Stock: {item.stock ?? 0}
+                        </p>
                       </div>
                     </div>
-                    <Plus className="w-4 h-4 text-[#5cb8fd]"/>
+                    <div className="w-8 h-8 rounded-full bg-sky-100/80 text-[#0284c7] flex items-center justify-center shrink-0">
+                      <Plus className="w-4 h-4" />
+                    </div>
                   </div>
-                ))}
+                )) : (
+                  <div className="p-4 text-center text-slate-400 text-sm">No matching inventory items found</div>
+                )}
               </div>
             )}
           </div>
 
-          <div className="bg-white border border-[#edeeef] rounded-xl shadow-sm overflow-hidden min-h-[400px]">
+          <div className="glass-table-container relative z-10 min-h-[400px]">
              <table className="w-full text-left">
-                <thead className="bg-[#f3f4f5] text-[11px] font-bold text-neutral-500 uppercase tracking-widest border-b">
+                <thead>
                    <tr>
                       <th className="px-6 py-4">Item</th>
                       <th className="px-6 py-4 text-right">Cost Price</th>
@@ -232,39 +269,39 @@ export default function AddPurchase() {
                       <th className="px-6 py-4"></th>
                    </tr>
                 </thead>
-                <tbody className="divide-y text-[14px]">
+                <tbody className="text-[13.5px]">
                    {selectedItems.map(item => (
-                      <tr key={item.product_id} className="hover:bg-neutral-50 transition-colors">
+                      <tr key={item.product_id}>
                          <td className="px-6 py-4">
                             <div className="flex items-center gap-3">
-                               <div className="w-8 h-8 bg-neutral-100 rounded flex items-center justify-center overflow-hidden">
+                               <div className="w-9 h-9 bg-slate-100 rounded-xl border border-white flex items-center justify-center overflow-hidden shrink-0">
                                   <ItemImage src={item.image} name={item.name} className="w-full h-full object-cover text-[10px]" />
                                </div>
                                <div>
-                                  <p className="font-bold">{item.name}</p>
-                                  <p className="text-[11px] text-neutral-500">{item.description || 'No description'}</p>
-                                  <p className="text-[10px] text-neutral-400 uppercase tracking-tight">
-                                    {item.sku} • Size: {item.size || '-'} • Color: {item.color || '-'} • Weight: {item.weight || '-'} • Stock: {item.stock ?? 0}
+                                  <p className="font-bold text-slate-900">{item.name}</p>
+                                  <p className="text-[11px] text-slate-500">{item.description || 'No description'}</p>
+                                  <p className="text-[10px] text-slate-400 uppercase tracking-tight">
+                                    {item.sku} • Size: {item.size || '-'} • Color: {item.color || '-'} • Stock: {item.stock ?? 0}
                                   </p>
                                </div>
                             </div>
                          </td>
                           <td className="px-6 py-4 text-right">
-                            <div className="flex items-center justify-end gap-1 font-bold">
-                               <span className="text-neutral-400">{currency}</span>
+                            <div className="flex items-center justify-end gap-1.5 font-bold">
+                               <span className="text-slate-400">{currency}</span>
                                <input 
                                  type="number" 
                                  min="0.01"
                                  step="0.01"
                                  value={item.cost}
                                  onChange={e => handleUpdateCost(item.product_id, Math.max(0.01, Number(e.target.value)))}
-                                 className="w-20 text-right bg-neutral-100 border-none rounded p-1 outline-none"
+                                 className="w-24 text-right rounded-xl px-2.5 py-1.5 outline-none text-[13px] font-bold"
                                />
                             </div>
                           </td>
                          <td className="px-6 py-4 text-center">
-                            <div className="inline-flex items-center gap-2 bg-neutral-100 px-2 py-1 rounded">
-                               <button onClick={() => handleUpdateQty(item.product_id, -1)} className="hover:text-red-500"><Minus className="w-3 h-3"/></button>
+                            <div className="inline-flex items-center gap-2 bg-white/90 border border-white px-2.5 py-1 rounded-full shadow-2xs">
+                               <button type="button" onClick={() => handleUpdateQty(item.product_id, -1)} className="hover:text-rose-500 p-0.5"><Minus className="w-3.5 h-3.5"/></button>
                                <input
                                  type="number"
                                  min="1"
@@ -275,18 +312,22 @@ export default function AddPurchase() {
                                      setSelectedItems(items => items.map(i => i.product_id === item.product_id ? { ...i, qty: Math.max(1, val) } : i));
                                    }
                                  }}
-                                 className="w-16 text-center bg-transparent border-none outline-none font-bold p-0"
+                                 className="w-14 text-center bg-transparent border-none outline-none font-bold p-0"
                                />
-                               <button onClick={() => handleUpdateQty(item.product_id, 1)} className="hover:text-emerald-500"><Plus className="w-3 h-3"/></button>
+                               <button type="button" onClick={() => handleUpdateQty(item.product_id, 1)} className="hover:text-emerald-600 p-0.5"><Plus className="w-3.5 h-3.5"/></button>
                             </div>
                          </td>
-                         <td className="px-6 py-4 text-right font-bold">{formatCurrency(item.cost * item.qty, currency)}</td>
-                         <td className="px-6 py-4 text-right"><button onClick={() => handleRemoveItem(item.product_id)}><Trash2 className="w-4 h-4 text-neutral-300 hover:text-red-500"/></button></td>
+                         <td className="px-6 py-4 text-right font-extrabold text-slate-900 tabular-nums">{formatCurrency(item.cost * item.qty, currency)}</td>
+                         <td className="px-6 py-4 text-right">
+                           <button type="button" onClick={() => handleRemoveItem(item.product_id)} className="w-8 h-8 rounded-full inline-flex items-center justify-center text-slate-400 hover:text-rose-500 hover:bg-rose-50/80 transition-colors">
+                             <Trash2 className="w-4 h-4"/>
+                           </button>
+                         </td>
                       </tr>
                    ))}
                    {selectedItems.length === 0 && (
                       <tr>
-                         <td colSpan={5} className="px-6 py-20 text-center text-neutral-400 italic">No items added to purchase order yet.</td>
+                         <td colSpan={5} className="px-6 py-20 text-center text-slate-400 font-medium">No items added to purchase order yet.</td>
                       </tr>
                    )}
                 </tbody>
@@ -295,39 +336,48 @@ export default function AddPurchase() {
         </section>
 
         <section className="col-span-12 lg:col-span-5 space-y-6">
-          <div className="bg-white border border-[#edeeef] p-6 rounded-xl shadow-sm">
-             <h3 className="font-bold mb-4 text-[18px]">Supplier</h3>
-             <select 
-               value={selectedSupplierId}
-               onChange={e => setSelectedSupplierId(e.target.value ? Number(e.target.value) : '')}
-               className="w-full bg-[#f3f4f5] border border-[#edeeef] rounded-lg px-4 py-3 outline-none focus:ring-2 focus:ring-[#5cb8fd] font-medium"
-             >
-                <option value="">Select Supplier...</option>
-                {suppliers.map(s => <option key={s.id} value={s.id}>{s.name} ({s.company})</option>)}
-             </select>
+          <div className="glass-card p-6 sm:p-7">
+             <h3 className="font-bold mb-3 text-[16px] text-slate-900">Supplier</h3>
+             <div className="relative">
+               <GlassSelect 
+                 value={selectedSupplierId}
+                 onChange={e => setSelectedSupplierId(e.target.value ? Number(e.target.value) : '')}
+               >
+                  <option value="">Select Supplier...</option>
+                  {suppliers.map(s => <option key={s.id} value={s.id}>{s.name} ({s.company})</option>)}
+               </GlassSelect>
+             </div>
              {selectedSupplier && (
-               <div className="mt-4 p-4 bg-emerald-50 border border-emerald-100 rounded-xl flex items-center gap-4">
-                  <div className="w-12 h-12 rounded-full bg-emerald-500 flex items-center justify-center text-white shadow-md"><Truck className="w-6 h-6" /></div>
-                  <div><p className="font-bold">{selectedSupplier.name}</p><p className="text-[12px] text-emerald-600 font-medium">{selectedSupplier.company} • {selectedSupplier.category}</p></div>
+               <div className="mt-4 p-4 bg-emerald-50/90 border border-emerald-200/80 rounded-2xl flex items-center gap-4">
+                  <div className="w-11 h-11 rounded-2xl bg-emerald-500 flex items-center justify-center text-white shadow-sm"><Truck className="w-5 h-5" /></div>
+                  <div>
+                    <p className="font-bold text-slate-900">{selectedSupplier.name}</p>
+                    <p className="text-xs text-emerald-700 font-semibold">{selectedSupplier.company} • {selectedSupplier.category}</p>
+                  </div>
                </div>
              )}
           </div>
-          <div className="bg-[#162839] p-8 rounded-2xl shadow-xl text-white">
-             <p className="text-white/40 text-[10px] font-bold uppercase tracking-widest mb-2">Total Estimated Cost</p>
-             <p className="text-[42px] font-bold mb-8 tracking-tight">{formatCurrency(total, currency)}</p>
+
+          <div className="glass-card p-7 sm:p-8 relative overflow-hidden">
+             <div className="absolute -right-10 -top-10 w-40 h-40 rounded-full bg-sky-300/20 blur-2xl pointer-events-none" />
+             <p className="text-slate-400 text-[11px] font-bold uppercase tracking-[0.1em] mb-2">Total Estimated Cost</p>
+             <p className="text-3xl sm:text-4xl font-extrabold text-slate-900 mb-7 tracking-tight tabular-nums">{formatCurrency(total, currency)}</p>
              <button 
+                type="button"
                 onClick={handleCompletePurchase} 
                 disabled={saving}
-                className="w-full bg-[#5cb8fd] text-[#00476e] font-black py-4 rounded-xl hover:brightness-110 active:scale-95 transition-all flex items-center justify-center gap-2 shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
+                className="w-full bg-gradient-to-r from-[#0284c7] to-sky-500 text-white font-bold py-4 rounded-full hover:brightness-105 active:scale-[0.99] transition-all flex items-center justify-center gap-2 shadow-[0_8px_24px_rgba(2,132,199,0.28)] disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer text-[13.5px] tracking-wide"
              >
                 {saving ? (
-                   <div className="w-5 h-5 border-2 border-[#00476e]/30 border-t-[#00476e] rounded-full animate-spin" />
+                   <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
                 ) : (
-                   <ShoppingCart className="w-5 h-5"/>
+                   <ShoppingCart className="w-4 h-4"/>
                 )}
-                {saving ? 'Creating Order...' : 'CREATE PURCHASE ORDER'}
+                <span>{saving ? 'Creating Order...' : 'CREATE PURCHASE ORDER'}</span>
              </button>
-             <p className="mt-4 text-[11px] text-white/40 text-center font-medium leading-relaxed">By creating this order, inventory stock levels will be updated upon fulfillment and a ledger entry will be recorded.</p>
+             <p className="mt-4 text-xs text-slate-400 text-center font-medium leading-relaxed">
+               By creating this order, inventory stock levels will be updated upon fulfillment and a ledger entry will be recorded.
+             </p>
           </div>
         </section>
       </div>

@@ -7,10 +7,14 @@ import {
   Lock, 
   X, 
   AlertCircle, 
-  CheckCircle2, 
+  Check, 
   Loader2,
   Eye,
-  EyeOff
+  EyeOff,
+  Factory,
+  CreditCard,
+  Users2,
+  ShieldAlert
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { useAppContext } from '../store';
@@ -22,6 +26,14 @@ interface EditUserModalProps {
   roles: any[];
   onSuccess?: () => void;
 }
+
+const ROLE_ICON_MAP: Record<string, React.ElementType> = {
+  admin: ShieldCheck,
+  manager: Factory,
+  accountant: CreditCard,
+  operator: Users2,
+  viewer: ShieldAlert,
+};
 
 export default function EditUserModal({ isOpen, onClose, user, roles, onSuccess }: EditUserModalProps) {
   const { showToast } = useAppContext();
@@ -93,169 +105,193 @@ export default function EditUserModal({ isOpen, onClose, user, roles, onSuccess 
       {isOpen && user && (
         <div 
           id="edit-user-modal-backdrop"
-          className="fixed inset-0 top-0 left-0 w-screen h-screen z-[99999] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm"
+          className="fixed inset-0 top-0 left-0 w-screen h-screen z-[99999] flex items-center justify-center p-4 bg-slate-900/20 backdrop-blur-md"
           onClick={(e) => {
             if (e.target === e.currentTarget) onClose();
           }}
         >
           <motion.div 
-            initial={{ opacity: 0, scale: 0.95, y: 15 }}
+            initial={{ opacity: 0, scale: 0.96, y: 12 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
-            exit={{ opacity: 0, scale: 0.95, y: 15 }}
-            transition={{ duration: 0.2 }}
-            className="bg-white rounded-2xl shadow-2xl border border-[#edeeef] w-full max-w-lg min-w-[320px] sm:min-w-[480px] overflow-hidden flex flex-col relative z-10 m-auto"
+            exit={{ opacity: 0, scale: 0.96, y: 12 }}
+            transition={{ type: 'spring', stiffness: 360, damping: 28 }}
+            className="rounded-[32px] bg-white/[0.80] backdrop-blur-3xl border-[1.5px] border-white/95 shadow-[0_24px_60px_rgba(15,23,42,0.12),inset_0_1px_2px_rgba(255,255,255,1)] w-full max-w-xl min-w-[320px] sm:min-w-[500px] p-6 sm:p-7 overflow-hidden flex flex-col relative z-10 m-auto"
           >
-            {/* Header */}
-            <div className="bg-[#162839] px-6 py-5 text-white flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-white/10 flex items-center justify-center text-[#5cb8fd]">
-                  <User className="w-5 h-5" />
-                </div>
-                <div>
-                  <h3 className="font-bold text-[17px] tracking-tight">Edit User Account</h3>
-                  <p className="text-[12px] text-[#96a9be]">Update profile, role, status & password</p>
-                </div>
+            {/* Top Header Pill & Action Circles (Modeled after image_93505ee0.png) */}
+            <div className="flex items-center justify-between pb-4 mb-5 border-b border-slate-200/60">
+              <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-white/90 border border-white shadow-[0_2px_10px_rgba(15,23,42,0.05),inset_0_1px_1px_rgba(255,255,255,1)]">
+                <User className="w-3.5 h-3.5 text-[#0284c7]" />
+                <span className="text-[13px] font-semibold text-slate-800">
+                  Edit User · @{user.username}
+                </span>
               </div>
-              <button 
-                id="close-edit-user-modal"
-                onClick={onClose}
-                className="text-white/60 hover:text-white hover:bg-white/10 p-2 rounded-lg transition-colors"
-              >
-                <X className="w-5 h-5" />
-              </button>
+
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() =>
+                    setFormData(prev => ({
+                      ...prev,
+                      status: prev.status === 'Active' ? 'Deactivated' : 'Active'
+                    }))
+                  }
+                  title={`Status: ${formData.status}`}
+                  className={`px-3 py-1.5 rounded-full border text-[11.5px] font-semibold shadow-2xs transition-all cursor-pointer ${
+                    formData.status === 'Active'
+                      ? 'bg-amber-50/95 border-amber-200 text-amber-700'
+                      : 'bg-white/90 border-white text-slate-500'
+                  }`}
+                >
+                  {formData.status}
+                </button>
+                <button 
+                  id="close-edit-user-modal"
+                  type="button"
+                  onClick={onClose}
+                  className="w-9 h-9 rounded-full bg-white/90 hover:bg-white border border-white shadow-[0_2px_10px_rgba(15,23,42,0.05)] flex items-center justify-center text-slate-600 hover:text-slate-900 transition-all cursor-pointer"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
             </div>
 
             {/* Form */}
-            <form onSubmit={handleSubmit} className="p-6 space-y-4">
+            <form onSubmit={handleSubmit} className="space-y-4">
               {errorMsg && (
-                <div className="p-3.5 bg-red-50 border border-red-200 rounded-xl flex items-start gap-2.5 text-red-700 text-[13px] animate-in fade-in">
+                <div className="p-3.5 bg-rose-50/90 border border-rose-200 rounded-2xl flex items-start gap-2.5 text-rose-700 text-[13px]">
                   <AlertCircle className="w-4 h-4 flex-shrink-0 mt-0.5" />
                   <span>{errorMsg}</span>
                 </div>
               )}
 
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-1.5">
-                  <label className="text-[13px] font-bold text-[#162839]" htmlFor="edit-name">Full Name</label>
-                  <input 
-                    id="edit-name"
-                    type="text"
-                    value={formData.name}
-                    onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                    required
-                    className="w-full bg-[#f8f9fa] border border-[#d1d5db] rounded-xl px-3.5 py-2.5 text-[14px] font-medium outline-none focus:bg-white focus:ring-2 focus:ring-[#5cb8fd] transition-all"
-                  />
+              {/* Role Selector Row (Styled like the 5-card selector in image_93505ee0.png) */}
+              <div>
+                <label className="block text-[11px] font-bold tracking-[0.1em] text-slate-400 uppercase mb-2.5">
+                  SYSTEM ROLE
+                </label>
+                <div className="grid grid-cols-2 sm:grid-cols-5 gap-2.5">
+                  {roles.map((r) => {
+                    const Icon = ROLE_ICON_MAP[r.id] || ShieldCheck;
+                    const isSelected = formData.role_id === r.id;
+                    return (
+                      <button
+                        key={r.id}
+                        type="button"
+                        onClick={() => setFormData({ ...formData, role_id: r.id })}
+                        className={`rounded-2xl p-3 border transition-all flex flex-col items-center justify-center gap-1.5 text-center cursor-pointer ${
+                          isSelected
+                            ? 'bg-gradient-to-b from-amber-50/95 to-amber-100/75 border-amber-300/90 text-slate-900 shadow-[0_4px_14px_rgba(245,158,11,0.16)]'
+                            : 'bg-white/85 hover:bg-white border-white text-slate-600 shadow-[0_2px_8px_rgba(15,23,42,0.03)]'
+                        }`}
+                      >
+                        <Icon className={`w-4 h-4 ${isSelected ? 'text-amber-500' : 'text-[#0284c7]'}`} />
+                        <span className="text-[11.5px] font-semibold leading-tight truncate max-w-full">
+                          {r.name.replace('System ', '').replace('Factory ', '').replace('Senior ', '')}
+                        </span>
+                      </button>
+                    );
+                  })}
                 </div>
+                {/* Hidden select for test/accessibility compatibility */}
+                <select
+                  id="edit-role"
+                  value={formData.role_id}
+                  onChange={(e) => setFormData({ ...formData, role_id: e.target.value })}
+                  className="sr-only"
+                >
+                  {roles.map(r => (
+                    <option key={r.id} value={r.id}>{r.name}</option>
+                  ))}
+                </select>
+              </div>
 
-                <div className="space-y-1.5">
-                  <label className="text-[13px] font-bold text-[#162839]" htmlFor="edit-username">Username</label>
+              {/* Full Name Input */}
+              <div>
+                <input 
+                  id="edit-name"
+                  type="text"
+                  value={formData.name}
+                  onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                  placeholder="Full Name"
+                  required
+                  className="w-full rounded-2xl bg-white/90 border border-white px-4 py-3.5 text-[15px] font-bold text-slate-900 placeholder:text-slate-400 shadow-[0_2px_10px_rgba(15,23,42,0.03),inset_0_1px_1px_rgba(255,255,255,1)] outline-none focus:ring-2 focus:ring-sky-400/40 transition-all"
+                />
+              </div>
+
+              {/* Username & Email Row */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div className="rounded-2xl bg-white/90 border border-white px-3.5 py-2.5 shadow-[0_2px_10px_rgba(15,23,42,0.03)] flex items-center gap-2">
+                  <span className="inline-flex items-center px-2.5 py-1 rounded-full bg-sky-100/85 text-sky-800 text-[11px] font-semibold shrink-0">
+                    # user
+                  </span>
                   <input 
                     id="edit-username"
                     type="text"
                     value={formData.username}
                     onChange={(e) => setFormData({ ...formData, username: e.target.value })}
+                    placeholder="Username"
                     required
-                    className="w-full bg-[#f8f9fa] border border-[#d1d5db] rounded-xl px-3.5 py-2.5 text-[14px] font-medium outline-none focus:bg-white focus:ring-2 focus:ring-[#5cb8fd] transition-all"
+                    className="w-full bg-transparent text-[13.5px] font-medium text-slate-800 outline-none"
                   />
                 </div>
-              </div>
 
-              <div className="space-y-1.5">
-                <label className="text-[13px] font-bold text-[#162839]" htmlFor="edit-email">Email Address</label>
-                <div className="relative">
-                  <div className="absolute left-3.5 top-1/2 -translate-y-1/2 text-neutral-400">
-                    <Mail className="w-4 h-4" />
-                  </div>
+                <div className="rounded-2xl bg-white/90 border border-white px-3.5 py-2.5 shadow-[0_2px_10px_rgba(15,23,42,0.03)] flex items-center gap-2">
+                  <Mail className="w-4 h-4 text-[#0284c7] shrink-0" />
                   <input 
                     id="edit-email"
                     type="email"
                     value={formData.email}
                     onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                    placeholder="Email address"
                     required
-                    className="w-full bg-[#f8f9fa] border border-[#d1d5db] rounded-xl pl-10 pr-4 py-2.5 text-[14px] font-medium outline-none focus:bg-white focus:ring-2 focus:ring-[#5cb8fd] transition-all"
+                    className="w-full bg-transparent text-[13.5px] font-medium text-slate-800 outline-none"
                   />
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-1.5">
-                  <label className="text-[13px] font-bold text-[#162839]" htmlFor="edit-role">System Role</label>
-                  <select
-                    id="edit-role"
-                    value={formData.role_id}
-                    onChange={(e) => setFormData({ ...formData, role_id: e.target.value })}
-                    className="w-full bg-[#f8f9fa] border border-[#d1d5db] rounded-xl px-3.5 py-2.5 text-[14px] font-medium outline-none focus:bg-white focus:ring-2 focus:ring-[#5cb8fd] transition-all"
-                  >
-                    {roles.map(r => (
-                      <option key={r.id} value={r.id}>{r.name}</option>
-                    ))}
-                  </select>
-                </div>
-
-                <div className="space-y-1.5">
-                  <label className="text-[13px] font-bold text-[#162839]" htmlFor="edit-status">Status</label>
-                  <select
-                    id="edit-status"
-                    value={formData.status}
-                    onChange={(e) => setFormData({ ...formData, status: e.target.value })}
-                    className="w-full bg-[#f8f9fa] border border-[#d1d5db] rounded-xl px-3.5 py-2.5 text-[14px] font-medium outline-none focus:bg-white focus:ring-2 focus:ring-[#5cb8fd] transition-all"
-                  >
-                    <option value="Active">Active</option>
-                    <option value="Deactivated">Deactivated</option>
-                  </select>
-                </div>
+              {/* Optional Password Input */}
+              <div className="relative">
+                <input 
+                  id="edit-password"
+                  type={showPassword ? 'text' : 'password'}
+                  value={formData.password}
+                  onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                  placeholder="Optional: Enter new password (leave blank to keep current)"
+                  className="w-full rounded-2xl bg-white/90 border border-white pl-4 pr-11 py-3.5 text-[13.5px] font-medium text-slate-800 placeholder:text-slate-400 shadow-[0_2px_10px_rgba(15,23,42,0.03),inset_0_1px_1px_rgba(255,255,255,1)] outline-none focus:ring-2 focus:ring-sky-400/40 transition-all"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-700"
+                >
+                  {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                </button>
               </div>
 
-              <div className="space-y-1.5 pt-1">
-                <label className="text-[13px] font-bold text-[#162839]" htmlFor="edit-password">
-                  Change Password <span className="text-neutral-400 font-normal text-[12px]">(Optional)</span>
-                </label>
-                <div className="relative">
-                  <div className="absolute left-3.5 top-1/2 -translate-y-1/2 text-neutral-400">
-                    <Lock className="w-4 h-4" />
-                  </div>
-                  <input 
-                    id="edit-password"
-                    type={showPassword ? 'text' : 'password'}
-                    value={formData.password}
-                    onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-                    placeholder="Leave blank to keep existing password"
-                    className="w-full bg-[#f8f9fa] border border-[#d1d5db] rounded-xl pl-10 pr-11 py-2.5 text-[14px] font-medium outline-none focus:bg-white focus:ring-2 focus:ring-[#5cb8fd] transition-all"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowPassword(!showPassword)}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-neutral-400 hover:text-[#162839]"
-                  >
-                    {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                  </button>
-                </div>
-              </div>
-
-              {/* Actions */}
-              <div className="pt-4 flex items-center justify-end gap-3 border-t border-[#edeeef]">
+              {/* Bottom Pill Actions (Modeled after image_93505ee0.png) */}
+              <div className="pt-3 flex items-center justify-end gap-3">
                 <button
                   type="button"
                   onClick={onClose}
                   disabled={loading}
-                  className="px-4 py-2.5 border border-[#d1d5db] text-[#162839] font-bold text-[13px] rounded-xl hover:bg-neutral-50 transition-all"
+                  className="px-6 py-2.5 rounded-full bg-white/90 hover:bg-white border border-white text-[13.5px] font-semibold text-slate-700 shadow-[0_4px_12px_rgba(15,23,42,0.05),inset_0_1px_1px_rgba(255,255,255,1)] transition-all cursor-pointer"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
                   disabled={loading}
-                  className="px-6 py-2.5 bg-[#162839] hover:bg-[#253e56] text-white font-bold text-[13px] rounded-xl active:scale-95 transition-all shadow-md flex items-center gap-2 disabled:opacity-50"
+                  className="px-6 py-2.5 rounded-full bg-white/95 hover:bg-white border border-white text-[13.5px] font-semibold text-slate-900 shadow-[0_6px_18px_rgba(15,23,42,0.08),inset_0_1px_1.5px_rgba(255,255,255,1)] flex items-center gap-2 transition-all cursor-pointer disabled:opacity-50"
                 >
                   {loading ? (
                     <>
-                      <Loader2 className="w-4 h-4 animate-spin" />
-                      Saving...
+                      <Loader2 className="w-4 h-4 animate-spin text-[#0284c7]" />
+                      <span>Saving...</span>
                     </>
                   ) : (
                     <>
-                      <CheckCircle2 className="w-4 h-4" />
-                      Save Changes
+                      <Check className="w-4 h-4 text-[#0284c7] stroke-[2.5]" />
+                      <span>Save Changes</span>
                     </>
                   )}
                 </button>

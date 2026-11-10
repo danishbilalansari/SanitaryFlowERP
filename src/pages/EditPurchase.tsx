@@ -16,6 +16,8 @@ import {
   Trash
 } from 'lucide-react';
 import { useAppContext } from '../store';
+import { GlassSelect, GlassDatePicker } from '../components/GlassUI';
+import { cachedJsonFetch } from '../lib/apiCache';
 
 export default function EditPurchase() {
   const { id } = useParams();
@@ -47,16 +49,12 @@ export default function EditPurchase() {
 
   useEffect(() => {
     fetchOrderData();
-    // Load inventory for adding new items
-    fetch('/api/inventory', { credentials: 'include' })
-      .then(res => res.json())
-      .then(data => setInventory(data))
+    cachedJsonFetch('/api/inventory', undefined, 60_000)
+      .then(data => setInventory(Array.isArray(data) ? data : []))
       .catch(err => console.error('Error fetching inventory', err));
       
-    // Load suppliers
-    fetch('/api/suppliers', { credentials: 'include' })
-      .then(res => res.json())
-      .then(data => setSuppliers(data))
+    cachedJsonFetch('/api/suppliers', undefined, 60_000)
+      .then(data => setSuppliers(Array.isArray(data) ? data : []))
       .catch(err => console.error('Error fetching suppliers', err));
   }, [id]);
 
@@ -174,29 +172,31 @@ export default function EditPurchase() {
         {/* Left Column: Supplier & Terms */}
         <div className="col-span-12 lg:col-span-4 space-y-8">
           {/* Supplier Card */}
-          <section className="bg-white border border-[#edeeef] rounded-2xl p-8 shadow-sm">
-            <h3 className="text-[18px] font-bold text-[#162839] mb-6 flex items-center gap-3">
-              <div className="p-2 bg-[#d3e4fe] text-[#006397] rounded-lg">
+          <section className="glass-card p-7 sm:p-8 rounded-[30px] space-y-6">
+            <div className="flex items-center gap-3.5 border-b border-slate-200/60 pb-5">
+              <div className="w-11 h-11 rounded-2xl bg-white/95 border border-white text-[#0284c7] flex items-center justify-center font-bold shadow-[0_4px_12px_rgba(15,23,42,0.05)]">
                 <Truck className="w-5 h-5" />
               </div>
-              Supplier Information
-            </h3>
+              <div>
+                <h3 className="text-[18px] font-bold text-slate-900 tracking-tight">Supplier Information</h3>
+                <p className="text-[13px] text-slate-500 font-medium">Selected vendor and primary contact</p>
+              </div>
+            </div>
             
             <div className="space-y-6">
               <div className="space-y-2">
-                <label className="text-[13px] font-bold text-[#162839] block">Supplier Name</label>
+                <label className="text-[11px] font-bold text-slate-500 uppercase tracking-[0.14em] block">Supplier Name</label>
                 <div className="relative">
-                  <select 
+                  <GlassSelect 
                     value={order.supplier_id || ''}
                     disabled={updating || cancelling}
                     onChange={(e) => setOrder({...order, supplier_id: e.target.value})}
-                    className="w-full bg-[#f8f9fa] border border-[#edeeef] rounded-xl px-4 py-3 text-[14px] font-medium outline-none appearance-none focus:ring-2 focus:ring-[#5cb8fd] transition-all disabled:opacity-50">
+                  >
                     <option value="">Select a supplier...</option>
                     {suppliers.map(s => (
                       <option key={s.id} value={s.id}>{s.name}</option>
                     ))}
-                  </select>
-                  <ChevronRight className="w-4 h-4 text-neutral-400 absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none rotate-90" />
+                  </GlassSelect>
                 </div>
               </div>
 
@@ -205,18 +205,18 @@ export default function EditPurchase() {
                 return (
                   <>
                     <div className="space-y-2">
-                      <label className="text-[13px] font-bold text-[#162839] block">Contact Person</label>
+                      <label className="text-[11px] font-bold text-slate-500 uppercase tracking-[0.14em] block">Contact Person</label>
                       <input 
                         type="text" 
                         readOnly
                         value={selectedSup?.contact_person || 'N/A'}
-                        className="w-full bg-[#f8f9fa] border border-[#edeeef] rounded-xl px-4 py-3 text-[14px] font-medium outline-none focus:ring-2 focus:ring-[#5cb8fd] transition-all"
+                        className="w-full rounded-2xl px-4 py-3 text-[14px] font-medium text-slate-900 outline-none transition-all"
                       />
                     </div>
 
                     <div className="pt-2">
-                      <p className="text-[13px] text-neutral-500 leading-relaxed">
-                        <span className="font-bold text-[#162839]">Address:</span> {selectedSup?.address || 'N/A'}<br />
+                      <p className="text-[13px] text-slate-600 font-medium leading-relaxed">
+                        <span className="font-bold text-slate-900">Address:</span> {selectedSup?.address || 'N/A'}<br />
                         {selectedSup?.city || ''}
                       </p>
                     </div>
@@ -227,38 +227,37 @@ export default function EditPurchase() {
           </section>
 
           {/* Logistics Card */}
-          <section className="bg-white border border-[#edeeef] rounded-2xl p-8 shadow-sm">
-            <h3 className="text-[18px] font-bold text-[#162839] mb-6 flex items-center gap-3">
-              <div className="p-2 bg-[#d3e4fe] text-[#006397] rounded-lg">
+          <section className="glass-card p-7 sm:p-8 rounded-[30px] space-y-6">
+            <div className="flex items-center gap-3.5 border-b border-slate-200/60 pb-5">
+              <div className="w-11 h-11 rounded-2xl bg-white/95 border border-white text-emerald-600 flex items-center justify-center font-bold shadow-[0_4px_12px_rgba(15,23,42,0.05)]">
                 <Calendar className="w-5 h-5" />
               </div>
-              Logistics & Dates
-            </h3>
+              <div>
+                <h3 className="text-[18px] font-bold text-slate-900 tracking-tight">Logistics & Dates</h3>
+                <p className="text-[13px] text-slate-500 font-medium">Delivery schedule and shipping tier</p>
+              </div>
+            </div>
 
             <div className="space-y-6">
               <div className="space-y-2">
-                <label className="text-[13px] font-bold text-[#162839] block">Expected Delivery</label>
-                <input 
-                  type="date" 
+                <label className="text-[11px] font-bold text-slate-500 uppercase tracking-[0.14em] block">Expected Delivery</label>
+                <GlassDatePicker
                   disabled={updating || cancelling}
                   defaultValue="2023-11-24"
-                  className="w-full bg-[#f8f9fa] border border-[#edeeef] rounded-xl px-4 py-3 text-[14px] font-bold outline-none focus:ring-2 focus:ring-[#5cb8fd] transition-all disabled:opacity-50"
                 />
               </div>
 
               <div className="space-y-2">
-                <label className="text-[13px] font-bold text-[#162839] block">Shipping Method</label>
+                <label className="text-[11px] font-bold text-slate-500 uppercase tracking-[0.14em] block">Shipping Method</label>
                 <div className="relative">
-                  <select 
+                  <GlassSelect 
                     disabled={updating || cancelling}
                     defaultValue="Expedited Ground (2-3 days)" 
-                    className="w-full bg-[#f8f9fa] border border-[#edeeef] rounded-xl px-4 py-3 text-[14px] font-bold outline-none appearance-none focus:ring-2 focus:ring-[#5cb8fd] transition-all disabled:opacity-50"
                   >
                     <option>Standard Freight (5-7 days)</option>
                     <option>Expedited Ground (2-3 days)</option>
                     <option>Next Day Air</option>
-                  </select>
-                  <ChevronRight className="w-4 h-4 text-neutral-400 absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none rotate-90" />
+                  </GlassSelect>
                 </div>
               </div>
             </div>
@@ -267,39 +266,40 @@ export default function EditPurchase() {
 
         {/* Right Column: Order Items */}
         <div className="col-span-12 lg:col-span-8 flex flex-col gap-8">
-          <section className="bg-white border border-[#edeeef] rounded-2xl shadow-sm overflow-hidden flex flex-col h-full">
-            <div className="p-8 border-b border-[#edeeef] flex justify-between items-center bg-white">
-              <h3 className="text-[20px] font-bold text-[#162839]">Order Items</h3>
+          <section className="glass-table-container rounded-[30px] overflow-hidden flex flex-col h-full">
+            <div className="p-7 sm:p-8 border-b border-slate-200/60 flex justify-between items-center bg-white/40">
+              <h3 className="text-[18px] font-bold text-slate-900 tracking-tight">Order Items</h3>
               {!showItemSelect ? (
                 <button 
                   onClick={() => setShowItemSelect(true)}
                   disabled={updating || cancelling}
-                  className="flex items-center gap-2 text-[#006397] font-bold text-[14px] hover:underline disabled:opacity-50"
+                  className="glass-pill-button flex items-center gap-2 px-5 py-2.5 rounded-full text-[#0284c7] font-semibold text-[13.5px] hover:bg-white/95 transition-all disabled:opacity-50 cursor-pointer"
                 >
-                  <PlusCircle className="w-5 h-5" />
+                  <PlusCircle className="w-4 h-4" />
                   Add New Item
                 </button>
               ) : (
-                <div className="flex flex-col sm:flex-row items-center gap-2">
-                  <select 
-                    value={selectedProduct} 
-                    onChange={(e) => setSelectedProduct(e.target.value)}
-                    className="bg-[#f8f9fa] border border-[#edeeef] rounded-lg px-3 py-2 text-[14px] font-medium outline-none"
-                  >
-                    <option value="">Select a product...</option>
-                    {inventory.map(inv => (
-                      <option key={inv.id} value={String(inv.id)}>{inv.name} ({inv.sku})</option>
-                    ))}
-                  </select>
+                <div className="flex flex-col sm:flex-row items-center gap-2.5">
+                  <div className="min-w-[230px]">
+                    <GlassSelect 
+                      value={selectedProduct} 
+                      onChange={(e) => setSelectedProduct(e.target.value)}
+                    >
+                      <option value="">Select a product...</option>
+                      {inventory.map(inv => (
+                        <option key={inv.id} value={String(inv.id)}>{inv.name} ({inv.sku})</option>
+                      ))}
+                    </GlassSelect>
+                  </div>
                   <button 
                     onClick={handleAddItem}
-                    className="px-4 py-2 bg-[#006397] text-white rounded-lg text-[13px] font-bold hover:bg-[#004e7a]"
+                    className="px-5 py-2 rounded-full bg-gradient-to-r from-[#0284c7] to-sky-500 text-white text-[13px] font-semibold shadow-[0_4px_14px_rgba(2,132,199,0.24)] hover:opacity-95 transition-all cursor-pointer"
                   >
                     Add
                   </button>
                   <button 
                     onClick={() => { setShowItemSelect(false); setSelectedProduct(''); }}
-                    className="px-4 py-2 bg-neutral-200 text-neutral-600 rounded-lg text-[13px] font-bold hover:bg-neutral-300"
+                    className="glass-pill-button px-5 py-2 rounded-full text-slate-600 text-[13px] font-semibold hover:bg-white/95 transition-all cursor-pointer"
                   >
                     Cancel
                   </button>
@@ -309,23 +309,23 @@ export default function EditPurchase() {
 
             <div className="overflow-x-auto">
               <table className="w-full text-left">
-                <thead className="bg-[#f8f9fa] border-b border-[#edeeef]">
-                  <tr>
-                    <th className="px-8 py-4 text-[12px] font-bold text-neutral-500 uppercase tracking-widest">Item Description</th>
-                    <th className="px-8 py-4 text-[12px] font-bold text-neutral-500 uppercase tracking-widest w-32">Quantity</th>
-                    <th className="px-8 py-4 text-[12px] font-bold text-neutral-500 uppercase tracking-widest w-40">Unit Price</th>
-                    <th className="px-8 py-4 text-[12px] font-bold text-neutral-500 uppercase tracking-widest text-right">Total</th>
+                <thead>
+                  <tr className="border-b border-slate-200/60">
+                    <th className="px-8 py-4 text-[11px] font-bold text-slate-400 uppercase tracking-widest">Item Description</th>
+                    <th className="px-8 py-4 text-[11px] font-bold text-slate-400 uppercase tracking-widest w-32">Quantity</th>
+                    <th className="px-8 py-4 text-[11px] font-bold text-slate-400 uppercase tracking-widest w-40">Unit Price</th>
+                    <th className="px-8 py-4 text-[11px] font-bold text-slate-400 uppercase tracking-widest text-right">Total</th>
                     <th className="px-8 py-4 w-16"></th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-[#edeeef]">
+                <tbody className="divide-y divide-slate-200/50">
                   {items.map((item, itemIndex) => (
-                    <tr key={`item-${item.id || 'new'}-${item.product_id || '0'}-${itemIndex}`} className="group hover:bg-[#f8f9fa]/50 transition-colors">
-                      <td className="px-8 py-6">
-                        <p className="text-[15px] font-bold text-[#162839]">{item.name}</p>
-                        <p className="text-[12px] text-neutral-500 mt-1">SKU: {item.sku}</p>
+                    <tr key={`item-${item.id || 'new'}-${item.product_id || '0'}-${itemIndex}`} className="group hover:bg-white/80 transition-colors">
+                      <td className="px-8 py-5">
+                        <p className="text-[14.5px] font-bold text-slate-900">{item.name}</p>
+                        <p className="text-[12px] text-slate-400 mt-0.5">SKU: {item.sku}</p>
                       </td>
-                      <td className="px-8 py-6">
+                      <td className="px-8 py-5">
                         <input 
                           type="number" 
                           value={item.qty}
@@ -335,12 +335,12 @@ export default function EditPurchase() {
                             newItems[itemIndex].qty = parseInt(e.target.value) || 0;
                             setItems(newItems);
                           }}
-                          className="w-24 bg-white border border-[#c4c6cd] rounded-lg px-3 py-2 text-[14px] font-bold focus:ring-2 focus:ring-[#5cb8fd] outline-none disabled:opacity-50"
+                          className="w-24 rounded-xl px-3 py-2 text-[14px] font-bold outline-none disabled:opacity-50"
                         />
                       </td>
-                      <td className="px-8 py-6">
+                      <td className="px-8 py-5">
                         <div className="flex items-center gap-2">
-                          <span className="text-neutral-400 font-medium">{currency}</span>
+                          <span className="text-slate-400 font-bold text-xs">{currency}</span>
                           <input 
                             type="number" 
                             step="0.01"
@@ -351,20 +351,20 @@ export default function EditPurchase() {
                               newItems[itemIndex].cost = parseFloat(e.target.value) || 0;
                               setItems(newItems);
                             }}
-                            className="w-28 bg-white border border-[#c4c6cd] rounded-lg px-3 py-2 text-[14px] font-bold focus:ring-2 focus:ring-[#5cb8fd] outline-none disabled:opacity-50"
+                            className="w-28 rounded-xl px-3 py-2 text-[14px] font-bold outline-none disabled:opacity-50"
                           />
                         </div>
                       </td>
-                      <td className="px-8 py-6 text-right font-bold text-[#162839] text-[15px]">
+                      <td className="px-8 py-5 text-right font-bold text-slate-900 text-[14.5px]">
                         {formatCurrency(((+item.qty) * (+item.cost || +item.price || 0)), currency)}
                       </td>
-                      <td className="px-8 py-6 text-right">
+                      <td className="px-8 py-5 text-right">
                         <button 
                           onClick={() => handleRemoveItem(itemIndex)}
                           disabled={updating || cancelling}
-                          className="p-2 text-neutral-400 hover:text-[#ba1a1a] transition-all opacity-0 group-hover:opacity-100 disabled:opacity-0"
+                          className="p-2 text-slate-400 hover:text-rose-600 transition-all opacity-0 group-hover:opacity-100 disabled:opacity-0 cursor-pointer"
                         >
-                          <Trash2 className="w-5 h-5" />
+                          <Trash2 className="w-4 h-4" />
                         </button>
                       </td>
                     </tr>
@@ -373,19 +373,19 @@ export default function EditPurchase() {
               </table>
             </div>
 
-            <div className="p-8 bg-[#f8f9fa] border-t border-[#edeeef] flex justify-end">
+            <div className="p-8 bg-white/40 border-t border-slate-200/60 flex justify-end">
               <div className="w-72 space-y-3">
-                <div className="flex justify-between text-[14px] text-neutral-500">
+                <div className="flex justify-between text-[13.5px] text-slate-500">
                   <span className="font-medium">Subtotal:</span>
-                  <span className="font-bold">{formatCurrency(subtotal, currency)}</span>
+                  <span className="font-bold text-slate-800">{formatCurrency(subtotal, currency)}</span>
                 </div>
-                <div className="flex justify-between text-[14px] text-neutral-500 pb-3 border-b border-[#edeeef]">
+                <div className="flex justify-between text-[13.5px] text-slate-500 pb-3 border-b border-slate-200/60">
                   <span className="font-medium">Tax (8%):</span>
-                  <span className="font-bold">{formatCurrency(tax, currency)}</span>
+                  <span className="font-bold text-slate-800">{formatCurrency(tax, currency)}</span>
                 </div>
-                <div className="flex justify-between pt-3">
-                  <span className="text-[20px] font-black text-[#162839]">Total:</span>
-                  <span className="text-[24px] font-black text-[#162839] tracking-tight">
+                <div className="flex justify-between pt-1">
+                  <span className="text-[18px] font-bold text-slate-900">Total:</span>
+                  <span className="text-[22px] font-extrabold text-[#0284c7] tracking-tight">
                     {formatCurrency(total, currency)}
                   </span>
                 </div>
@@ -394,11 +394,11 @@ export default function EditPurchase() {
           </section>
 
           {/* Remarks Card */}
-          <section className="bg-white border border-[#edeeef] rounded-2xl p-8 shadow-sm">
-            <h3 className="text-[18px] font-bold text-[#162839] mb-6">Special Instructions & Remarks</h3>
+          <section className="glass-card p-7 sm:p-8 rounded-[30px] space-y-4">
+            <h3 className="text-[18px] font-bold text-slate-900 tracking-tight">Special Instructions & Remarks</h3>
             <textarea 
               disabled={updating || cancelling}
-              className="w-full bg-[#f8f9fa] border border-[#edeeef] rounded-xl p-4 text-[14px] font-medium text-neutral-600 outline-none focus:ring-2 focus:ring-[#5cb8fd] transition-all leading-relaxed disabled:opacity-50"
+              className="w-full rounded-2xl p-4 text-[14px] font-medium text-slate-700 outline-none transition-all leading-relaxed disabled:opacity-50"
               rows={4}
               defaultValue="Please ensure the porcelain tiles are from the same batch (Batch 22A) to avoid color variance. The warehouse will be closed on Friday afternoon."
               placeholder="Add any notes for the supplier or internal team..."
@@ -412,32 +412,32 @@ export default function EditPurchase() {
         <button 
           onClick={handleCancel}
           disabled={updating || cancelling}
-          className="flex items-center gap-2 text-[#ba1a1a] font-bold text-[14px] px-6 py-3 rounded-lg hover:bg-red-50 transition-all uppercase tracking-widest disabled:opacity-50"
+          className="glass-pill-button flex items-center gap-2 text-rose-600 font-semibold text-[14px] px-6 py-3 rounded-full hover:bg-rose-50/80 transition-all disabled:opacity-50 cursor-pointer"
         >
           {cancelling ? (
-             <div className="w-5 h-5 border-2 border-red-300 border-t-red-600 rounded-full animate-spin" />
+             <div className="w-4 h-4 border-2 border-rose-300 border-t-rose-600 rounded-full animate-spin" />
           ) : (
-             <Trash className="w-5 h-5" />
+             <Trash className="w-4 h-4" />
           )}
           {cancelling ? 'Cancelling...' : 'Cancel Purchase Order'}
         </button>
-        <div className="flex items-center gap-4 w-full md:w-auto">
+        <div className="flex items-center gap-3 w-full md:w-auto">
           <button 
             onClick={fetchOrderData}
             disabled={updating || cancelling}
-            className="flex-1 md:flex-none px-8 py-3 bg-[#e1e3e4] text-[#43474c] font-bold text-[14px] rounded-lg hover:bg-[#d9dadb] transition-all flex items-center justify-center gap-2 uppercase tracking-widest disabled:opacity-50">
-            <RotateCcw className="w-5 h-5" />
+            className="flex-1 md:flex-none glass-pill-button px-7 py-3 text-slate-700 font-semibold text-[14px] rounded-full hover:bg-white/95 transition-all flex items-center justify-center gap-2 disabled:opacity-50 cursor-pointer">
+            <RotateCcw className="w-4 h-4 text-slate-500" />
             Revert Changes
           </button>
           <button 
             onClick={handleUpdate}
             disabled={updating || cancelling}
-            className="flex-1 md:flex-none px-10 py-3 bg-[#006397] text-white font-bold text-[14px] rounded-lg hover:opacity-90 transition-all shadow-lg flex items-center justify-center gap-2 uppercase tracking-widest disabled:opacity-50 disabled:cursor-not-allowed"
+            className="flex-1 md:flex-none px-8 py-3 rounded-full bg-gradient-to-r from-[#0284c7] to-sky-500 hover:from-[#0369a1] hover:to-sky-600 text-white font-semibold text-[14px] transition-all shadow-[0_6px_20px_rgba(2,132,199,0.28)] hover:-translate-y-0.5 active:translate-y-0 flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
           >
             {updating ? (
-               <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+               <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
             ) : (
-               <CheckCircle className="w-5 h-5" />
+               <CheckCircle className="w-4 h-4" />
             )}
             {updating ? 'Updating Order...' : 'Update Order'}
           </button>
@@ -452,12 +452,12 @@ export default function EditPurchase() {
           { icon: Key, label: 'PO Reference', value: order.po_number },
         ].map((info, i) => (
           <div key={i} className="flex items-center gap-4">
-            <div className="p-3 bg-white rounded-xl text-[#162839] border border-[#edeeef]">
+            <div className="w-11 h-11 rounded-2xl bg-white/95 border border-white text-[#0284c7] flex items-center justify-center font-bold shadow-[0_4px_12px_rgba(15,23,42,0.05)] shrink-0">
               <info.icon className="w-5 h-5" />
             </div>
             <div>
-              <p className="text-[10px] font-black text-neutral-400 uppercase tracking-[0.2em]">{info.label}</p>
-              <p className="text-[14px] font-bold text-[#162839]">{info.value}</p>
+              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-[0.16em]">{info.label}</p>
+              <p className="text-[14px] font-bold text-slate-900">{info.value}</p>
             </div>
           </div>
         ))}

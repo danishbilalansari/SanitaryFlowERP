@@ -2,7 +2,6 @@ import React, { useState } from 'react';
 import { createPortal } from 'react-dom';
 import { 
   KeyRound, 
-  Lock, 
   Eye, 
   EyeOff, 
   RefreshCw, 
@@ -10,7 +9,6 @@ import {
   Check, 
   X, 
   AlertCircle, 
-  ShieldAlert,
   Loader2 
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
@@ -109,141 +107,137 @@ export default function ResetUserPasswordModal({ isOpen, onClose, user, onSucces
       {isOpen && user && (
         <div 
           id="reset-user-password-backdrop"
-          className="fixed inset-0 top-0 left-0 w-screen h-screen z-[99999] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm"
+          className="fixed inset-0 top-0 left-0 w-screen h-screen z-[99999] flex items-center justify-center p-4 bg-slate-900/20 backdrop-blur-md"
           onClick={(e) => {
             if (e.target === e.currentTarget) onClose();
           }}
         >
           <motion.div 
-            initial={{ opacity: 0, scale: 0.95, y: 15 }}
+            initial={{ opacity: 0, scale: 0.96, y: 12 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
-            exit={{ opacity: 0, scale: 0.95, y: 15 }}
-            transition={{ duration: 0.2 }}
-            className="bg-white rounded-2xl shadow-2xl border border-[#edeeef] w-full max-w-md min-w-[320px] sm:min-w-[440px] overflow-hidden flex flex-col relative z-10 m-auto"
+            exit={{ opacity: 0, scale: 0.96, y: 12 }}
+            transition={{ type: 'spring', stiffness: 360, damping: 28 }}
+            className="rounded-[32px] bg-white/[0.80] backdrop-blur-3xl border-[1.5px] border-white/95 shadow-[0_24px_60px_rgba(15,23,42,0.12),inset_0_1px_2px_rgba(255,255,255,1)] w-full max-w-md min-w-[320px] sm:min-w-[450px] p-6 sm:p-7 overflow-hidden flex flex-col relative z-10 m-auto"
           >
-            {/* Header */}
-            <div className="bg-[#162839] px-6 py-5 text-white flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-amber-500/20 flex items-center justify-center text-amber-400">
-                  <KeyRound className="w-5 h-5" />
-                </div>
-                <div>
-                  <h3 className="font-bold text-[17px] tracking-tight">Reset User Password</h3>
-                  <p className="text-[12px] text-[#96a9be]">Admin Override Action</p>
-                </div>
+            {/* Header Pill & Action Circles (Modeled after image_93505ee0.png) */}
+            <div className="flex items-center justify-between pb-4 mb-5 border-b border-slate-200/60">
+              <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-white/90 border border-white shadow-[0_2px_10px_rgba(15,23,42,0.05),inset_0_1px_1px_rgba(255,255,255,1)]">
+                <KeyRound className="w-3.5 h-3.5 text-[#0284c7]" />
+                <span className="text-[13px] font-semibold text-slate-800">
+                  Reset Password · @{user.username}
+                </span>
               </div>
-              <button 
-                id="close-reset-password-modal"
-                onClick={onClose}
-                className="text-white/60 hover:text-white hover:bg-white/10 p-2 rounded-lg transition-colors"
-              >
-                <X className="w-5 h-5" />
-              </button>
+
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={generateRandomPassword}
+                  title="Generate random password"
+                  className="w-9 h-9 rounded-full bg-white/90 hover:bg-white border border-white shadow-[0_2px_10px_rgba(15,23,42,0.05)] flex items-center justify-center text-[#0284c7] hover:scale-105 transition-all cursor-pointer"
+                >
+                  <RefreshCw className="w-4 h-4" />
+                </button>
+                <button 
+                  id="close-reset-password-modal"
+                  type="button"
+                  onClick={onClose}
+                  className="w-9 h-9 rounded-full bg-white/90 hover:bg-white border border-white shadow-[0_2px_10px_rgba(15,23,42,0.05)] flex items-center justify-center text-slate-600 hover:text-slate-900 transition-all cursor-pointer"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
             </div>
 
-            {/* User Target Banner */}
-            <div className="bg-[#f8f9fa] border-b border-[#edeeef] px-6 py-3.5 flex items-center justify-between">
-              <div>
-                <p className="text-[14px] font-bold text-[#162839]">{user.name}</p>
-                <p className="text-[12px] text-neutral-400 font-medium">@{user.username} • {user.email}</p>
+            {/* User Info Pill Row */}
+            <div className="rounded-2xl bg-white/90 border border-white px-4 py-3 mb-4 shadow-[0_2px_10px_rgba(15,23,42,0.03)] flex items-center justify-between gap-2">
+              <div className="min-w-0">
+                <p className="text-[14.5px] font-bold text-slate-900 truncate">{user.name}</p>
+                <p className="text-[12px] text-slate-500 truncate">{user.email}</p>
               </div>
               {user.role_name && (
-                <span className="bg-[#cce5ff] text-[#006397] px-3 py-1 rounded-full text-[11px] font-bold uppercase tracking-wider">
-                  {user.role_name}
+                <span className="px-3 py-1 rounded-full bg-sky-100/85 text-sky-800 text-[11px] font-semibold shrink-0">
+                  # {user.role_name}
                 </span>
               )}
             </div>
 
             {/* Form */}
-            <form onSubmit={handleSubmit} className="p-6 space-y-5">
+            <form onSubmit={handleSubmit} className="space-y-4">
               {errorMsg && (
-                <div className="p-3.5 bg-red-50 border border-red-200 rounded-xl flex items-start gap-2.5 text-red-700 text-[13px] animate-in fade-in">
+                <div className="p-3.5 bg-rose-50/90 border border-rose-200 rounded-2xl flex items-start gap-2.5 text-rose-700 text-[13px]">
                   <AlertCircle className="w-4 h-4 flex-shrink-0 mt-0.5" />
                   <span>{errorMsg}</span>
                 </div>
               )}
 
-              <div className="flex items-center justify-between">
-                <label className="text-[13px] font-bold text-[#162839]" htmlFor="admin-new-password">
-                  New User Password
-                </label>
-                <button
-                  type="button"
-                  onClick={generateRandomPassword}
-                  className="text-[11px] font-bold text-[#006397] hover:underline flex items-center gap-1"
-                >
-                  <RefreshCw className="w-3 h-3" />
-                  Generate Random
-                </button>
-              </div>
-
-              <div className="relative">
-                <div className="absolute left-3.5 top-1/2 -translate-y-1/2 text-neutral-400">
-                  <Lock className="w-4 h-4" />
-                </div>
-                <input 
-                  id="admin-new-password"
-                  type={showPassword ? 'text' : 'password'}
-                  value={newPassword}
-                  onChange={(e) => setNewPassword(e.target.value)}
-                  placeholder="Enter new password (min. 4 chars)"
-                  required
-                  className="w-full bg-[#f8f9fa] border border-[#d1d5db] rounded-xl pl-10 pr-20 py-2.5 text-[14px] font-medium outline-none focus:bg-white focus:ring-2 focus:ring-[#5cb8fd] transition-all"
-                />
-                <div className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-1">
-                  {newPassword && (
-                    <button
-                      type="button"
-                      onClick={copyToClipboard}
-                      className="p-1.5 text-neutral-400 hover:text-[#006397] rounded-lg transition-colors"
-                      title="Copy password"
-                    >
-                      {copied ? <Check className="w-4 h-4 text-emerald-600" /> : <Copy className="w-4 h-4" />}
-                    </button>
-                  )}
+              <div className="space-y-1.5">
+                <div className="flex items-center justify-between">
+                  <label className="text-[11px] font-bold tracking-[0.1em] text-slate-400 uppercase" htmlFor="admin-new-password">
+                    NEW PASSWORD
+                  </label>
                   <button
                     type="button"
-                    onClick={() => setShowPassword(!showPassword)}
-                    className="p-1.5 text-neutral-400 hover:text-[#162839] rounded-lg transition-colors"
-                    title={showPassword ? 'Hide password' : 'Show password'}
+                    onClick={generateRandomPassword}
+                    className="text-[11.5px] font-semibold text-[#0284c7] hover:underline flex items-center gap-1 cursor-pointer"
                   >
-                    {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                    <RefreshCw className="w-3 h-3" />
+                    Auto-generate
                   </button>
+                </div>
+                <div className="relative">
+                  <input 
+                    id="admin-new-password"
+                    type={showPassword ? 'text' : 'password'}
+                    value={newPassword}
+                    onChange={(e) => setNewPassword(e.target.value)}
+                    placeholder="Enter new password (min. 4 chars)"
+                    required
+                    className="w-full rounded-2xl bg-white/90 border border-white pl-4 pr-20 py-3.5 text-[14px] font-medium text-slate-900 placeholder:text-slate-400 shadow-[0_2px_10px_rgba(15,23,42,0.03),inset_0_1px_1px_rgba(255,255,255,1)] outline-none focus:ring-2 focus:ring-sky-400/40 transition-all"
+                  />
+                  <div className="absolute right-2.5 top-1/2 -translate-y-1/2 flex items-center gap-1">
+                    {newPassword && (
+                      <button
+                        type="button"
+                        onClick={copyToClipboard}
+                        className="p-1.5 text-slate-400 hover:text-[#0284c7] rounded-lg transition-colors"
+                        title="Copy password"
+                      >
+                        {copied ? <Check className="w-4 h-4 text-emerald-600" /> : <Copy className="w-4 h-4" />}
+                      </button>
+                    )}
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword(!showPassword)}
+                      className="p-1.5 text-slate-400 hover:text-slate-700 rounded-lg transition-colors"
+                    >
+                      {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                    </button>
+                  </div>
                 </div>
               </div>
 
               <div className="space-y-1.5">
-                <label className="text-[13px] font-bold text-[#162839]" htmlFor="admin-confirm-password">
-                  Confirm Password
+                <label className="text-[11px] font-bold tracking-[0.1em] text-slate-400 uppercase" htmlFor="admin-confirm-password">
+                  CONFIRM PASSWORD
                 </label>
-                <div className="relative">
-                  <div className="absolute left-3.5 top-1/2 -translate-y-1/2 text-neutral-400">
-                    <Lock className="w-4 h-4" />
-                  </div>
-                  <input 
-                    id="admin-confirm-password"
-                    type={showPassword ? 'text' : 'password'}
-                    value={confirmPassword}
-                    onChange={(e) => setConfirmPassword(e.target.value)}
-                    placeholder="Repeat new password"
-                    required
-                    className="w-full bg-[#f8f9fa] border border-[#d1d5db] rounded-xl pl-10 pr-11 py-2.5 text-[14px] font-medium outline-none focus:bg-white focus:ring-2 focus:ring-[#5cb8fd] transition-all"
-                  />
-                </div>
-              </div>
-
-              <div className="p-3 bg-amber-50 border border-amber-200 rounded-xl flex items-start gap-2.5 text-amber-800 text-[12px]">
-                <ShieldAlert className="w-4 h-4 flex-shrink-0 mt-0.5 text-amber-600" />
-                <span>Resetting will immediately update this user's password in the system. They will need the new password to log in.</span>
+                <input 
+                  id="admin-confirm-password"
+                  type={showPassword ? 'text' : 'password'}
+                  value={confirmPassword}
+                  onChange={(e) => setConfirmPassword(e.target.value)}
+                  placeholder="Repeat new password"
+                  required
+                  className="w-full rounded-2xl bg-white/90 border border-white px-4 py-3.5 text-[14px] font-medium text-slate-900 placeholder:text-slate-400 shadow-[0_2px_10px_rgba(15,23,42,0.03),inset_0_1px_1px_rgba(255,255,255,1)] outline-none focus:ring-2 focus:ring-sky-400/40 transition-all"
+                />
               </div>
 
               {/* Actions */}
-              <div className="pt-3 flex items-center justify-end gap-3 border-t border-[#edeeef]">
+              <div className="pt-3 flex items-center justify-end gap-3">
                 <button
                   type="button"
                   onClick={onClose}
                   disabled={loading}
-                  className="px-4 py-2.5 border border-[#d1d5db] text-[#162839] font-bold text-[13px] rounded-xl hover:bg-neutral-50 transition-all"
+                  className="px-6 py-2.5 rounded-full bg-white/90 hover:bg-white border border-white text-[13.5px] font-semibold text-slate-700 shadow-[0_4px_12px_rgba(15,23,42,0.05),inset_0_1px_1px_rgba(255,255,255,1)] transition-all cursor-pointer"
                 >
                   Cancel
                 </button>
@@ -251,17 +245,17 @@ export default function ResetUserPasswordModal({ isOpen, onClose, user, onSucces
                   id="submit-reset-password-btn"
                   type="submit"
                   disabled={loading || !newPassword || newPassword !== confirmPassword}
-                  className="px-6 py-2.5 bg-amber-600 hover:bg-amber-700 text-white font-bold text-[13px] rounded-xl active:scale-95 transition-all shadow-md flex items-center gap-2 disabled:opacity-50"
+                  className="px-6 py-2.5 rounded-full bg-white/95 hover:bg-white border border-white text-[13.5px] font-semibold text-slate-900 shadow-[0_6px_18px_rgba(15,23,42,0.08),inset_0_1px_1.5px_rgba(255,255,255,1)] flex items-center gap-2 transition-all cursor-pointer disabled:opacity-50"
                 >
                   {loading ? (
                     <>
-                      <Loader2 className="w-4 h-4 animate-spin" />
-                      Resetting...
+                      <Loader2 className="w-4 h-4 animate-spin text-[#0284c7]" />
+                      <span>Resetting...</span>
                     </>
                   ) : (
                     <>
-                      <KeyRound className="w-4 h-4" />
-                      Reset Password
+                      <Check className="w-4 h-4 text-[#0284c7] stroke-[2.5]" />
+                      <span>Save Changes</span>
                     </>
                   )}
                 </button>

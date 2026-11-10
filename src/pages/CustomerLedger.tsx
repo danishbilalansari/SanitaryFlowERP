@@ -3,6 +3,7 @@ import { formatCurrency } from '../lib/currency';
 import React, { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { ArrowLeft, ArrowUpRight, ArrowDownRight, Printer, Trash2, Edit2, X, Check } from 'lucide-react';
+import { GlassDatePicker, GlassPagination } from '../components/GlassUI';
 
 export default function CustomerLedger() {
   const { currency, showToast } = useAppContext();
@@ -10,6 +11,8 @@ export default function CustomerLedger() {
   const [customer, setCustomer] = useState<any>(null);
   const [ledgerEntries, setLedgerEntries] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 8;
 
   const [editingEntry, setEditingEntry] = useState<any>(null);
   const [editForm, setEditForm] = useState({ description: '', debit: '', credit: '', reference_id: '', created_at: '' });
@@ -109,80 +112,82 @@ export default function CustomerLedger() {
   const currentBalance = ledgerEntries.length > 0 ? ledgerEntries[0].running_balance : 0;
 
   return (
-    <div className="space-y-6 max-w-5xl print:max-w-none mx-auto pb-20 print:pb-0">
+    <div className="space-y-6 pb-20 print:pb-0">
       <div className="flex items-center justify-between z-10 relative">
         <div className="flex items-center space-x-4 print:w-full">
-          <Link to={`/customers/${id}`} className="print:hidden p-2 text-neutral-500 hover:text-neutral-900 hover:bg-neutral-100 rounded-lg transition-colors bg-white shadow-sm border border-neutral-200/60">
+          <Link to={`/customers/${id}`} className="print:hidden w-10 h-10 glass-pill-button rounded-full flex items-center justify-center text-slate-600 hover:text-[#0284c7] transition-all">
             <ArrowLeft className="w-5 h-5" />
           </Link>
           <div className="print:flex print:items-center print:justify-between print:w-full">
-            <h1 className="text-2xl font-semibold tracking-tight text-neutral-900 print:text-xl">{customer.name}</h1>
-            <p className="text-[13px] text-neutral-500 mt-1 print:mt-0 print:text-[11px]">{customer.city} • {customer.phone}</p>
+            <h1 className="text-2xl font-bold tracking-tight text-slate-900 print:text-xl">{customer.name}</h1>
+            <p className="text-[13px] text-slate-500 mt-1 print:mt-0 print:text-[11px]">{customer.city} • {customer.phone}</p>
           </div>
         </div>
         
         <button 
           onClick={() => window.print()}
-          className="print:hidden flex items-center text-[13px] font-medium text-neutral-600 hover:text-neutral-900 bg-white border border-neutral-200/80 px-4 py-2 rounded-lg shadow-sm transition-colors"
+          className="print:hidden flex items-center text-[13px] font-semibold text-slate-700 glass-pill-button px-5 py-2.5 rounded-full cursor-pointer"
         >
-          <Printer className="w-4 h-4 mr-2" />
+          <Printer className="w-4 h-4 mr-2 text-[#0284c7]" />
           Print Statement
         </button>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 print:flex print:flex-row print:justify-between gap-4 print:gap-2">
-        <div className="print:flex-1 bg-white rounded-2xl p-6 print:p-3 border border-neutral-200/60 shadow-sm flex flex-col justify-center">
-          <p className="text-[12px] font-medium uppercase tracking-wider text-neutral-500 mb-1">Statement Balance</p>
-          <p className={`text-3xl print:text-xl print:text-lg font-bold tracking-tight ${currentBalance > 0 ? 'text-emerald-500' : currentBalance < 0 ? 'text-red-500' : 'text-neutral-900'}`}>
+      <div className="grid grid-cols-1 md:grid-cols-3 print:flex print:flex-row print:justify-between gap-6 print:gap-2">
+        <div className="print:flex-1 glass-card p-6 sm:p-7 print:p-3 rounded-[28px] flex flex-col justify-center">
+          <p className="text-[11px] font-bold uppercase tracking-[0.14em] text-slate-400 mb-2">Statement Balance</p>
+          <p className={`text-[30px] print:text-xl font-bold tracking-tight ${currentBalance > 0 ? 'text-emerald-600' : currentBalance < 0 ? 'text-rose-500' : 'text-slate-900'}`}>
             {formatCurrency(Math.abs(currentBalance), currency)}
-            <span className="text-sm font-medium ml-2 text-neutral-500">
+            <span className="text-sm font-medium ml-2 text-slate-400">
               {currentBalance > 0 ? 'Recv' : currentBalance < 0 ? 'Credit' : ''}
             </span>
           </p>
         </div>
-        <div className="print:flex-1 bg-white rounded-2xl p-6 print:p-3 border border-neutral-200/60 shadow-sm flex flex-col justify-center">
-          <p className="text-[12px] font-medium uppercase tracking-wider text-neutral-500 mb-1">Total Transactions</p>
-          <p className="text-3xl print:text-xl print:text-lg font-bold tracking-tight text-neutral-900">
+        <div className="print:flex-1 glass-card p-6 sm:p-7 print:p-3 rounded-[28px] flex flex-col justify-center">
+          <p className="text-[11px] font-bold uppercase tracking-[0.14em] text-slate-400 mb-2">Total Transactions</p>
+          <p className="text-[30px] print:text-xl font-bold tracking-tight text-slate-900">
             {ledgerEntries.length}
           </p>
         </div>
-        <div className="print:flex-1 bg-white rounded-2xl p-6 print:p-3 border border-neutral-200/60 shadow-sm flex flex-col justify-center">
-          <p className="text-[12px] font-medium uppercase tracking-wider text-neutral-500 mb-1">Customer Type</p>
-          <p className="text-xl print:text-lg font-bold tracking-tight text-[#006397] mt-1">
+        <div className="print:flex-1 glass-card p-6 sm:p-7 print:p-3 rounded-[28px] flex flex-col justify-center">
+          <p className="text-[11px] font-bold uppercase tracking-[0.14em] text-slate-400 mb-2">Customer Type</p>
+          <p className="text-[22px] print:text-lg font-bold tracking-tight text-[#0284c7] mt-1">
             {customer.business_type}
           </p>
         </div>
       </div>
 
-      <div className="bg-white rounded-2xl border border-neutral-200/60 shadow-sm overflow-hidden print:overflow-visible">
-        <div className="p-5 border-b border-neutral-100 flex justify-between items-center bg-neutral-50/50">
-          <h2 className="text-[15px] font-bold tracking-tight text-neutral-900">Statement of Account</h2>
+      <div className="glass-table-container rounded-[30px] overflow-hidden print:overflow-visible">
+        <div className="px-8 py-5 border-b border-slate-200/60 flex justify-between items-center bg-white/40 backdrop-blur-md">
+          <h2 className="text-[17px] font-bold tracking-tight text-slate-900">Statement of Account</h2>
         </div>
         
         {ledgerEntries.length === 0 ? (
           <div className="p-12 text-center">
-            <p className="text-neutral-500 text-[13px] font-medium">No ledger entries found for this customer.</p>
+            <p className="text-slate-400 text-[13.5px] font-medium">No ledger entries found for this customer.</p>
           </div>
         ) : (
           <div className="overflow-x-auto print:overflow-visible">
-            <table className="w-full text-left text-[13px] whitespace-nowrap print:whitespace-normal print:table-fixed print:text-[11px]">
-              <thead className="bg-[#f8f9fa] border-b border-neutral-100">
+            <table className="w-full text-left text-[13.5px] whitespace-nowrap print:whitespace-normal print:table-fixed print:text-[11px]">
+              <thead className="bg-slate-50/60 border-b border-slate-200/60">
                 <tr>
-                  <th className="w-[15%] px-6 py-3 print:px-2 print:py-2 font-bold text-neutral-500 uppercase tracking-widest text-[10px]">Date</th>
-                  <th className="w-[30%] px-6 py-3 print:px-2 print:py-2 font-bold text-neutral-500 uppercase tracking-widest text-[10px]">Description</th>
-                  <th className="w-[15%] px-6 py-3 print:px-2 print:py-2 font-bold text-neutral-500 uppercase tracking-widest text-[10px] text-right">Debit / Out</th>
-                  <th className="w-[15%] px-6 py-3 print:px-2 print:py-2 font-bold text-neutral-500 uppercase tracking-widest text-[10px] text-right">Credit / In</th>
-                  <th className="w-[15%] px-6 py-3 print:px-2 print:py-2 font-bold text-neutral-500 uppercase tracking-widest text-[10px] text-right bg-neutral-50/50">Balance</th>
-                  <th className="w-[10%] px-6 py-3 font-bold text-neutral-500 uppercase tracking-widest text-[10px] text-right print:hidden">Actions</th>
+                  <th className="w-[15%] px-7 py-3.5 print:px-2 print:py-2 font-bold text-slate-500 uppercase tracking-widest text-[11px]">Date</th>
+                  <th className="w-[30%] px-7 py-3.5 print:px-2 print:py-2 font-bold text-slate-500 uppercase tracking-widest text-[11px]">Description</th>
+                  <th className="w-[15%] px-7 py-3.5 print:px-2 print:py-2 font-bold text-slate-500 uppercase tracking-widest text-[11px] text-right">Debit / Out</th>
+                  <th className="w-[15%] px-7 py-3.5 print:px-2 print:py-2 font-bold text-slate-500 uppercase tracking-widest text-[11px] text-right">Credit / In</th>
+                  <th className="w-[15%] px-7 py-3.5 print:px-2 print:py-2 font-bold text-slate-500 uppercase tracking-widest text-[11px] text-right bg-slate-50/40">Balance</th>
+                  <th className="w-[10%] px-7 py-3.5 font-bold text-slate-500 uppercase tracking-widest text-[11px] text-right print:hidden">Actions</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-neutral-100">
-                {ledgerEntries.map((entry, idx) => (
+              <tbody className="divide-y divide-slate-100/80">
+                {ledgerEntries
+                  .slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage)
+                  .map((entry, idx) => (
                   <tr key={idx} className="hover:bg-neutral-50/80 transition-colors">
                     {editingEntry === entry.id ? (
                       <>
                         <td className="px-6 py-4 align-top">
-                          <input type="date" className="w-full min-w-[120px] p-2 border border-neutral-200 rounded text-[13px]" value={editForm.created_at} onChange={e => setEditForm({...editForm, created_at: e.target.value})} />
+                          <GlassDatePicker className="w-full min-w-[150px]" value={editForm.created_at} onChange={e => setEditForm({...editForm, created_at: e.target.value})} />
                         </td>
                         <td className="px-6 py-4 align-top">
                           <input type="text" placeholder="Ref ID" className="w-full min-w-[150px] p-2 border border-neutral-200 rounded mb-2 text-[13px] block" value={editForm.reference_id} onChange={e => setEditForm({...editForm, reference_id: e.target.value})} />
@@ -239,6 +244,14 @@ export default function CustomerLedger() {
             </table>
           </div>
         )}
+        <GlassPagination
+          currentPage={currentPage}
+          totalPages={Math.ceil(ledgerEntries.length / itemsPerPage)}
+          totalItems={ledgerEntries.length}
+          itemsPerPage={itemsPerPage}
+          onPageChange={setCurrentPage}
+          itemLabel="entries"
+        />
       </div>
     </div>
   );

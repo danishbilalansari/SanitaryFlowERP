@@ -1,6 +1,6 @@
 import React from 'react';
 import { createPortal } from 'react-dom';
-import { Trash2, X, AlertTriangle, Loader2 } from 'lucide-react';
+import { Trash2, X, AlertTriangle, Loader2, Check } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 
 interface DeleteUserModalProps {
@@ -31,66 +31,73 @@ export default function DeleteUserModal({
       {isOpen && user && (
         <div
           id="delete-user-modal-backdrop"
-          className="fixed inset-0 top-0 left-0 w-screen h-screen z-[99999] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm"
+          className="fixed inset-0 top-0 left-0 w-screen h-screen z-[99999] flex items-center justify-center p-4 bg-slate-900/20 backdrop-blur-md"
           onClick={(e) => {
             if (e.target === e.currentTarget && !loading) onClose();
           }}
         >
           <motion.div
-            initial={{ opacity: 0, scale: 0.95, y: 15 }}
+            initial={{ opacity: 0, scale: 0.96, y: 12 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
-            exit={{ opacity: 0, scale: 0.95, y: 15 }}
-            transition={{ duration: 0.2 }}
-            className="bg-white rounded-2xl shadow-2xl border border-[#edeeef] w-full max-w-md min-w-[320px] sm:min-w-[420px] overflow-hidden flex flex-col relative z-10 m-auto"
+            exit={{ opacity: 0, scale: 0.96, y: 12 }}
+            transition={{ type: 'spring', stiffness: 360, damping: 28 }}
+            className="rounded-[32px] bg-white/[0.80] backdrop-blur-3xl border-[1.5px] border-white/95 shadow-[0_24px_60px_rgba(15,23,42,0.12),inset_0_1px_2px_rgba(255,255,255,1)] w-full max-w-md min-w-[320px] sm:min-w-[440px] p-6 sm:p-7 overflow-hidden flex flex-col relative z-10 m-auto"
           >
-            {/* Header */}
-            <div className="bg-red-600 px-6 py-5 text-white flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-white/20 flex items-center justify-center text-white">
-                  <Trash2 className="w-5 h-5" />
-                </div>
-                <div>
-                  <h3 className="font-bold text-[17px] tracking-tight">Delete User Account</h3>
-                  <p className="text-[12px] text-red-100">Permanent removal</p>
-                </div>
+            {/* Header Pill & Action Circles (Modeled after image_93505ee0.png) */}
+            <div className="flex items-center justify-between pb-4 mb-5 border-b border-slate-200/60">
+              <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-white/90 border border-white shadow-[0_2px_10px_rgba(15,23,42,0.05),inset_0_1px_1px_rgba(255,255,255,1)]">
+                <Trash2 className="w-3.5 h-3.5 text-rose-500" />
+                <span className="text-[13px] font-semibold text-slate-800">
+                  Delete Account · @{user.username}
+                </span>
               </div>
+
               <button
                 id="close-delete-user-modal"
+                type="button"
                 onClick={onClose}
                 disabled={loading}
-                className="text-white/70 hover:text-white hover:bg-white/10 p-2 rounded-lg transition-colors disabled:opacity-50"
+                className="w-9 h-9 rounded-full bg-white/90 hover:bg-white border border-white shadow-[0_2px_10px_rgba(15,23,42,0.05)] flex items-center justify-center text-slate-600 hover:text-slate-900 transition-all cursor-pointer disabled:opacity-50"
               >
-                <X className="w-5 h-5" />
+                <X className="w-4 h-4" />
               </button>
             </div>
 
             {/* Content */}
-            <div className="p-6 space-y-4">
-              <div className="p-4 bg-red-50 border border-red-200 rounded-xl flex items-start gap-3 text-red-800 text-[13px]">
-                <AlertTriangle className="w-5 h-5 flex-shrink-0 mt-0.5 text-red-600" />
-                <div>
-                  <p className="font-bold">This action cannot be undone.</p>
-                  <p className="text-red-700 text-[12px] mt-0.5">The user will immediately lose access to the system and all permissions will be revoked.</p>
+            <div className="space-y-4">
+              <div className="rounded-2xl bg-white/90 border border-white p-4 shadow-[0_2px_10px_rgba(15,23,42,0.03)] space-y-1">
+                <div className="flex items-center justify-between">
+                  <p className="text-[16px] font-bold text-slate-900">{user.name}</p>
+                  {user.role_name && (
+                    <span className="px-3 py-0.5 rounded-full bg-sky-100/85 text-sky-800 text-[11px] font-semibold">
+                      # {user.role_name}
+                    </span>
+                  )}
+                </div>
+                <p className="text-[13px] text-slate-500 font-medium">
+                  @{user.username} {user.email ? `• ${user.email}` : ''}
+                </p>
+              </div>
+
+              <div className="rounded-2xl bg-white/90 border border-white p-4 shadow-[0_2px_10px_rgba(15,23,42,0.03)] flex items-start gap-3">
+                <AlertTriangle className="w-5 h-5 flex-shrink-0 mt-0.5 text-rose-500" />
+                <div className="space-y-1">
+                  <p className="text-[13.5px] font-semibold text-slate-900">
+                    Are you sure you want to permanently remove {user.name}?
+                  </p>
+                  <p className="text-[12.5px] text-slate-500 leading-relaxed">
+                    This action cannot be undone. The user will immediately lose system access and all assigned permissions will be revoked.
+                  </p>
                 </div>
               </div>
 
-              <div className="p-4 bg-[#f8f9fa] border border-[#edeeef] rounded-xl space-y-1">
-                <p className="text-[11px] font-bold uppercase tracking-wider text-neutral-400">Target User</p>
-                <p className="text-[15px] font-bold text-[#162839]">{user.name}</p>
-                <p className="text-[13px] text-neutral-500 font-medium">@{user.username} {user.email ? `• ${user.email}` : ''}</p>
-              </div>
-
-              <p className="text-[14px] text-neutral-600">
-                Are you sure you want to permanently delete <strong className="text-[#162839]">{user.name}</strong> from the system registry?
-              </p>
-
               {/* Actions */}
-              <div className="pt-3 flex items-center justify-end gap-3 border-t border-[#edeeef]">
+              <div className="pt-3 flex items-center justify-end gap-3">
                 <button
                   type="button"
                   onClick={onClose}
                   disabled={loading}
-                  className="px-4 py-2.5 border border-[#d1d5db] font-bold text-[13px] text-[#162839] rounded-xl hover:bg-neutral-50 transition-all disabled:opacity-50"
+                  className="px-6 py-2.5 rounded-full bg-white/90 hover:bg-white border border-white text-[13.5px] font-semibold text-slate-700 shadow-[0_4px_12px_rgba(15,23,42,0.05),inset_0_1px_1px_rgba(255,255,255,1)] transition-all cursor-pointer disabled:opacity-50"
                 >
                   Cancel
                 </button>
@@ -99,17 +106,17 @@ export default function DeleteUserModal({
                   type="button"
                   onClick={onConfirm}
                   disabled={loading}
-                  className="px-6 py-2.5 bg-red-600 hover:bg-red-700 text-white font-bold text-[13px] rounded-xl active:scale-95 transition-all shadow-md flex items-center gap-2 disabled:opacity-50"
+                  className="px-6 py-2.5 rounded-full bg-white/95 hover:bg-white border border-white text-[13.5px] font-semibold text-rose-600 shadow-[0_6px_18px_rgba(15,23,42,0.08),inset_0_1px_1.5px_rgba(255,255,255,1)] flex items-center gap-2 transition-all cursor-pointer disabled:opacity-50"
                 >
                   {loading ? (
                     <>
-                      <Loader2 className="w-4 h-4 animate-spin" />
-                      Deleting...
+                      <Loader2 className="w-4 h-4 animate-spin text-rose-500" />
+                      <span>Deleting...</span>
                     </>
                   ) : (
                     <>
-                      <Trash2 className="w-4 h-4" />
-                      Confirm Delete
+                      <Check className="w-4 h-4 text-rose-500 stroke-[2.5]" />
+                      <span>Confirm Delete</span>
                     </>
                   )}
                 </button>

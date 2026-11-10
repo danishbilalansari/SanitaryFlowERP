@@ -9,6 +9,8 @@ import {
 } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
 import { ItemImage } from '../components/ItemImage';
+import { motion } from 'motion/react';
+import { TableSkeletonRows, GlassEmptyState } from '../components/GlassUI';
 
 interface InventoryItem {
   id: number;
@@ -33,6 +35,8 @@ export default function Inventory() {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('');
   const [selectedColor, setSelectedColor] = useState('');
+  const [showCategoryMenu, setShowCategoryMenu] = useState(false);
+  const [showColorMenu, setShowColorMenu] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 10;
 
@@ -139,203 +143,330 @@ export default function Inventory() {
   };
 
   return (
-    <div className="space-y-8 animate-in fade-in duration-500 pb-12">
-      {/* Header & Actions */}
-      <div className="flex flex-col lg:flex-row lg:items-end justify-between gap-4 px-1">
+    <div className="space-y-6 pb-12">
+      {/* Header & Glass Actions Toolbar */}
+      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 p-6 rounded-3xl bg-white/[0.65] backdrop-blur-2xl border border-white/80 shadow-[0_10px_30px_rgba(0,0,0,0.04),inset_0_1px_1px_rgba(255,255,255,0.9)]">
         <div className="flex-1">
-          <nav className="flex items-center gap-2 text-[13px] font-medium text-neutral-400 mb-2">
-            <Link to="/" className="hover:text-[#006397] transition-colors">Dashboard</Link>
-            <ChevronRight className="w-3.5 h-3.5" />
-            <span className="text-[#006397] font-bold">Inventory</span>
+          <nav className="flex items-center gap-1.5 text-xs font-semibold text-slate-500 mb-1">
+            <Link to="/" className="hover:text-blue-600 transition-colors">Dashboard</Link>
+            <ChevronRight className="w-3 h-3 text-slate-400" />
+            <span className="text-blue-600 font-bold">Inventory</span>
           </nav>
-          <h2 className="text-[28px] sm:text-[32px] font-black text-[#001d31] tracking-tight leading-none">Inventory Overview</h2>
-          <p className="text-[14px] sm:text-[16px] text-neutral-500 mt-1">Real-time tracking of finished goods and stock movements.</p>
+          <h2 className="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight">Inventory Management</h2>
+          <p className="text-sm text-slate-600 mt-0.5">Real-time tracking of finished sanitaryware, stock transfers & warehouse levels.</p>
         </div>
-        <div className="flex flex-wrap gap-2 mt-4 lg:mt-0">
+        
+        <div className="flex flex-wrap items-center gap-2.5">
           <Link 
             to="/inventory/add"
-            className="flex-1 sm:flex-none flex items-center justify-center gap-2 px-4 sm:px-6 py-2.5 border border-[#006397] text-[#006397] font-bold rounded-lg hover:bg-[#e3f2fd] transition-colors text-[13px] sm:text-[14px]"
+            className="flex items-center justify-center gap-2 px-4 py-2.5 bg-white/70 hover:bg-white text-slate-800 font-semibold rounded-2xl border border-white/90 shadow-[0_2px_8px_rgba(0,0,0,0.03)] backdrop-blur-md transition-all text-xs"
           >
-            <ArrowDownLeft className="w-4 h-4" />
-            Stock In
+            <ArrowDownLeft className="w-3.5 h-3.5 text-blue-600" />
+            <span>Stock In</span>
           </Link>
           <Link 
             to="/inventory/transfer?mode=stock-out"
-            className="flex-1 sm:flex-none flex items-center justify-center gap-2 px-4 sm:px-6 py-2.5 bg-[#006397] text-white font-bold rounded-lg hover:opacity-90 transition-opacity shadow-sm text-[13px] sm:text-[14px]"
+            className="flex items-center justify-center gap-2 px-4 py-2.5 bg-gradient-to-r from-blue-500 to-cyan-500 text-white font-semibold rounded-2xl border border-white/40 shadow-[0_4px_16px_rgba(10,132,255,0.35)] backdrop-blur-md transition-all text-xs"
           >
-            <ArrowUpRight className="w-4 h-4" />
-            Stock Out
+            <ArrowUpRight className="w-3.5 h-3.5 stroke-[2.5]" />
+            <span>Stock Out</span>
           </Link>
           <button 
             onClick={handleExport}
-            className="flex-1 sm:flex-none flex items-center justify-center gap-2 px-4 sm:px-6 py-2.5 bg-white border border-[#edeeef] text-[#162839] font-bold rounded-lg hover:bg-neutral-50 transition-colors text-[13px] sm:text-[14px] shadow-sm"
+            className="flex items-center justify-center gap-2 px-4 py-2.5 bg-white/70 hover:bg-white text-slate-800 font-semibold rounded-2xl border border-white/90 shadow-[0_2px_8px_rgba(0,0,0,0.03)] backdrop-blur-md transition-all text-xs"
           >
-            <Download className="w-4 h-4 text-neutral-400" />
-            Export
+            <Download className="w-3.5 h-3.5 text-slate-500" />
+            <span>Export CSV</span>
           </button>
           <Link 
             to="/inventory/transfer/history"
-            className="flex-1 sm:flex-none flex items-center justify-center gap-2 px-4 sm:px-6 py-2.5 bg-white border border-[#edeeef] text-[#162839] font-bold rounded-lg hover:bg-neutral-50 transition-colors text-[13px] sm:text-[14px] shadow-sm"
+            className="flex items-center justify-center gap-2 px-4 py-2.5 bg-white/70 hover:bg-white text-slate-800 font-semibold rounded-2xl border border-white/90 shadow-[0_2px_8px_rgba(0,0,0,0.03)] backdrop-blur-md transition-all text-xs"
           >
-            <History className="w-4 h-4 text-neutral-400" />
-            History
+            <History className="w-3.5 h-3.5 text-slate-500" />
+            <span>History</span>
           </Link>
         </div>
       </div>
 
-      {/* KPI Stats */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-        <div className="bg-white border border-[#edeeef] p-6 rounded-xl shadow-sm flex flex-col justify-between">
-          <div className="flex justify-between items-start mb-4">
-            <div className="p-2 bg-[#d1e4fb] rounded-lg">
-              <Wallet2 className="w-5 h-5 text-[#162839]" />
+      {/* KPI Stats in Apple iOS 26 Liquid Glass Grid */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5">
+        <motion.div 
+          whileHover={{ y: -3 }}
+          transition={{ type: 'spring', stiffness: 350, damping: 25 }}
+          className="relative overflow-hidden p-6 rounded-[28px] bg-white/[0.74] backdrop-blur-3xl border-[1.5px] border-white/95 shadow-[0_12px_34px_-6px_rgba(15,23,42,0.055),inset_0_1px_2px_rgba(255,255,255,1)] flex flex-col justify-between"
+        >
+          <div className="absolute -top-10 -right-10 w-32 h-32 rounded-full bg-gradient-to-br from-sky-400/20 via-blue-300/15 to-transparent blur-2xl pointer-events-none" />
+          <div className="flex justify-between items-start mb-3 relative z-10">
+            <span className="text-[11px] font-bold text-slate-500 tracking-[0.1em] uppercase">Total Stock Value</span>
+            <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-sky-500/15 to-blue-400/10 border border-white shadow-[0_4px_12px_rgba(2,132,199,0.08),inset_0_1px_1.5px_rgba(255,255,255,1)] text-[#0284c7] flex items-center justify-center">
+              <Wallet2 className="w-4.5 h-4.5 stroke-[2]" />
             </div>
-            <span className="text-[13px] text-green-600 font-bold flex items-center gap-1">
-              +4.2% <ArrowUpRight className="w-3 h-3" />
+          </div>
+          <div className="relative z-10">
+            <h3 className="text-2xl sm:text-[28px] font-extrabold text-slate-900 tracking-tight leading-none mb-3 tabular-nums">
+              {formatCurrency(totalValue, currency)}
+            </h3>
+            <span className="inline-flex items-center px-3 py-1 rounded-full bg-sky-50/90 border border-sky-200/70 text-[11.5px] text-[#0284c7] font-semibold shadow-2xs">
+              Calculated asset value
             </span>
           </div>
-          <div>
-            <p className="text-[11px] font-bold text-neutral-500 uppercase tracking-widest mb-1">TOTAL STOCK VALUE</p>
-            <h3 className="text-[32px] font-bold text-[#162839] tracking-tight">{formatCurrency(totalValue, currency)}</h3>
-          </div>
-        </div>
+        </motion.div>
 
-        <div className="bg-white border border-[#fee2e2] p-6 rounded-xl shadow-sm flex flex-col justify-between group overflow-hidden relative">
-          <div className="absolute top-0 right-0 w-16 h-16 bg-[#fee2e2] opacity-20 rounded-bl-full translate-x-4 -translate-y-4 group-hover:translate-x-2 group-hover:-translate-y-2 transition-transform" />
-          <div className="mb-4">
-            <div className="inline-flex p-2 bg-[#fee2e2] rounded-lg">
-              <AlertTriangle className="w-5 h-5 text-red-600" />
+        <motion.div 
+          whileHover={{ y: -3 }}
+          transition={{ type: 'spring', stiffness: 350, damping: 25 }}
+          className="relative overflow-hidden p-6 rounded-[28px] bg-white/[0.74] backdrop-blur-3xl border-[1.5px] border-white/95 shadow-[0_12px_34px_-6px_rgba(225,29,72,0.06),inset_0_1px_2px_rgba(255,255,255,1)] flex flex-col justify-between"
+        >
+          <div className="absolute -top-10 -right-10 w-32 h-32 rounded-full bg-gradient-to-br from-rose-400/22 via-pink-300/15 to-transparent blur-2xl pointer-events-none" />
+          <div className="flex justify-between items-start mb-3 relative z-10">
+            <span className="text-[11px] font-bold text-rose-600 tracking-[0.1em] uppercase">Low Stock Alerts</span>
+            <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-rose-500/15 to-pink-400/10 border border-white shadow-[0_4px_12px_rgba(225,29,72,0.08),inset_0_1px_1.5px_rgba(255,255,255,1)] text-rose-500 flex items-center justify-center">
+              <AlertTriangle className="w-4.5 h-4.5 stroke-[2]" />
             </div>
           </div>
-          <div>
-            <p className="text-[11px] font-bold text-red-500 uppercase tracking-widest mb-1">LOW STOCK ALERTS</p>
-            <h3 className="text-[32px] font-bold text-[#162839] tracking-tight">{lowStockCount} <span className="text-[16px] font-normal text-neutral-500">SKUs</span></h3>
+          <div className="relative z-10">
+            <h3 className="text-2xl sm:text-[28px] font-extrabold text-slate-900 tracking-tight leading-none mb-3 tabular-nums">
+              {lowStockCount} <span className="text-[13.5px] font-semibold text-slate-500">SKUs below min</span>
+            </h3>
+            <span className="inline-flex items-center px-3 py-1 rounded-full bg-rose-50/90 border border-rose-200/80 text-[11.5px] text-rose-600 font-semibold shadow-2xs">
+              Immediate reorder suggested
+            </span>
           </div>
-        </div>
+        </motion.div>
 
-        <div className="bg-white border border-[#edeeef] p-6 rounded-xl shadow-sm flex flex-col justify-between">
-          <div className="mb-4">
-            <div className="inline-flex p-2 bg-[#cce5ff] rounded-lg">
-              <Truck className="w-5 h-5 text-[#006397]" />
+        <motion.div 
+          whileHover={{ y: -3 }}
+          transition={{ type: 'spring', stiffness: 350, damping: 25 }}
+          className="relative overflow-hidden p-6 rounded-[28px] bg-white/[0.74] backdrop-blur-3xl border-[1.5px] border-white/95 shadow-[0_12px_34px_-6px_rgba(15,23,42,0.055),inset_0_1px_2px_rgba(255,255,255,1)] flex flex-col justify-between"
+        >
+          <div className="absolute -top-10 -right-10 w-32 h-32 rounded-full bg-gradient-to-br from-cyan-400/22 via-teal-300/15 to-transparent blur-2xl pointer-events-none" />
+          <div className="flex justify-between items-start mb-3 relative z-10">
+            <span className="text-[11px] font-bold text-slate-500 tracking-[0.1em] uppercase">Active Catalog</span>
+            <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-cyan-500/15 to-teal-400/10 border border-white shadow-[0_4px_12px_rgba(6,182,212,0.08),inset_0_1px_1.5px_rgba(255,255,255,1)] text-cyan-600 flex items-center justify-center">
+              <Truck className="w-4.5 h-4.5 stroke-[2]" />
             </div>
           </div>
-          <div>
-            <p className="text-[11px] font-bold text-neutral-500 uppercase tracking-widest mb-1">PENDING TRANSFERS</p>
-            <h3 className="text-[32px] font-bold text-[#162839] tracking-tight">08</h3>
+          <div className="relative z-10">
+            <h3 className="text-2xl sm:text-[28px] font-extrabold text-slate-900 tracking-tight leading-none mb-3 tabular-nums">
+              {inventory.length} <span className="text-[13.5px] font-semibold text-slate-500">Products</span>
+            </h3>
+            <span className="inline-flex items-center px-3 py-1 rounded-full bg-cyan-50/90 border border-cyan-200/70 text-[11.5px] text-cyan-700 font-semibold shadow-2xs">
+              Synchronized in real-time
+            </span>
           </div>
-        </div>
+        </motion.div>
 
-        <div className="bg-[#162839] p-6 rounded-xl shadow-sm flex flex-col justify-between text-white">
-          <div>
-            <p className="text-[11px] font-bold opacity-70 uppercase tracking-widest mb-1">WAREHOUSE CAPACITY</p>
-            <h3 className="text-[24px] font-bold">84%</h3>
-            <div className="w-full bg-[#2c3e50] h-2 rounded-full mt-2 overflow-hidden">
-              <div className="bg-[#5cb8fd] h-full w-[84%]" />
-            </div>
+        <motion.div 
+          whileHover={{ y: -3 }}
+          transition={{ type: 'spring', stiffness: 350, damping: 25 }}
+          className="relative overflow-hidden p-6 rounded-[28px] bg-white/[0.74] backdrop-blur-3xl border-[1.5px] border-white/95 shadow-[0_12px_34px_-6px_rgba(15,23,42,0.055),inset_0_1px_2px_rgba(255,255,255,1)] flex flex-col justify-between"
+        >
+          <div className="absolute -top-10 -right-10 w-36 h-36 rounded-full bg-gradient-to-br from-indigo-400/25 via-sky-300/20 to-transparent blur-2xl pointer-events-none" />
+          <div className="flex justify-between items-start mb-2 relative z-10">
+            <span className="text-[11px] font-bold text-indigo-600 uppercase tracking-[0.1em]">Warehouse Capacity</span>
+            <span className="px-2.5 py-0.5 rounded-full bg-indigo-50/90 border border-indigo-200/80 text-[10.5px] font-bold text-indigo-600">Optimal</span>
           </div>
-          <p className="text-[13px] text-white/70 mt-4 leading-tight">System optimal. {inventory.length} SKUs tracked.</p>
-        </div>
+          <div className="relative z-10">
+            <h3 className="text-2xl sm:text-[28px] font-extrabold text-slate-900 tracking-tight leading-none tabular-nums mb-3">84%</h3>
+            <div className="w-full bg-white/85 border border-white h-2.5 rounded-full p-0.5 overflow-hidden mb-2.5 shadow-inner">
+              <div className="bg-gradient-to-r from-indigo-500 via-[#0284c7] to-cyan-400 h-full w-[84%] rounded-full" />
+            </div>
+            <span className="text-[11.5px] text-slate-500 font-medium">Main facility storage status</span>
+          </div>
+        </motion.div>
       </div>
 
-      {/* Main Table Section */}
-      <div className="bg-white border border-[#edeeef] rounded-xl shadow-sm overflow-hidden">
-        <div className="p-6 border-b border-[#edeeef] flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-[#f3f4f5]/30">
-          <div className="flex items-center gap-4">
-            <h4 className="text-[20px] font-bold text-[#162839]">Finished Goods Inventory</h4>
+      {/* Main Table Section in Apple iOS 26 Liquid Glass */}
+      <div className="rounded-[30px] bg-white/[0.68] backdrop-blur-3xl border-[1.5px] border-white/95 shadow-[0_16px_42px_-8px_rgba(15,23,42,0.06),0_4px_12px_-2px_rgba(15,23,42,0.025),inset_0_1px_2px_rgba(255,255,255,1)]">
+        {/* Search & Filter Glass Bar */}
+        <div 
+          className="relative z-30 p-5 sm:p-6 border-b border-white/90 flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4 bg-white/[0.45] backdrop-blur-2xl rounded-t-[30px]"
+          onMouseLeave={() => {
+            setShowCategoryMenu(false);
+            setShowColorMenu(false);
+          }}
+        >
+          <div>
+            <h4 className="text-[17px] font-bold text-slate-900 tracking-tight">Finished Goods Catalog</h4>
+            <p className="text-xs text-slate-500 mt-0.5">Browse SKUs, adjust on-hand stock and view details</p>
           </div>
-          <div className="flex flex-col sm:flex-row gap-3 w-full sm:w-auto">
-            <div className="relative group w-full sm:w-64">
-              <Search className="w-5 h-5 text-neutral-400 absolute left-4 top-1/2 -translate-y-1/2 group-focus-within:text-[#006397] transition-colors" />
+          
+          <div className="flex flex-col sm:flex-row gap-2.5 w-full lg:w-auto items-stretch sm:items-center relative">
+            <div className="relative group w-full sm:w-72">
+              <Search className="w-4 h-4 text-slate-400 absolute left-4 top-1/2 -translate-y-1/2 group-focus-within:text-[#0284c7] transition-colors pointer-events-none z-10" />
               <input 
                 type="text" 
-                placeholder="Search inventory..."
+                placeholder="Search by SKU or product name..."
                 value={searchQuery}
                 onChange={e => setSearchQuery(e.target.value)}
-                className="w-full pl-12 pr-4 py-2.5 bg-white border border-[#edeeef] rounded-lg text-[14px] focus:ring-2 focus:ring-[#5cb8fd]/20 focus:border-[#5cb8fd] outline-none transition-all"
+                className="w-full pl-11 pr-4 py-2.5 rounded-full text-[13px] font-medium text-slate-900 placeholder:text-slate-400 outline-none transition-all"
               />
             </div>
-            <select
-              value={selectedCategory}
-              onChange={(e) => setSelectedCategory(e.target.value)}
-              className="px-4 py-2.5 bg-white border border-[#edeeef] rounded-lg text-[14px] focus:outline-none focus:border-[#006397] min-w-[140px]"
-            >
-              <option value="">All Categories</option>
-              {categories.map(cat => (
-                <option key={cat} value={cat}>{cat}</option>
-              ))}
-            </select>
-            <select
-              value={selectedColor}
-              onChange={(e) => setSelectedColor(e.target.value)}
-              className="px-4 py-2.5 bg-white border border-[#edeeef] rounded-lg text-[14px] focus:outline-none focus:border-[#006397] min-w-[120px]"
-            >
-              <option value="">All Colors</option>
-              {colors.map(color => (
-                <option key={color} value={color}>{color}</option>
-              ))}
-            </select>
+            
+            <div className="relative">
+              <button
+                type="button"
+                onClick={() => {
+                  setShowCategoryMenu(!showCategoryMenu);
+                  setShowColorMenu(false);
+                }}
+                className="w-full justify-center items-center gap-2 px-4 py-2.5 glass-pill-button text-[13px] font-semibold text-slate-700 whitespace-nowrap flex cursor-pointer"
+              >
+                <Filter className="w-3.5 h-3.5 text-[#0284c7]" />
+                <span>Category: {selectedCategory || 'All'}</span>
+              </button>
+              {showCategoryMenu && (
+                <div className="absolute top-full right-0 mt-2 w-48 rounded-2xl bg-white/95 backdrop-blur-2xl border border-white shadow-[0_20px_50px_rgba(15,23,42,0.14)] z-50 overflow-hidden p-1.5">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setSelectedCategory('');
+                      setShowCategoryMenu(false);
+                    }}
+                    className={`w-full text-left px-3.5 py-2.5 rounded-xl text-[13px] font-semibold transition-colors cursor-pointer ${
+                      selectedCategory === '' ? 'text-[#0284c7] bg-sky-50/90' : 'text-slate-700 hover:bg-slate-100/70'
+                    }`}
+                  >
+                    All Categories
+                  </button>
+                  {categories.map(cat => (
+                    <button
+                      key={cat}
+                      type="button"
+                      onClick={() => {
+                        setSelectedCategory(cat);
+                        setShowCategoryMenu(false);
+                      }}
+                      className={`w-full text-left px-3.5 py-2.5 rounded-xl text-[13px] font-semibold transition-colors cursor-pointer ${
+                        selectedCategory === cat ? 'text-[#0284c7] bg-sky-50/90' : 'text-slate-700 hover:bg-slate-100/70'
+                      }`}
+                    >
+                      {cat}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            <div className="relative">
+              <button
+                type="button"
+                onClick={() => {
+                  setShowColorMenu(!showColorMenu);
+                  setShowCategoryMenu(false);
+                }}
+                className="w-full justify-center items-center gap-2 px-4 py-2.5 glass-pill-button text-[13px] font-semibold text-slate-700 whitespace-nowrap flex cursor-pointer"
+              >
+                <Filter className="w-3.5 h-3.5 text-[#0284c7]" />
+                <span>Color: {selectedColor || 'All'}</span>
+              </button>
+              {showColorMenu && (
+                <div className="absolute top-full right-0 mt-2 w-48 rounded-2xl bg-white/95 backdrop-blur-2xl border border-white shadow-[0_20px_50px_rgba(15,23,42,0.14)] z-50 overflow-hidden p-1.5">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setSelectedColor('');
+                      setShowColorMenu(false);
+                    }}
+                    className={`w-full text-left px-3.5 py-2.5 rounded-xl text-[13px] font-semibold transition-colors cursor-pointer ${
+                      selectedColor === '' ? 'text-[#0284c7] bg-sky-50/90' : 'text-slate-700 hover:bg-slate-100/70'
+                    }`}
+                  >
+                    All Colors
+                  </button>
+                  {colors.map(color => (
+                    <button
+                      key={color}
+                      type="button"
+                      onClick={() => {
+                        setSelectedColor(color);
+                        setShowColorMenu(false);
+                      }}
+                      className={`w-full text-left px-3.5 py-2.5 rounded-xl text-[13px] font-semibold transition-colors cursor-pointer ${
+                        selectedColor === color ? 'text-[#0284c7] bg-sky-50/90' : 'text-slate-700 hover:bg-slate-100/70'
+                      }`}
+                    >
+                      {color}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
           </div>
         </div>
 
-        <div className="overflow-x-auto">
+        {/* Responsive Table */}
+        <div className="overflow-x-auto rounded-b-[30px]">
           <table className="w-full text-left">
             <thead>
-              <tr className="bg-[#f3f4f5] text-[11px] font-bold text-neutral-500 uppercase tracking-widest border-b border-[#edeeef]">
+              <tr className="text-[11px] font-bold text-slate-400 uppercase tracking-[0.08em]">
                 <th className="px-6 py-4">Product Info</th>
                 <th className="px-6 py-4">SKU</th>
                 <th className="px-6 py-4">Category</th>
                 <th className="px-6 py-4">Color</th>
                 <th className="px-6 py-4 text-right">On Hand</th>
-                <th className="px-6 py-4 text-center">Actions</th>
+                <th className="px-6 py-4 text-center">Action</th>
               </tr>
             </thead>
-            <tbody className="text-[14px] divide-y divide-[#edeeef]">
+            <tbody className="text-sm">
               {loading ? (
-                <tr>
-                  <td colSpan={6} className="px-6 py-12 text-center text-neutral-400">Loading inventory...</td>
-                </tr>
+                <TableSkeletonRows columns={6} rows={6} />
               ) : currentItems.length === 0 ? (
                 <tr>
-                  <td colSpan={6} className="px-6 py-12 text-center text-neutral-400">No inventory items found.</td>
+                  <td colSpan={6} className="p-0">
+                    <GlassEmptyState
+                      isSearch={Boolean(searchQuery || selectedCategory || selectedColor)}
+                      title={searchQuery || selectedCategory || selectedColor ? 'No matching inventory items' : 'No inventory items yet'}
+                      description={searchQuery || selectedCategory || selectedColor ? 'Try adjusting your search query, category, or color filter.' : 'Add your first sanitaryware product to populate the catalog.'}
+                      onReset={(searchQuery || selectedCategory || selectedColor) ? () => { setSearchQuery(''); setSelectedCategory(''); setSelectedColor(''); } : undefined}
+                    />
+                  </td>
                 </tr>
               ) : currentItems.map((item) => (
                 <tr 
                   key={item.id} 
-                  className="hover:bg-[#f8f9fa] transition-colors cursor-pointer"
+                  className="cursor-pointer group"
                   onClick={() => navigate(`/inventory/${item.id}`)}
                 >
                   <td className="px-6 py-4">
-                    <div className="flex items-center gap-4">
-                      <div className="w-12 h-12 rounded-lg bg-[#f3f4f5] flex items-center justify-center border border-[#edeeef] overflow-hidden group">
+                    <div className="flex items-center gap-3.5">
+                      <div className="w-11 h-11 rounded-2xl bg-white/95 flex items-center justify-center border border-white overflow-hidden shadow-[0_4px_10px_rgba(15,23,42,0.04)] group-hover:scale-105 transition-transform duration-300">
                         <ItemImage 
                           src={item.image} 
                           name={item.name} 
-                          className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500 text-[14px]"
+                          className="w-full h-full object-cover text-xs"
                         />
                       </div>
                       <div>
-                        <p className="font-bold text-[#162839] leading-tight">{item.name}</p>
-                        <p className="text-[12px] text-neutral-500 mt-0.5">{item.description || 'No description'}</p>
+                        <p className="font-bold text-slate-900 leading-tight group-hover:text-[#0284c7] transition-colors">{item.name}</p>
+                        <p className="text-xs text-slate-500 mt-0.5 line-clamp-1">{item.description || 'Standard sanitaryware specification'}</p>
                       </div>
                     </div>
                   </td>
-                  <td className="px-6 py-4 text-neutral-500 font-mono text-[13px]">{item.sku}</td>
-                  <td className="px-6 py-4 font-medium text-neutral-500">{item.category}</td>
-                   <td className="px-6 py-4">
-                     <span className={`px-2 py-1 rounded text-[11px] font-bold ${item.color?.toLowerCase() === 'white' ? 'bg-white border border-neutral-200 text-neutral-400' : 'bg-amber-50 text-amber-700 border border-amber-100'}`}>
-                       {item.color || '-'}
+                  <td className="px-6 py-4 text-slate-600 font-mono text-xs font-semibold">{item.sku}</td>
+                  <td className="px-6 py-4 font-medium text-slate-600 text-xs">{item.category}</td>
+                  <td className="px-6 py-4">
+                     <span className="px-3 py-1 rounded-full text-xs font-semibold bg-white/90 border border-white text-slate-700 shadow-[0_2px_6px_rgba(15,23,42,0.03),inset_0_1px_1px_rgba(255,255,255,1)]">
+                       {item.color || 'Standard'}
                      </span>
-                   </td>
-                  <td className={`px-6 py-4 text-right font-bold transition-colors ${
-                    item.stock === 0 ? 'text-neutral-300' : 
-                    item.stock < item.minStock ? 'text-red-600' : 
-                    'text-[#162839]'
+                  </td>
+                  <td className={`px-6 py-4 text-right font-extrabold tabular-nums transition-colors ${
+                    item.stock === 0 ? 'text-slate-300' : 
+                    item.stock < item.minStock ? 'text-rose-600' : 
+                    'text-slate-900'
                   }`}>
                     {item.stock.toLocaleString()}
                   </td>
                   <td className="px-6 py-4 text-center">
-                    <button className="p-2 text-neutral-400 hover:text-[#006397] transition-colors">
-                      <Edit2 className="w-4 h-4" />
+                    <button 
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        navigate(`/inventory/edit/${item.id}`);
+                      }}
+                      className="w-8 h-8 inline-flex items-center justify-center rounded-full bg-white/80 hover:bg-white border border-white text-slate-500 hover:text-[#0284c7] shadow-[0_2px_8px_rgba(15,23,42,0.04)] transition-all"
+                      title="Edit item"
+                    >
+                      <Edit2 className="w-3.5 h-3.5" />
                     </button>
                   </td>
                 </tr>
@@ -346,15 +477,15 @@ export default function Inventory() {
         
         {/* Pagination Controls */}
         {totalPages > 1 && (
-          <div className="px-6 py-4 bg-[#f3f4f5]/30 border-t border-[#edeeef] flex items-center justify-between">
-            <p className="text-[13px] text-neutral-500 font-medium">
-              Showing <span className="text-[#162839] font-bold">{(currentPage - 1) * itemsPerPage + 1}</span> to <span className="text-[#162839] font-bold">{Math.min(currentPage * itemsPerPage, filteredInventory.length)}</span> of <span className="text-[#162839] font-bold">{filteredInventory.length}</span> items
+          <div className="px-6 py-4 bg-white/[0.45] backdrop-blur-xl border-t border-white/90 flex items-center justify-between">
+            <p className="text-xs text-slate-500 font-medium">
+              Showing <span className="text-slate-900 font-bold">{(currentPage - 1) * itemsPerPage + 1}</span> to <span className="text-slate-900 font-bold">{Math.min(currentPage * itemsPerPage, filteredInventory.length)}</span> of <span className="text-slate-900 font-bold">{filteredInventory.length}</span> items
             </p>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-1.5">
               <button 
                 onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
                 disabled={currentPage === 1}
-                className="p-2 border border-[#edeeef] rounded-lg hover:bg-white disabled:opacity-30 transition-all"
+                className="w-8 h-8 flex items-center justify-center rounded-full border border-white bg-white/85 hover:bg-white text-slate-600 disabled:opacity-35 transition-all shadow-[0_2px_8px_rgba(15,23,42,0.04)]"
               >
                 <ChevronLeft className="w-4 h-4" />
               </button>
@@ -362,10 +493,10 @@ export default function Inventory() {
                 <button
                   key={page}
                   onClick={() => setCurrentPage(page)}
-                  className={`w-9 h-9 rounded-lg text-[13px] font-bold transition-all ${
+                  className={`w-8 h-8 rounded-full text-xs font-bold transition-all ${
                     currentPage === page 
-                    ? 'bg-[#162839] text-white shadow-md' 
-                    : 'text-[#162839] hover:bg-white border border-transparent hover:border-[#edeeef]'
+                    ? 'bg-gradient-to-r from-[#0284c7] to-sky-500 text-white shadow-[0_4px_12px_rgba(2,132,199,0.3)]' 
+                    : 'bg-white/75 hover:bg-white text-slate-700 border border-white shadow-[0_2px_6px_rgba(15,23,42,0.03)]'
                   }`}
                 >
                   {page}
@@ -374,7 +505,7 @@ export default function Inventory() {
               <button 
                 onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
                 disabled={currentPage === totalPages}
-                className="p-2 border border-[#edeeef] rounded-lg hover:bg-white disabled:opacity-30 transition-all"
+                className="w-8 h-8 flex items-center justify-center rounded-full border border-white bg-white/85 hover:bg-white text-slate-600 disabled:opacity-35 transition-all shadow-[0_2px_8px_rgba(15,23,42,0.04)]"
               >
                 <ChevronRight className="w-4 h-4" />
               </button>

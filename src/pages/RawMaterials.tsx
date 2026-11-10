@@ -3,11 +3,14 @@ import React, { useState, useEffect } from 'react';
 import { Download, ShoppingCart, Truck, Package, ChevronRight, AlertTriangle } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { useAppContext } from '../store';
+import { TableSkeletonRows, GlassEmptyState, GlassPagination } from '../components/GlassUI';
 
 export default function RawMaterials() {
   const { showToast, currency } = useAppContext();
   const [inventory, setInventory] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 8;
 
   useEffect(() => {
     fetch('/api/inventory')
@@ -68,72 +71,75 @@ export default function RawMaterials() {
   };
 
   return (
-    <div className="space-y-8 animate-in fade-in duration-500 pb-12">
+    <div className="space-y-6 pb-12">
       {/* Header & Actions */}
-      <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
+      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 p-6 rounded-3xl bg-white/[0.65] backdrop-blur-2xl border border-white/85 shadow-[0_10px_30px_rgba(15,23,42,0.04),inset_0_1px_1.5px_rgba(255,255,255,0.95)]">
         <div>
-          <nav className="flex items-center gap-2 text-[13px] font-medium text-neutral-400 mb-2">
-            <Link to="/inventory" className="hover:text-[#006397] transition-colors">Inventory</Link>
-            <ChevronRight className="w-3.5 h-3.5" />
-            <span className="text-[#006397] font-bold">Raw Materials</span>
+          <nav className="flex items-center gap-1.5 text-xs font-semibold text-slate-500 mb-1">
+            <Link to="/inventory" className="hover:text-[#0284c7] transition-colors">Inventory</Link>
+            <ChevronRight className="w-3 h-3 text-slate-400" />
+            <span className="text-[#0284c7] font-bold">Raw Materials</span>
           </nav>
-          <h2 className="text-[32px] font-black text-[#001d31] tracking-tight leading-none">Raw Materials</h2>
-          <p className="text-[16px] text-neutral-500 mt-1">Management of base components and production supplies.</p>
+          <h2 className="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight leading-none mb-1">Raw Materials</h2>
+          <p className="text-sm text-slate-600">Management of base components and production supplies.</p>
         </div>
-        <div className="flex gap-3">
+        <div className="flex gap-2.5">
           <button 
             onClick={handleExport}
-            className="px-5 py-2.5 border border-outline text-on-surface hover:bg-surface-container transition-colors rounded-lg flex items-center gap-2 font-medium text-[14px]"
+            className="px-5 py-2.5 glass-pill-button text-slate-800 flex items-center gap-2 font-semibold text-xs"
           >
-            <Download className="w-5 h-5" />
-            Export
+            <Download className="w-3.5 h-3.5 text-slate-500" />
+            <span>Export CSV</span>
           </button>
-          <Link to="/purchases/add" className="px-5 py-2.5 bg-[#006397] text-white hover:brightness-110 transition-all rounded-lg flex items-center gap-2 font-bold text-[14px] shadow-sm">
-            <ShoppingCart className="w-5 h-5" />
-            Order Materials
+          <Link to="/purchases/add" className="px-5 py-2.5 rounded-full bg-gradient-to-r from-[#0284c7] to-sky-500 text-white hover:brightness-105 transition-all flex items-center gap-2 font-semibold text-xs shadow-[0_4px_16px_rgba(2,132,199,0.3)]">
+            <ShoppingCart className="w-3.5 h-3.5" />
+            <span>Order Materials</span>
           </Link>
         </div>
       </div>
 
       {/* Simplified KPI Stats */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <div className="bg-white border border-[#edeeef] p-6 rounded-xl shadow-sm flex flex-col justify-between">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+        <div className="glass-card p-6 flex flex-col justify-between">
           <div className="flex justify-between items-start mb-4">
-            <div className="p-2 bg-[#d1e4fb] rounded-lg">
-              <Package className="w-5 h-5 text-[#162839]" />
+            <div className="w-11 h-11 bg-sky-50 border border-white rounded-2xl flex items-center justify-center shadow-2xs">
+              <Package className="w-5 h-5 text-[#0284c7]" />
             </div>
-            <span className="text-[12px] text-blue-600 font-bold bg-blue-50 px-2.5 py-0.5 rounded-full uppercase tracking-wider">TRACKED ITEMS</span>
+            <span className="text-[11px] text-[#0284c7] font-semibold bg-sky-50/90 border border-sky-200/80 px-3 py-0.5 rounded-full">Tracked Items</span>
           </div>
           <div>
-            <p className="text-[11px] font-bold text-neutral-500 uppercase tracking-widest mb-1">RAW MATERIAL SKUS</p>
-            <h3 className="text-[32px] font-bold text-[#162839] tracking-tight">{inventory.length} <span className="text-[16px] font-normal text-neutral-500">Categories</span></h3>
+            <p className="text-[11px] font-bold text-slate-400 uppercase tracking-[0.08em] mb-1">Raw Material SKUs</p>
+            <h3 className="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight tabular-nums">{inventory.length} <span className="text-sm font-medium text-slate-400">Categories</span></h3>
           </div>
         </div>
 
-        <div className="bg-white border border-red-100 p-6 rounded-xl shadow-sm flex flex-col justify-between">
+        <div className="glass-card p-6 flex flex-col justify-between">
           <div className="flex justify-between items-start mb-4">
-            <div className="p-2 bg-red-50 rounded-lg">
-              <AlertTriangle className="w-5 h-5 text-red-500" />
+            <div className="w-11 h-11 bg-rose-50 border border-white rounded-2xl flex items-center justify-center shadow-2xs">
+              <AlertTriangle className="w-5 h-5 text-rose-500" />
             </div>
-            <span className="text-[12px] text-red-600 font-bold bg-red-50 px-2.5 py-0.5 rounded-full uppercase tracking-wider">CRITICAL ALERTS</span>
+            <span className="text-[11px] text-rose-600 font-semibold bg-rose-50/90 border border-rose-200/80 px-3 py-0.5 rounded-full">Critical Alerts</span>
           </div>
           <div>
-            <p className="text-[11px] font-bold text-red-500 uppercase tracking-widest mb-1">LOW STOCK MATERIALS</p>
-            <h3 className="text-[32px] font-bold text-[#162839] tracking-tight">{lowStockCount} <span className="text-[16px] font-normal text-neutral-500">Items</span></h3>
+            <p className="text-[11px] font-bold text-rose-500 uppercase tracking-[0.08em] mb-1">Low Stock Materials</p>
+            <h3 className="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight tabular-nums">{lowStockCount} <span className="text-sm font-medium text-slate-400">Items</span></h3>
           </div>
         </div>
       </div>
 
       {/* Main Table Section */}
-      <div className="bg-white border border-[#edeeef] rounded-xl shadow-sm overflow-hidden">
-        <div className="p-6 border-b border-[#edeeef] flex justify-between items-center bg-[#f3f4f5]/30">
-          <h4 className="text-[20px] font-bold text-[#162839]">Material Inventory List</h4>
+      <div className="glass-table-container">
+        <div className="p-5 sm:p-6 border-b border-white/90 flex justify-between items-center bg-white/[0.45] backdrop-blur-xl">
+          <div>
+            <h4 className="text-[17px] font-bold text-slate-900 tracking-tight">Material Inventory List</h4>
+            <p className="text-xs text-slate-500 mt-0.5">Live balance of raw compounds, powders, and glazes</p>
+          </div>
         </div>
 
         <div className="overflow-x-auto">
           <table className="w-full text-left">
             <thead>
-              <tr className="bg-[#f3f4f5] text-[11px] font-bold text-neutral-500 uppercase tracking-widest border-b border-[#edeeef]">
+              <tr>
                 <th className="px-6 py-4">Material Info</th>
                 <th className="px-6 py-4">SKU</th>
                 <th className="px-6 py-4 text-right">Current Stock</th>
@@ -141,36 +147,51 @@ export default function RawMaterials() {
                 <th className="px-6 py-4 text-center">Status</th>
               </tr>
             </thead>
-            <tbody className="text-[14px] divide-y divide-[#edeeef]">
+            <tbody className="text-[13.5px]">
               {loading ? (
-                <tr>
-                  <td colSpan={5} className="px-6 py-12 text-center text-neutral-400">Loading materials...</td>
-                </tr>
+                <TableSkeletonRows columns={5} rows={5} />
               ) : inventory.length === 0 ? (
                 <tr>
-                  <td colSpan={5} className="px-6 py-12 text-center text-neutral-400">No raw materials found in inventory.</td>
-                </tr>
-              ) : inventory.map((item) => (
-                <tr key={item.id} className="hover:bg-[#f8f9fa] transition-colors">
-                  <td className="px-6 py-4">
-                    <p className="font-bold text-[#162839] leading-tight">{item.name}</p>
-                    <p className="text-[12px] text-neutral-500 mt-0.5">{item.category}</p>
-                  </td>
-                  <td className="px-6 py-4 text-neutral-500 font-mono text-[13px]">{item.sku}</td>
-                  <td className="px-6 py-4 text-right font-bold text-[#162839]">{item.stock.toLocaleString()}</td>
-                  <td className="px-6 py-4 text-right text-neutral-500">{item.minStock.toLocaleString()}</td>
-                  <td className="px-6 py-4 text-center">
-                    <span className={`inline-flex px-3 py-1 rounded-full text-[11px] font-bold uppercase tracking-wider ${
-                      item.stock < item.minStock ? 'bg-red-100 text-red-600' : 'bg-green-100 text-green-600'
-                    }`}>
-                      {item.stock < item.minStock ? 'Critical' : 'Stable'}
-                    </span>
+                  <td colSpan={5} className="p-0">
+                    <GlassEmptyState
+                      title="No raw materials found"
+                      description="Raw compounds, glazes, and production supplies will appear here once added."
+                    />
                   </td>
                 </tr>
-              ))}
+              ) : (
+                inventory
+                  .slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage)
+                  .map((item) => (
+                    <tr key={item.id} className="group hover:bg-slate-50/60 transition-colors">
+                      <td className="px-6 py-4">
+                        <p className="font-bold text-slate-900 leading-tight">{item.name}</p>
+                        <p className="text-xs text-slate-400 mt-0.5">{item.category}</p>
+                      </td>
+                      <td className="px-6 py-4 text-slate-500 font-mono text-xs font-semibold">{item.sku}</td>
+                      <td className="px-6 py-4 text-right font-extrabold text-slate-900 tabular-nums">{item.stock.toLocaleString()}</td>
+                      <td className="px-6 py-4 text-right text-slate-500 tabular-nums">{item.minStock.toLocaleString()}</td>
+                      <td className="px-6 py-4 text-center">
+                        <span className={`inline-flex px-3 py-1 rounded-full text-[11px] font-semibold border ${
+                          item.stock < item.minStock ? 'bg-rose-50/90 text-rose-700 border-rose-200/80' : 'bg-emerald-50/90 text-emerald-700 border-emerald-200/80'
+                        }`}>
+                          {item.stock < item.minStock ? 'Critical' : 'Stable'}
+                        </span>
+                      </td>
+                    </tr>
+                  ))
+              )}
             </tbody>
           </table>
         </div>
+        <GlassPagination
+          currentPage={currentPage}
+          totalPages={Math.ceil(inventory.length / itemsPerPage)}
+          totalItems={inventory.length}
+          itemsPerPage={itemsPerPage}
+          onPageChange={setCurrentPage}
+          itemLabel="materials"
+        />
       </div>
     </div>
   );

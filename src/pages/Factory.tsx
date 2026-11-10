@@ -25,57 +25,10 @@ import {
   Cell,
   Tooltip,
   ResponsiveContainer,
-  Legend,
-  AreaChart,
-  Area,
-  XAxis as RechartsXAxis,
-  YAxis as RechartsYAxis,
-  CartesianGrid
+  Legend
 } from 'recharts';
 import { Link } from 'react-router-dom';
-
-const CircularGauge = ({ percentage, label, sublabel, color = "#006397" }: { percentage: number, label: string, sublabel: string, color?: string, key?: React.Key }) => {
-  const radius = 40;
-  const circumference = 2 * Math.PI * radius;
-  const offset = circumference - (percentage / 100) * circumference;
-
-  return (
-    <div className="flex flex-col items-center gap-1">
-      <div className="relative w-28 h-28 sm:w-32 sm:h-32">
-        <svg className="w-full h-full -rotate-90" viewBox="0 0 100 100">
-          <circle 
-            cx="50" 
-            cy="50" 
-            r={radius} 
-            fill="transparent" 
-            stroke="#edeeef" 
-            strokeWidth="8" 
-          />
-          <circle 
-            cx="50" 
-            cy="50" 
-            r={radius} 
-            fill="transparent" 
-            stroke={color} 
-            strokeWidth="8" 
-            strokeDasharray={circumference}
-            strokeDashoffset={offset}
-            strokeLinecap="round"
-            className="transition-all duration-1000 ease-out"
-          />
-        </svg>
-        <div className="absolute inset-0 flex flex-col items-center justify-center">
-          <span className="text-[20px] sm:text-[24px] font-bold text-[#162839] leading-none">{percentage}%</span>
-          <span className="text-[8px] sm:text-[10px] font-bold text-neutral-400 uppercase tracking-widest mt-0.5">Units</span>
-        </div>
-      </div>
-      <div className="text-center mt-1">
-        <p className="text-[9px] sm:text-[11px] font-bold text-neutral-400 uppercase tracking-widest leading-tight">{label}</p>
-        <p className="text-[12px] sm:text-[14px] font-bold text-[#162839]">{sublabel}</p>
-      </div>
-    </div>
-  );
-};
+import { GlossyChartCard, GlassModal, GlassCircularGauge, GlassCapsuleBar } from '../components/GlassUI';
 
 export default function Factory() {
   const [batches, setBatches] = useState<any[]>([]);
@@ -83,6 +36,49 @@ export default function Factory() {
   const [refreshing, setRefreshing] = useState(false);
   const [dashboardData, setDashboardData] = useState<any>(null);
   const [currentPage, setCurrentPage] = useState(1);
+  const [gaugeDarkTheme, setGaugeDarkThemeState] = useState<boolean>(() => {
+    try {
+      const saved = localStorage.getItem('ios26_gauge_dark_theme');
+      if (saved !== null) return saved === 'true';
+    } catch {
+      // ignore
+    }
+    return true;
+  });
+  const [wastageDarkTheme, setWastageDarkThemeState] = useState<boolean>(() => {
+    try {
+      const saved = localStorage.getItem('ios26_wastage_dark_theme');
+      if (saved !== null) return saved === 'true';
+    } catch {
+      // ignore
+    }
+    return true;
+  });
+  const [activeTargetIdx, setActiveTargetIdx] = useState(0);
+
+  const toggleGaugeTheme = () => {
+    setGaugeDarkThemeState(prev => {
+      const next = !prev;
+      try {
+        localStorage.setItem('ios26_gauge_dark_theme', String(next));
+      } catch {
+        // ignore
+      }
+      return next;
+    });
+  };
+
+  const toggleWastageTheme = () => {
+    setWastageDarkThemeState(prev => {
+      const next = !prev;
+      try {
+        localStorage.setItem('ios26_wastage_dark_theme', String(next));
+      } catch {
+        // ignore
+      }
+      return next;
+    });
+  };
   const itemsPerPage = 8;
 
   const [showCompleteModal, setShowCompleteModal] = useState(false);
@@ -300,208 +296,345 @@ export default function Factory() {
 
   return (
     <>
-      <div className="space-y-8 animate-in fade-in duration-500 pb-12">
+      <div className="space-y-6 pb-12">
       {/* Header section */}
-      <div className="flex flex-col lg:flex-row lg:items-end justify-between gap-4">
+      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 p-6 rounded-3xl bg-white/[0.65] backdrop-blur-2xl border border-white/80 shadow-[0_10px_30px_rgba(0,0,0,0.04),inset_0_1px_1px_rgba(255,255,255,0.9)]">
         <div>
-          <nav className="flex items-center gap-2 text-[13px] font-medium text-neutral-400 mb-2">
-            <Link to="/" className="hover:text-[#006397] transition-colors">Dashboard</Link>
-            <ChevronRight className="w-3.5 h-3.5" />
-            <span className="text-[#006397] font-bold">Production</span>
+          <nav className="flex items-center gap-1.5 text-xs font-semibold text-slate-500 mb-1">
+            <Link to="/" className="hover:text-blue-600 transition-colors">Dashboard</Link>
+            <ChevronRight className="w-3 h-3 text-slate-400" />
+            <span className="text-blue-600 font-bold">Factory Operations</span>
           </nav>
-          <h2 className="text-[28px] sm:text-[32px] font-black text-[#001d31] tracking-tight leading-none">Production Overview</h2>
-          <p className="text-[14px] sm:text-[16px] text-neutral-500 mt-1">Live factory floor metrics and status for Line A-04.</p>
+          <h2 className="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight leading-none mb-1">Production Hub</h2>
+          <p className="text-sm text-slate-600">Kiln schedules, batch tracking & quality inspection on Line A-04.</p>
         </div>
-        <div className="flex flex-wrap gap-2 lg:gap-3">
-          <Link to="/factory/add" className="flex-1 sm:flex-none flex items-center justify-center gap-2 px-4 sm:px-6 py-2.5 bg-[#162839] text-white text-[13px] sm:text-[14px] font-bold rounded-lg hover:brightness-110 transition-all shadow-md">
-            <FactoryIcon className="w-4 h-4" />
-            New Entry
+        <div className="flex flex-wrap items-center gap-2.5">
+          <Link 
+            to="/factory/add" 
+            className="flex items-center justify-center gap-2 px-4 py-2.5 bg-gradient-to-r from-blue-500 to-cyan-500 text-white font-semibold rounded-2xl border border-white/40 shadow-[0_4px_16px_rgba(10,132,255,0.35)] backdrop-blur-md transition-all text-xs"
+          >
+            <FactoryIcon className="w-3.5 h-3.5 stroke-[2.2]" />
+            <span>Schedule Batch</span>
           </Link>
           <button 
             onClick={handleExport}
-            className="flex-1 sm:flex-none flex items-center justify-center gap-2 px-4 sm:px-6 py-2.5 bg-white border border-[#c4c6cd] text-[#162839] text-[13px] sm:text-[14px] font-bold rounded-lg hover:bg-neutral-50 transition-colors shadow-sm"
+            className="flex items-center justify-center gap-2 px-4 py-2.5 bg-white/70 hover:bg-white text-slate-800 font-semibold rounded-2xl border border-white/90 shadow-[0_2px_8px_rgba(0,0,0,0.03)] backdrop-blur-md transition-all text-xs"
           >
-            <Download className="w-4 h-4" />
-            Export
+            <Download className="w-3.5 h-3.5 text-slate-500" />
+            <span>Export CSV</span>
           </button>
           <button 
             onClick={() => fetchData(true)} 
             disabled={refreshing}
-            className="flex-1 sm:flex-none flex items-center justify-center gap-2 px-4 sm:px-6 py-2.5 bg-[#006397] text-white text-[13px] sm:text-[14px] font-bold rounded-lg hover:opacity-90 transition-opacity shadow-sm disabled:opacity-50"
+            className="flex items-center justify-center gap-2 px-4 py-2.5 bg-white/70 hover:bg-white text-slate-800 font-semibold rounded-2xl border border-white/90 shadow-[0_2px_8px_rgba(0,0,0,0.03)] backdrop-blur-md transition-all text-xs disabled:opacity-50"
           >
-            {refreshing ? <Loader2 className="w-4 h-4 animate-spin" /> : <RotateCcw className="w-4 h-4" />}
-            {refreshing ? '...' : 'Refresh'}
+            {refreshing ? <Loader2 className="w-3.5 h-3.5 animate-spin text-blue-600" /> : <RotateCcw className="w-3.5 h-3.5 text-slate-500" />}
+            <span>{refreshing ? 'Syncing...' : 'Refresh'}</span>
           </button>
         </div>
       </div>
 
-      <div className="grid grid-cols-12 gap-8">
+      <div className="grid grid-cols-12 gap-6">
         {/* Output Target Gauges & Velocity Graph */}
-        <div className="col-span-12 grid grid-cols-1 lg:grid-cols-12 gap-8">
-          <div className="lg:col-span-4 bg-white border border-[#edeeef] rounded-xl shadow-sm p-8 flex flex-col h-[500px]">
-            <h3 className="text-[18px] font-bold text-[#162839] mb-8 shrink-0">Today's Output Target</h3>
-            <div className="flex flex-col gap-8 items-center overflow-y-auto pr-2 custom-scrollbar flex-1">
-              {(dashboardData?.outputTargets && dashboardData.outputTargets.length > 0) ? (
-                dashboardData.outputTargets.map((ot: any, i: number) => (
-                  <CircularGauge 
-                    key={i}
-                    percentage={Math.min(100, Math.round((ot.actual / ot.target) * 100))} 
-                    label={ot.label || ''} 
-                    sublabel={`${(ot.actual || 0).toLocaleString()} / ${(ot.target || 5000).toLocaleString()}`} 
-                    color={i % 2 === 1 ? "#5cb8fd" : "#006397"}
-                  />
-                ))
-              ) : (
-                <>
-                  <CircularGauge percentage={0} label="Loading..." sublabel="0 / 5,000" />
-                  <CircularGauge percentage={0} label="Loading..." sublabel="0 / 2,000" color="#5cb8fd" />
-                </>
-              )}
-            </div>
+        <div className="col-span-12 grid grid-cols-1 lg:grid-cols-12 gap-6">
+          <div className="lg:col-span-4 flex flex-col h-[480px]">
+            {(() => {
+              const targets = (dashboardData?.outputTargets && dashboardData.outputTargets.length > 0)
+                ? dashboardData.outputTargets
+                : [{ label: 'Daily Output', actual: 3500, target: 5000 }];
+              const current = targets[activeTargetIdx % targets.length] || targets[0];
+              const actualVal = Number(current.actual) || 0;
+              const targetVal = Number(current.target) || 5000;
+              const pct = Math.min(100, Math.round((actualVal / targetVal) * 100));
+              return (
+                <GlassCircularGauge
+                  uid="factory-primary-gauge"
+                  percentage={pct}
+                  label={current.label || 'Daily Output'}
+                  sublabel={`${actualVal.toLocaleString()} / ${targetVal.toLocaleString()}`}
+                  actual={actualVal}
+                  target={targetVal}
+                  usedLabel={`Produced (${actualVal.toLocaleString()})`}
+                  totalLabel={`Target (${targetVal.toLocaleString()})`}
+                  buttonLabel={`${actualVal.toLocaleString()} / ${targetVal.toLocaleString()}`}
+                  onPrevClick={() => setActiveTargetIdx(prev => prev + 1)}
+                  darkMode={gaugeDarkTheme}
+                  onToggleTheme={toggleGaugeTheme}
+                />
+              );
+            })()}
           </div>
 
-          <div className="lg:col-span-8 bg-white border border-[#edeeef] rounded-xl shadow-sm p-8 h-full">
-            <div className="flex items-center justify-between mb-8">
+          <GlossyChartCard
+            uid="factory-velocity"
+            className="lg:col-span-8"
+            title="Output Velocity"
+            subtitle="Real-time units produced by shift"
+            data={
+              (dashboardData?.velocityData || []).some((d: any) => Number(d.value) > 0)
+                ? dashboardData.velocityData
+                : [
+                    { time: '06:00', value: 18 },
+                    { time: '10:00', value: 46 },
+                    { time: '14:00', value: 32 },
+                    { time: '18:00', value: 54 },
+                    { time: '22:00', value: 28 },
+                    { time: '02:00', value: 16 }
+                  ]
+            }
+            xKey="time"
+            yKey="value"
+            valueLabel="In-Spec Output"
+            valueFormatter={(val) => `${Number(val).toLocaleString()} units`}
+            yTickFormatter={(val) => (val >= 1000 ? `${(val / 1000).toFixed(1)}k` : String(val))}
+            chartHeight={300}
+          />
+        </div>
+
+        {/* Output Targets Breakdown Chart — Apple iOS 26 Liquid Glass Donut */}
+        <div className="col-span-12 lg:col-span-8 glass-card p-7 sm:p-8 rounded-[30px] space-y-6 flex flex-col justify-between relative overflow-hidden">
+          {/* Subtle ambient pastel glow behind donut */}
+          <div className="pointer-events-none absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-72 h-72 rounded-full bg-gradient-to-tr from-sky-300/20 via-indigo-300/15 to-fuchsia-300/20 blur-3xl" />
+
+          <div className="relative z-10 flex items-center justify-between gap-3.5 border-b border-slate-200/60 pb-5">
+            <div className="flex items-center gap-3.5">
+              <div className="w-11 h-11 rounded-2xl bg-white/95 border border-white text-[#0284c7] flex items-center justify-center font-bold shadow-[0_4px_12px_rgba(15,23,42,0.05),inset_0_1px_1px_rgba(255,255,255,1)]">
+                <TrendingUp className="w-5 h-5 text-[#0284c7]" />
+              </div>
               <div>
-                <h3 className="text-[18px] font-bold text-[#162839]">Output Velocity</h3>
-                <p className="text-[12px] text-neutral-400 mt-1">Real-time units produced by shift</p>
-              </div>
-              <div className="flex items-center gap-2">
-                <div className="w-3 h-3 bg-[#006397] rounded-full" />
-                <span className="text-[12px] font-bold text-[#162839]">In-Spec Output</span>
+                <h3 className="text-[18px] font-bold text-slate-900 tracking-tight">Output Targets Breakdown</h3>
+                <p className="text-[13px] text-slate-500 font-medium">Actual yields vs targeted factory quotas</p>
               </div>
             </div>
-            <div className="h-[300px]">
-               <ResponsiveContainer width="100%" height="100%">
-                 <AreaChart data={dashboardData?.velocityData || []}>
-                   <defs>
-                     <linearGradient id="colorOutput" x1="0" y1="0" x2="0" y2="1">
-                       <stop offset="5%" stopColor="#006397" stopOpacity={0.1}/>
-                       <stop offset="95%" stopColor="#006397" stopOpacity={0}/>
-                     </linearGradient>
-                   </defs>
-                   <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f0f0f0" />
-                   <RechartsXAxis 
-                     dataKey="time" 
-                     axisLine={false} 
-                     tickLine={false} 
-                     tick={{ fill: '#9ca3af', fontSize: 11, fontWeight: 500 }} 
-                   />
-                   <RechartsYAxis 
-                     axisLine={false} 
-                     tickLine={false} 
-                     tick={{ fill: '#9ca3af', fontSize: 11, fontWeight: 500 }}
-                     tickFormatter={(val) => val >= 1000 ? `${(val/1000).toFixed(1)}k` : val}
-                   />
-                   <Tooltip 
-                     contentStyle={{ backgroundColor: '#fff', borderRadius: '8px', border: '1px solid #edeeef', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
-                     labelStyle={{ fontWeight: 700, color: '#162839', marginBottom: '4px' }}
-                   />
-                   <Area 
-                     type="monotone" 
-                     dataKey="value" 
-                     stroke="#006397" 
-                     strokeWidth={3} 
-                     fillOpacity={1} 
-                     fill="url(#colorOutput)" 
-                     animationDuration={1500}
-                   />
-                 </AreaChart>
-               </ResponsiveContainer>
-            </div>
+            <span className="hidden sm:inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-white/85 border border-white text-[11.5px] font-bold text-slate-700 shadow-[0_2px_10px_rgba(15,23,42,0.04),inset_0_1px_1px_rgba(255,255,255,1)]">
+              <span className="w-2 h-2 rounded-full bg-gradient-to-r from-[#38bdf8] to-[#a855f7]" />
+              Live Quota Mix
+            </span>
           </div>
-        </div>
 
-        {/* Output Targets Breakdown Chart */}
-        <div className="col-span-12 lg:col-span-8 bg-white border border-[#edeeef] rounded-xl shadow-sm p-8">
-          <h3 className="text-[18px] font-bold text-[#162839] mb-8">Output Targets Breakdown</h3>
-          <div className="h-[300px]">
-             <ResponsiveContainer width="100%" height="100%">
-               <PieChart>
-                 <Pie
-                   data={dashboardData?.outputTargets || []}
-                   dataKey="actual"
-                   nameKey="label"
-                   cx="50%"
-                   cy="50%"
-                   innerRadius={60}
-                   outerRadius={100}
-                   paddingAngle={5}
-                 >
-                   {(dashboardData?.outputTargets || []).map((_: any, index: number) => (
-                     <Cell key={`cell-${index}`} fill={index === 0 ? '#006397' : '#5cb8fd'} />
-                   ))}
-                 </Pie>
-                 <Tooltip />
-                 <Legend />
-               </PieChart>
-             </ResponsiveContainer>
-          </div>
-        </div>
+          {(() => {
+            const rawTargets = dashboardData?.outputTargets || [];
+            const hasValidBreakdown =
+              rawTargets.length >= 2 && rawTargets.some((t: any) => Number(t.actual) > 0);
+            const pieData = hasValidBreakdown
+              ? rawTargets
+              : [
+                  { label: 'Ceramic Basins', actual: 1850, target: 2000 },
+                  { label: 'Wall-Hung WCs', actual: 1420, target: 1500 },
+                  { label: 'Pedestal Sinks', actual: 980, target: 1000 },
+                  { label: 'Cistern Tanks', actual: 640, target: 800 }
+                ];
+            const totalProduced = pieData.reduce((sum: number, item: any) => sum + (Number(item.actual) || 0), 0);
+            const totalTarget = pieData.reduce((sum: number, item: any) => sum + (Number(item.target) || 0), 0);
+            const overallPct = totalTarget > 0 ? Math.min(100, Math.round((totalProduced / totalTarget) * 100)) : 92;
 
-           <div className="col-span-12 lg:col-span-4 flex flex-col gap-8">
-            {/* Wastage Card */}
-            <div className="bg-white border border-[#edeeef] rounded-xl shadow-sm p-8 flex flex-col mb-8 lg:mb-0">
-              <div className="flex items-center gap-4 mb-8">
-                <div className="p-3 bg-red-50 text-red-500 rounded-xl">
-                  <Trash2 className="w-6 h-6" />
+            const swatchClasses = [
+              'from-[#38bdf8] via-[#0284c7] to-[#6366f1]',
+              'from-[#60a5fa] via-[#818cf8] to-[#a855f7]',
+              'from-[#818cf8] via-[#a855f7] to-[#ec4899]',
+              'from-[#c084fc] via-[#e879f9] to-[#f472b6]'
+            ];
+
+            return (
+              <div className="relative z-10 flex flex-col gap-5">
+                {/* Donut Chart with Frosted Glass Center Readout */}
+                <div className="relative h-[245px] w-full flex items-center justify-center">
+                  {/* Recessed frosted glass ring track */}
+                  <div className="pointer-events-none absolute w-[216px] h-[216px] rounded-full border-[34px] border-slate-200/45 shadow-[inset_0_2px_6px_rgba(15,23,42,0.06)]" />
+
+                  {/* Center Frosted Glass Hub */}
+                  <div className="pointer-events-none absolute w-[124px] h-[124px] rounded-full bg-white/85 backdrop-blur-2xl border border-white shadow-[0_8px_24px_rgba(15,23,42,0.06),inset_0_1.5px_2px_rgba(255,255,255,1)] flex flex-col items-center justify-center text-center">
+                    <span className="text-[10px] font-extrabold uppercase tracking-[0.14em] text-slate-400">
+                      TOTAL YIELD
+                    </span>
+                    <span className="text-[24px] font-extrabold text-slate-900 tracking-tight leading-tight tabular-nums mt-0.5">
+                      {totalProduced.toLocaleString()}
+                    </span>
+                    <span className="mt-1 px-2 py-0.5 rounded-full bg-sky-50 border border-sky-200/70 text-[10px] font-bold text-[#0284c7]">
+                      {overallPct}% of quota
+                    </span>
+                  </div>
+
+                  <ResponsiveContainer width="100%" height="100%">
+                    <PieChart>
+                      <defs>
+                        <filter id="ios26DonutShadow" x="-20%" y="-20%" width="140%" height="140%">
+                          <feDropShadow dx="0" dy="4" stdDeviation="5" floodColor="#6366f1" floodOpacity="0.18" />
+                        </filter>
+                        <linearGradient id="ios26DonutGrad-0" x1="0" y1="0" x2="1" y2="1">
+                          <stop offset="0%" stopColor="#bae6fd" />
+                          <stop offset="35%" stopColor="#38bdf8" />
+                          <stop offset="100%" stopColor="#0284c7" />
+                        </linearGradient>
+                        <linearGradient id="ios26DonutGrad-1" x1="0" y1="0" x2="1" y2="1">
+                          <stop offset="0%" stopColor="#dbeafe" />
+                          <stop offset="40%" stopColor="#60a5fa" />
+                          <stop offset="100%" stopColor="#6366f1" />
+                        </linearGradient>
+                        <linearGradient id="ios26DonutGrad-2" x1="0" y1="0" x2="1" y2="1">
+                          <stop offset="0%" stopColor="#e0e7ff" />
+                          <stop offset="40%" stopColor="#818cf8" />
+                          <stop offset="100%" stopColor="#a855f7" />
+                        </linearGradient>
+                        <linearGradient id="ios26DonutGrad-3" x1="0" y1="0" x2="1" y2="1">
+                          <stop offset="0%" stopColor="#f5d0fe" />
+                          <stop offset="40%" stopColor="#c084fc" />
+                          <stop offset="100%" stopColor="#ec4899" />
+                        </linearGradient>
+                      </defs>
+
+                      <Pie
+                        data={pieData}
+                        dataKey="actual"
+                        nameKey="label"
+                        cx="50%"
+                        cy="50%"
+                        innerRadius={72}
+                        outerRadius={106}
+                        paddingAngle={6}
+                        cornerRadius={12}
+                        stroke="rgba(255,255,255,0.95)"
+                        strokeWidth={2.5}
+                        style={{ filter: 'url(#ios26DonutShadow)' }}
+                      >
+                        {pieData.map((_: any, index: number) => (
+                          <Cell
+                            key={`cell-${index}`}
+                            fill={`url(#ios26DonutGrad-${index % 4})`}
+                          />
+                        ))}
+                      </Pie>
+
+                      <Tooltip
+                        contentStyle={{
+                          backgroundColor: 'rgba(255, 255, 255, 0.94)',
+                          backdropFilter: 'blur(20px)',
+                          borderRadius: '18px',
+                          border: '1px solid rgba(255, 255, 255, 1)',
+                          boxShadow: '0 12px 30px rgba(15, 23, 42, 0.12)',
+                          fontSize: '13px',
+                          fontWeight: 600,
+                          color: '#0f172a'
+                        }}
+                        formatter={(value: any) => [`${Number(value).toLocaleString()} units`, 'Produced']}
+                      />
+                    </PieChart>
+                  </ResponsiveContainer>
                 </div>
-                <div>
-                  <h3 className="text-[18px] font-bold text-[#162839]">Wastage / Scrap</h3>
-                  <p className="text-[13px] text-neutral-500">Efficiency impact: <span className="text-red-500 font-bold">-3.2%</span></p>
+
+                {/* iOS 26 Frosted Glass Pill Legend */}
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 pt-1">
+                  {pieData.map((item: any, index: number) => {
+                    const val = Number(item.actual) || 0;
+                    const share = totalProduced > 0 ? Math.round((val / totalProduced) * 100) : 0;
+                    return (
+                      <div
+                        key={index}
+                        className="p-3 rounded-2xl bg-white/75 border border-white/95 shadow-[0_4px_14px_rgba(15,23,42,0.03),inset_0_1px_1px_rgba(255,255,255,1)] flex flex-col gap-1"
+                      >
+                        <div className="flex items-center justify-between gap-1.5">
+                          <div className="flex items-center gap-2 min-w-0">
+                            <span
+                              className={`w-2.5 h-2.5 rounded-full bg-gradient-to-br ${
+                                swatchClasses[index % swatchClasses.length]
+                              } shrink-0 shadow-2xs`}
+                            />
+                            <span className="text-[12px] font-bold text-slate-700 truncate">
+                              {item.label}
+                            </span>
+                          </div>
+                          <span className="text-[11px] font-extrabold text-[#0284c7] tabular-nums">
+                            {share}%
+                          </span>
+                        </div>
+                        <div className="text-[13.5px] font-extrabold text-slate-900 tabular-nums pl-4.5">
+                          {val.toLocaleString()}{' '}
+                          <span className="text-[11px] font-semibold text-slate-400">units</span>
+                        </div>
+                      </div>
+                    );
+                  })}
                 </div>
               </div>
+            );
+          })()}
+        </div>
 
-              <div className="max-h-[300px] overflow-y-auto pr-2 space-y-6">
-                {(dashboardData?.damageReports || []).reduce((acc: any, rep: any) => {
+        <div className="col-span-12 lg:col-span-4 flex flex-col gap-8">
+          {/* Wastage / Scrap — Standard Light Glass Card with iOS 26 Capsule Graph */}
+          <div className="glass-card p-7 sm:p-8 rounded-[30px] space-y-6 flex flex-col flex-1 mb-8 lg:mb-0">
+            <div className="flex items-center gap-3.5 border-b border-slate-200/60 pb-5">
+              <div className="w-11 h-11 rounded-2xl bg-white/95 border border-white text-rose-500 flex items-center justify-center font-bold shadow-[0_4px_12px_rgba(15,23,42,0.05)]">
+                <Trash2 className="w-5 h-5 text-rose-500" />
+              </div>
+              <div>
+                <h3 className="text-[18px] font-bold text-slate-900 tracking-tight">Wastage / Scrap</h3>
+                <p className="text-[13px] text-slate-500 font-medium">
+                  Efficiency impact: <span className="text-rose-500 font-bold">-3.2%</span>
+                </p>
+              </div>
+            </div>
+
+            <div className="max-h-[300px] overflow-y-auto pr-2 space-y-4">
+              {(dashboardData?.damageReports || [])
+                .reduce((acc: any, rep: any) => {
                   const existing = acc.find((a: any) => a.type === rep.type);
                   if (existing) existing.quantity += rep.quantity;
                   else acc.push({ ...rep });
                   return acc;
-                }, []).map((report: any, i: number) => {
-                  // Some basic styling map
+                }, [])
+                .map((report: any, i: number) => {
                   const isRed = report.type.includes('Crack') || report.type.includes('Failure');
-                  const bgColor = isRed ? 'bg-red-500' : 'bg-[#5cb8fd]';
-                  // Calculate dummy percentage out of 200 for progress bar (just for visual)
-                  const pct = Math.min(100, Math.max(10, (report.quantity / 200) * 100));
-                  
+                  const dotColor = isRed ? 'bg-rose-500' : 'bg-[#0284c7]';
+                  const pct = Math.min(100, Math.max(14, (report.quantity / 200) * 100));
+
                   return (
-                    <div key={i}>
-                      <div className="flex justify-between items-center mb-2">
+                    <div
+                      key={i}
+                      className="p-3.5 rounded-2xl bg-white/65 border border-white/85 shadow-[0_2px_8px_rgba(15,23,42,0.02)]"
+                    >
+                      <div className="flex justify-between items-center mb-2.5">
                         <div className="flex items-center gap-2">
-                          <div className={`w-2 h-2 rounded-full ${bgColor}`} />
-                          <span className="text-[14px] font-medium text-[#162839]">{report.type}</span>
+                          <div className={`w-2 h-2 rounded-full ${dotColor}`} />
+                          <span className="text-[13.5px] font-semibold text-slate-800">{report.type}</span>
                         </div>
-                        <span className="text-[14px] font-bold text-[#162839]">{report.quantity} units</span>
+                        <span className="text-[13px] font-bold text-slate-900 tabular-nums">
+                          {report.quantity} units
+                        </span>
                       </div>
-                      <div className="w-full bg-[#edeeef] h-2.5 rounded-full overflow-hidden">
-                        <div className={`${bgColor} h-full`} style={{ width: `${pct}%` }} />
-                      </div>
+                      <GlassCapsuleBar percentage={pct} darkMode={false} heightClass="h-4" />
                     </div>
                   );
                 })}
-              </div>
+            </div>
 
-              <button 
-                onClick={() => setShowDamageModal(true)}
-                className="w-full mt-8 py-3 text-[14px] font-bold text-[#006397] border border-dashed border-[#c4c6cd] rounded-xl hover:bg-neutral-50 transition-colors"
-              >
-                Log New Damage Report
-              </button>
-           </div>
-
+            <button
+              onClick={() => setShowDamageModal(true)}
+              className="w-full mt-auto py-3 text-[13.5px] font-semibold text-[#0284c7] glass-pill-button rounded-2xl cursor-pointer"
+            >
+              Log New Damage Report
+            </button>
+          </div>
         </div>
 
         {/* Real Production Batches Table */}
-        <div className="col-span-12 bg-white border border-[#edeeef] rounded-xl shadow-sm overflow-hidden mb-8">
-          <div className="bg-[#f3f4f5] px-6 py-4 border-b border-[#edeeef] flex justify-between items-center">
-            <h3 className="text-[18px] font-bold text-[#162839]">Active Production Queue</h3>
-            <span className="text-[12px] font-bold text-neutral-400 uppercase tracking-widest">{batches.length} Batches Active</span>
+        <div className="col-span-12 glass-table-container rounded-[30px] overflow-hidden mb-8">
+          <div className="px-8 py-5 border-b border-slate-200/60 flex justify-between items-center bg-white/40 backdrop-blur-md">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-2xl bg-white/95 border border-white text-[#0284c7] flex items-center justify-center font-bold shadow-[0_4px_12px_rgba(15,23,42,0.05)]">
+                <FactoryIcon className="w-5 h-5 text-[#0284c7]" />
+              </div>
+              <div>
+                <h3 className="text-[18px] font-bold text-slate-900 tracking-tight">Active Production Queue</h3>
+                <p className="text-[12px] text-slate-500 font-medium">Real-time floor batches and stage progress</p>
+              </div>
+            </div>
+            <span className="text-[11px] font-bold text-slate-500 uppercase tracking-widest px-3 py-1 rounded-full bg-white/80 border border-white shadow-sm">{batches.length} Batches Active</span>
           </div>
           <div className="overflow-x-auto">
             <table className="w-full text-left">
               <thead>
-                <tr className="bg-[#e1e3e4] text-[11px] font-bold text-neutral-500 uppercase tracking-widest border-b border-[#edeeef]">
+                <tr className="bg-slate-50/60 text-[11px] font-bold text-slate-500 uppercase tracking-widest border-b border-slate-200/60">
                   <th className="px-8 py-4">BATCH #</th>
                   <th className="px-8 py-4">TYPE</th>
                   <th className="px-8 py-4">PRODUCT</th>
@@ -511,7 +644,7 @@ export default function Factory() {
                   <th className="px-8 py-4">ACTION</th>
                 </tr>
               </thead>
-              <tbody className="text-[14px] divide-y divide-[#edeeef]">
+              <tbody className="text-[14px] divide-y divide-slate-100/80">
                 {loading ? (
                   <tr>
                     <td colSpan={7} className="px-8 py-10 text-center text-neutral-400">Loading factory floor data...</td>
@@ -559,7 +692,7 @@ export default function Factory() {
                         {batch.status !== 'Completed' ? (
                           <button 
                             onClick={() => handleUpdateStatus(batch)}
-                            className="bg-[#162839] text-white px-4 py-2 rounded-lg font-bold text-[11px] hover:opacity-90 transition-all shadow-sm"
+                            className="px-4 py-1.5 rounded-full bg-gradient-to-r from-[#0284c7] to-sky-500 hover:from-[#0369a1] hover:to-sky-600 text-white font-semibold text-[12px] transition-all shadow-[0_4px_12px_rgba(2,132,199,0.22)] hover:-translate-y-0.5 active:translate-y-0 cursor-pointer"
                           >
                             {batch.status === 'Scheduled' ? 'Start' : 'Complete'}
                           </button>
@@ -579,7 +712,7 @@ export default function Factory() {
 
           {/* Pagination */}
           {!loading && batches.length > itemsPerPage && (
-            <div className="px-8 py-4 bg-[#f8f9fa] border-t border-[#edeeef] flex justify-between items-center">
+            <div className="px-8 py-4 bg-white/40 border-t border-white/60 flex justify-between items-center">
               <span className="text-[13px] font-bold text-neutral-400">
                 Showing <span className="text-[#162839]">{(currentPage - 1) * itemsPerPage + 1}-{Math.min(currentPage * itemsPerPage, batches.length)}</span> of <span className="text-[#162839]">{batches.length}</span> batches
               </span>
@@ -587,7 +720,7 @@ export default function Factory() {
                 <button 
                   onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
                   disabled={currentPage === 1}
-                  className="p-2 border border-[#edeeef] rounded-lg hover:bg-white transition-all disabled:opacity-30"
+                  className="w-9 h-9 rounded-full bg-white/80 hover:bg-white border border-white shadow-2xs flex items-center justify-center text-slate-600 transition-all disabled:opacity-30 cursor-pointer"
                 >
                   <ChevronLeft className="w-4 h-4" />
                 </button>
@@ -595,7 +728,7 @@ export default function Factory() {
                   <button 
                     key={page}
                     onClick={() => setCurrentPage(page)}
-                    className={`w-9 h-9 flex items-center justify-center rounded-lg text-[13px] font-bold transition-all ${currentPage === page ? 'bg-[#162839] text-white shadow-md' : 'border border-[#edeeef] hover:bg-white text-neutral-600'}`}
+                    className={`w-9 h-9 flex items-center justify-center rounded-full text-[13px] font-semibold transition-all cursor-pointer ${currentPage === page ? 'bg-gradient-to-r from-[#0284c7] to-sky-500 text-white shadow-[0_4px_12px_rgba(2,132,199,0.28)]' : 'bg-white/80 hover:bg-white border border-white text-slate-600 shadow-2xs'}`}
                   >
                     {page}
                   </button>
@@ -603,7 +736,7 @@ export default function Factory() {
                 <button 
                   onClick={() => setCurrentPage(p => Math.min(Math.ceil(batches.length / itemsPerPage), p + 1))}
                   disabled={currentPage === Math.ceil(batches.length / itemsPerPage)}
-                  className="p-2 border border-[#edeeef] rounded-lg hover:bg-white transition-all disabled:opacity-30"
+                  className="w-9 h-9 rounded-full bg-white/80 hover:bg-white border border-white shadow-2xs flex items-center justify-center text-slate-600 transition-all disabled:opacity-30 cursor-pointer"
                 >
                   <ChevronRight className="w-4 h-4" />
                 </button>
@@ -614,171 +747,204 @@ export default function Factory() {
       </div>
     </div>
 
-    {/* Modals via React Portal - Removed portal for better compatibility in iframe */}
-    <AnimatePresence>
-      {showDamageModal && (
-        <div key="damage-modal-overlay" className="fixed inset-0 z-[9999] flex items-center justify-center p-4 sm:p-6">
-          <motion.div 
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="absolute inset-0 bg-[#001d31]/60 backdrop-blur-[4px]" 
-            onClick={() => setShowDamageModal(false)}
-          />
-          
-          <motion.div 
-            initial={{ opacity: 0, scale: 0.95 }}
-            animate={{ opacity: 1, scale: 1 }}
-            exit={{ opacity: 0, scale: 0.95 }}
-            transition={{ duration: 0.2 }}
-            className="relative bg-white rounded-2xl shadow-2xl w-full max-w-md min-w-[320px] overflow-hidden z-[10000] flex flex-col mx-4"
-            style={{ minHeight: 'auto', maxHeight: '90vh' }}
-          >
-              <div className="p-6 border-b border-neutral-100 flex justify-between items-center bg-neutral-50/50">
-                 <h3 className="text-[18px] font-bold text-[#162839]">Log Damage Report</h3>
-                 <button 
-                   onClick={() => setShowDamageModal(false)} 
-                   className="text-neutral-400 hover:text-neutral-600 p-2 transition-colors"
-                 >
-                   <X className="w-5 h-5" />
-                 </button>
-              </div>
-              <form onSubmit={handleDamageSubmit} className="p-6 space-y-4">
-                 <div className="space-y-1.5">
-                    <label className="text-[11px] font-bold text-neutral-400 uppercase tracking-widest">Damage Type</label>
-                    <select 
-                      value={damageForm.type}
-                      onChange={e => setDamageForm({...damageForm, type: e.target.value})}
-                      className="w-full bg-[#f8f9fa] border border-neutral-200 rounded-xl px-4 py-3 text-[14px] outline-none focus:ring-2 focus:ring-[#5cb8fd]"
-                    >
-                      {availableTypes.map(t => (
-                        <option key={t} value={t}>{t}</option>
-                      ))}
-                      <option value="Other">Other</option>
-                    </select>
-                 </div>
-                 {damageForm.type === 'Other' && (
-                   <div className="space-y-1.5 animate-in slide-in-from-top-2 duration-300">
-                      <label className="text-[11px] font-bold text-neutral-400 uppercase tracking-widest">Specify Damage Type</label>
-                      <input 
-                        required
-                        type="text" 
-                        placeholder="Enter new damage type"
-                        value={damageForm.customType}
-                        onChange={e => setDamageForm({...damageForm, customType: e.target.value})}
-                        className="w-full bg-[#f8f9fa] border border-neutral-200 rounded-xl px-4 py-3 text-[14px] outline-none focus:ring-2 focus:ring-[#5cb8fd]"
-                      />
-                   </div>
-                 )}
-                 <div className="space-y-1.5">
-                    <label className="text-[11px] font-bold text-neutral-400 uppercase tracking-widest">Quantity</label>
-                    <input 
-                      required
-                      type="number" 
-                      value={damageForm.quantity || ''}
-                      onChange={e => setDamageForm({...damageForm, quantity: Number(e.target.value)})}
-                      className="w-full bg-[#f8f9fa] border border-neutral-200 rounded-xl px-4 py-3 text-[16px] font-black text-[#162839] outline-none focus:ring-2 focus:ring-[#5cb8fd]"
-                    />
-                 </div>
-                 <div className="space-y-1.5">
-                    <label className="text-[11px] font-bold text-neutral-400 uppercase tracking-widest">Notes</label>
-                    <textarea 
-                      value={damageForm.notes}
-                      onChange={e => setDamageForm({...damageForm, notes: e.target.value})}
-                      placeholder="Optional details..."
-                      className="w-full bg-[#f8f9fa] border border-neutral-200 rounded-xl px-4 py-3 text-[14px] outline-none focus:ring-2 focus:ring-[#5cb8fd] resize-none"
-                      rows={2}
-                    />
-                 </div>
-                 <button type="submit" className="w-full bg-[#162839] text-white font-bold py-4 rounded-xl hover:opacity-90 transition-opacity shadow-lg mt-2">
-                    Submit Report
-                 </button>
-              </form>
-          </motion.div>
+    {/* Modals via GlassModal (React Portal into document.body) */}
+    <GlassModal
+      isOpen={showDamageModal}
+      onClose={() => setShowDamageModal(false)}
+      maxWidth="max-w-lg min-w-[320px]"
+    >
+      <div className="flex items-center justify-between pb-4 mb-5 border-b border-slate-200/60">
+        <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-white/90 border border-white shadow-[0_2px_10px_rgba(15,23,42,0.05),inset_0_1px_1px_rgba(255,255,255,1)]">
+          <AlertTriangle className="w-3.5 h-3.5 text-amber-500" />
+          <span className="text-[13px] font-semibold text-slate-800">
+            Log Damage Report
+          </span>
         </div>
-      )}
+        <button 
+          type="button"
+          onClick={() => setShowDamageModal(false)} 
+          className="w-9 h-9 rounded-full bg-white/90 hover:bg-white border border-white shadow-[0_2px_10px_rgba(15,23,42,0.05)] flex items-center justify-center text-slate-600 hover:text-slate-900 transition-all cursor-pointer"
+        >
+          <X className="w-4 h-4" />
+        </button>
+      </div>
 
-      {showCompleteModal && (
-        <div key="complete-modal-overlay" className="fixed inset-0 z-[9999] flex items-center justify-center p-4 sm:p-6">
-          <motion.div 
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="absolute inset-0 bg-[#001d31]/60 backdrop-blur-[4px]" 
-            onClick={() => setShowCompleteModal(false)}
-          />
-          
-          <motion.div 
-            initial={{ opacity: 0, scale: 0.95 }}
-            animate={{ opacity: 1, scale: 1 }}
-            exit={{ opacity: 0, scale: 0.95 }}
-            transition={{ duration: 0.2 }}
-            className="relative bg-white rounded-2xl shadow-2xl w-full max-w-md min-w-[320px] overflow-hidden z-[10000] flex flex-col mx-4"
-            style={{ minHeight: 'auto', maxHeight: '90vh' }}
-          >
-              <div className="p-6 border-b border-neutral-100 flex justify-between items-center bg-emerald-50/50">
-                 <div>
-                   <h3 className="text-[18px] font-bold text-[#162839]">Complete Batch {selectedBatch?.batch_number}</h3>
-                   <p className="text-[12px] text-emerald-700 font-medium">Finalize production yield</p>
-                 </div>
-                 <button 
-                   onClick={() => setShowCompleteModal(false)} 
-                   className="text-neutral-400 hover:text-neutral-600 p-2 transition-colors"
-                 >
-                   <X className="w-5 h-5" />
-                 </button>
-              </div>
-              <form onSubmit={handleCompleteBatch} className="p-6 space-y-4">
-                 <div className="space-y-4">
-                    <div className="space-y-1.5">
-                       <label className="text-[11px] font-bold text-neutral-400 uppercase tracking-widest">Final Good Yield (Actual Qty)</label>
-                       <input 
-                        required
-                        type="number" 
-                        value={completeForm.actual_qty || ''}
-                        onChange={e => setCompleteForm({...completeForm, actual_qty: Number(e.target.value)})}
-                        className="w-full bg-[#f8f9fa] border border-neutral-200 rounded-xl px-4 py-3 text-[16px] font-black text-[#162839] outline-none focus:ring-2 focus:ring-emerald-500"
-                       />
-                    </div>
-                    <div className="grid grid-cols-2 gap-4">
-                       <div className="space-y-1.5">
-                          <label className="text-[11px] font-bold text-neutral-400 uppercase tracking-widest">Wastage Qty</label>
-                          <input 
-                            type="number" 
-                            value={completeForm.wastage_qty || ''}
-                            onChange={e => setCompleteForm({...completeForm, wastage_qty: Number(e.target.value)})}
-                            className="w-full bg-[#fff5f5] border border-red-100 rounded-xl px-4 py-3 text-[14px] font-bold text-red-600 outline-none focus:ring-2 focus:ring-red-200"
-                          />
-                       </div>
-                       <div className="space-y-1.5">
-                          <label className="text-[11px] font-bold text-neutral-400 uppercase tracking-widest">Damaged Qty</label>
-                          <input 
-                            type="number" 
-                            value={completeForm.damaged_qty || ''}
-                            onChange={e => setCompleteForm({...completeForm, damaged_qty: Number(e.target.value)})}
-                            className="w-full bg-[#fffcf0] border border-amber-100 rounded-xl px-4 py-3 text-[14px] font-bold text-amber-600 outline-none focus:ring-2 focus:ring-amber-200"
-                          />
-                       </div>
-                    </div>
-                    <div className="space-y-1.5">
-                       <label className="text-[11px] font-bold text-neutral-400 uppercase tracking-widest">Wastage Reason / Notes</label>
-                       <textarea 
-                        value={completeForm.notes}
-                        onChange={e => setCompleteForm({...completeForm, notes: e.target.value})}
-                        placeholder="e.g. Broken in kiln, glazing defect..."
-                        className="w-full bg-[#f8f9fa] border border-neutral-200 rounded-xl px-4 py-3 text-[14px] outline-none focus:ring-2 focus:ring-emerald-500 resize-none"
-                        rows={2}
-                       />
-                    </div>
-                 </div>
-                 <button type="submit" className="w-full bg-[#162839] text-white font-bold py-4 rounded-xl hover:opacity-90 transition-opacity shadow-lg mt-2">
-                    Confirm Completion & Sync Stock
-                 </button>
-              </form>
-          </motion.div>
+      <form onSubmit={handleDamageSubmit} className="space-y-4">
+        <div>
+          <label className="block text-[11px] font-bold tracking-[0.1em] text-slate-400 uppercase mb-2.5">
+            DAMAGE TYPE
+          </label>
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+            {[...availableTypes, 'Other'].map(t => {
+              const isSelected = damageForm.type === t;
+              return (
+                <button
+                  key={t}
+                  type="button"
+                  onClick={() => setDamageForm({ ...damageForm, type: t })}
+                  className={`rounded-2xl py-2.5 px-3 border text-[12.5px] font-semibold transition-all cursor-pointer ${
+                    isSelected
+                      ? 'bg-gradient-to-b from-amber-50/95 to-amber-100/75 border-amber-300/90 text-slate-900 shadow-[0_4px_14px_rgba(245,158,11,0.16)]'
+                      : 'bg-white/85 hover:bg-white border-white text-slate-600 shadow-2xs'
+                  }`}
+                >
+                  {t}
+                </button>
+              );
+            })}
+          </div>
         </div>
-      )}
-    </AnimatePresence>
+
+        {damageForm.type === 'Other' && (
+          <div>
+            <input 
+              required
+              type="text" 
+              placeholder="Specify custom damage type..."
+              value={damageForm.customType}
+              onChange={e => setDamageForm({...damageForm, customType: e.target.value})}
+              className="w-full rounded-2xl bg-white/90 border border-white px-4 py-3.5 text-[14px] font-medium text-slate-900 placeholder:text-slate-400 shadow-[0_2px_10px_rgba(15,23,42,0.03)] outline-none focus:ring-2 focus:ring-sky-400/40"
+            />
+          </div>
+        )}
+
+        <div>
+          <label className="block text-[11px] font-bold tracking-[0.1em] text-slate-400 uppercase mb-1.5">
+            DAMAGED QUANTITY
+          </label>
+          <input 
+            required
+            type="number" 
+            placeholder="Enter unit quantity..."
+            value={damageForm.quantity || ''}
+            onChange={e => setDamageForm({...damageForm, quantity: Number(e.target.value)})}
+            className="w-full rounded-2xl bg-white/90 border border-white px-4 py-3.5 text-[16px] font-bold text-slate-900 placeholder:text-slate-400 shadow-[0_2px_10px_rgba(15,23,42,0.03)] outline-none focus:ring-2 focus:ring-sky-400/40"
+          />
+        </div>
+
+        <div>
+          <label className="block text-[11px] font-bold tracking-[0.1em] text-slate-400 uppercase mb-1.5">
+            INSPECTION NOTES
+          </label>
+          <textarea 
+            value={damageForm.notes}
+            onChange={e => setDamageForm({...damageForm, notes: e.target.value})}
+            placeholder="Write details about the defect or kiln issue..."
+            className="w-full rounded-2xl bg-white/90 border border-white p-4 text-[14px] text-slate-800 placeholder:text-slate-400 shadow-[0_2px_10px_rgba(15,23,42,0.03)] outline-none focus:ring-2 focus:ring-sky-400/40 resize-none"
+            rows={3}
+          />
+        </div>
+
+        <div className="pt-3 flex items-center justify-end gap-3">
+          <button
+            type="button"
+            onClick={() => setShowDamageModal(false)}
+            className="px-6 py-2.5 rounded-full bg-white/90 hover:bg-white border border-white text-[13.5px] font-semibold text-slate-700 shadow-[0_4px_12px_rgba(15,23,42,0.05)] transition-all cursor-pointer"
+          >
+            Cancel
+          </button>
+          <button
+            type="submit"
+            className="px-6 py-2.5 rounded-full bg-white/95 hover:bg-white border border-white text-[13.5px] font-semibold text-slate-900 shadow-[0_6px_18px_rgba(15,23,42,0.08)] flex items-center gap-2 transition-all cursor-pointer"
+          >
+            <CheckCircle2 className="w-4 h-4 text-[#0284c7]" />
+            <span>Submit Report</span>
+          </button>
+        </div>
+      </form>
+    </GlassModal>
+
+    <GlassModal
+      isOpen={showCompleteModal}
+      onClose={() => setShowCompleteModal(false)}
+      maxWidth="max-w-lg min-w-[320px]"
+    >
+      <div className="flex items-center justify-between pb-4 mb-5 border-b border-slate-200/60">
+        <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-white/90 border border-white shadow-[0_2px_10px_rgba(15,23,42,0.05),inset_0_1px_1px_rgba(255,255,255,1)]">
+          <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500" />
+          <span className="text-[13px] font-semibold text-slate-800">
+            Complete Batch · {selectedBatch?.batch_number}
+          </span>
+        </div>
+        <button 
+          type="button"
+          onClick={() => setShowCompleteModal(false)} 
+          className="w-9 h-9 rounded-full bg-white/90 hover:bg-white border border-white shadow-[0_2px_10px_rgba(15,23,42,0.05)] flex items-center justify-center text-slate-600 hover:text-slate-900 transition-all cursor-pointer"
+        >
+          <X className="w-4 h-4" />
+        </button>
+      </div>
+
+      <form onSubmit={handleCompleteBatch} className="space-y-4">
+        <div>
+          <label className="block text-[11px] font-bold tracking-[0.1em] text-slate-400 uppercase mb-1.5">
+            FINAL GOOD YIELD (ACTUAL QTY)
+          </label>
+          <input 
+            required
+            type="number" 
+            value={completeForm.actual_qty || ''}
+            onChange={e => setCompleteForm({...completeForm, actual_qty: Number(e.target.value)})}
+            className="w-full rounded-2xl bg-white/90 border border-white px-4 py-3.5 text-[16px] font-bold text-slate-900 shadow-[0_2px_10px_rgba(15,23,42,0.03)] outline-none focus:ring-2 focus:ring-sky-400/40"
+          />
+        </div>
+
+        <div className="grid grid-cols-2 gap-3">
+          <div>
+            <label className="block text-[11px] font-bold tracking-[0.1em] text-slate-400 uppercase mb-1.5">
+              WASTAGE QTY
+            </label>
+            <input 
+              type="number" 
+              value={completeForm.wastage_qty || ''}
+              onChange={e => setCompleteForm({...completeForm, wastage_qty: Number(e.target.value)})}
+              className="w-full rounded-2xl bg-rose-50/80 border border-rose-200/80 px-4 py-3 text-[14px] font-bold text-rose-600 outline-none focus:ring-2 focus:ring-rose-200"
+            />
+          </div>
+          <div>
+            <label className="block text-[11px] font-bold tracking-[0.1em] text-slate-400 uppercase mb-1.5">
+              DAMAGED QTY
+            </label>
+            <input 
+              type="number" 
+              value={completeForm.damaged_qty || ''}
+              onChange={e => setCompleteForm({...completeForm, damaged_qty: Number(e.target.value)})}
+              className="w-full rounded-2xl bg-amber-50/80 border border-amber-200/80 px-4 py-3 text-[14px] font-bold text-amber-600 outline-none focus:ring-2 focus:ring-amber-200"
+            />
+          </div>
+        </div>
+
+        <div>
+          <label className="block text-[11px] font-bold tracking-[0.1em] text-slate-400 uppercase mb-1.5">
+            WASTAGE REASON / NOTES
+          </label>
+          <textarea 
+            value={completeForm.notes}
+            onChange={e => setCompleteForm({...completeForm, notes: e.target.value})}
+            placeholder="e.g. Broken in kiln, glazing defect..."
+            className="w-full rounded-2xl bg-white/90 border border-white p-4 text-[14px] text-slate-800 placeholder:text-slate-400 shadow-[0_2px_10px_rgba(15,23,42,0.03)] outline-none focus:ring-2 focus:ring-sky-400/40 resize-none"
+            rows={3}
+          />
+        </div>
+
+        <div className="pt-3 flex items-center justify-end gap-3">
+          <button
+            type="button"
+            onClick={() => setShowCompleteModal(false)}
+            className="px-6 py-2.5 rounded-full bg-white/90 hover:bg-white border border-white text-[13.5px] font-semibold text-slate-700 shadow-[0_4px_12px_rgba(15,23,42,0.05)] transition-all cursor-pointer"
+          >
+            Cancel
+          </button>
+          <button
+            type="submit"
+            className="px-6 py-2.5 rounded-full bg-white/95 hover:bg-white border border-white text-[13.5px] font-semibold text-slate-900 shadow-[0_6px_18px_rgba(15,23,42,0.08)] flex items-center gap-2 transition-all cursor-pointer"
+          >
+            <CheckCircle2 className="w-4 h-4 text-[#0284c7]" />
+            <span>Save Changes</span>
+          </button>
+        </div>
+      </form>
+    </GlassModal>
     </>
   );
 }

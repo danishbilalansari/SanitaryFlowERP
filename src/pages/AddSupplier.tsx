@@ -13,6 +13,8 @@ import {
   ChevronDown
 } from 'lucide-react';
 import { useAppContext } from '../store';
+import { GlassSelect } from '../components/GlassUI';
+import { invalidateApiCache } from '../lib/apiCache';
 
 export default function AddSupplier() {
   const { showToast, currency } = useAppContext();
@@ -45,7 +47,7 @@ export default function AddSupplier() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    const finalCategory = showNewCategoryInput ? newCategory : formData.category;
+    const finalCategory = showNewCategoryInput ? newCategory : formData.category || '';
     if (showNewCategoryInput && !newCategory) {
       showToast('Please enter category name', 'error');
       return;
@@ -61,6 +63,7 @@ export default function AddSupplier() {
       });
 
       if (res.ok) {
+        invalidateApiCache('/api/suppliers');
         showToast('Supplier added successfully', 'success');
         navigate('/suppliers');
       } else {
@@ -89,12 +92,22 @@ export default function AddSupplier() {
       </div>
 
       <form onSubmit={handleSubmit} className="grid grid-cols-1 md:grid-cols-2 gap-8">
-        <div className="md:col-span-2 bg-white border border-[#edeeef] rounded-2xl p-8 shadow-sm space-y-8">
+        <div className="md:col-span-2 glass-card p-7 sm:p-9 rounded-[30px] space-y-8">
+          <div className="flex items-center gap-3.5 border-b border-slate-200/60 pb-5">
+            <div className="w-11 h-11 rounded-2xl bg-white/95 border border-white text-[#0284c7] flex items-center justify-center font-bold shadow-[0_4px_12px_rgba(15,23,42,0.05)]">
+              <Building2 className="w-5 h-5" />
+            </div>
+            <div>
+              <h3 className="text-[18px] font-bold text-slate-900 tracking-tight">Supplier Information</h3>
+              <p className="text-[13px] text-slate-500 font-medium">Business entity details, primary contact, and starting ledger balance.</p>
+            </div>
+          </div>
+
           <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-6">
             <div className="space-y-2">
-              <label className="text-[11px] font-bold text-neutral-400 uppercase tracking-widest flex items-center gap-2">
-                <Building2 className="w-3.5 h-3.5" />
-                Supplier Name / Title *
+              <label className="text-[11px] font-bold text-slate-500 uppercase tracking-[0.14em] flex items-center gap-2">
+                <Building2 className="w-3.5 h-3.5 text-slate-400" />
+                Supplier Name / Title <span className="text-red-500">*</span>
               </label>
               <input 
                 required
@@ -102,26 +115,24 @@ export default function AddSupplier() {
                 value={formData.name}
                 onChange={e => setFormData({ ...formData, name: e.target.value })}
                 placeholder="e.g. Acme Raw Materials"
-                className="w-full bg-[#f8f9fa] border border-[#c4c6cd] rounded-xl px-4 py-3.5 text-[15px] font-medium outline-none focus:ring-2 focus:ring-[#5cb8fd] transition-all"
+                className="w-full rounded-2xl px-4 py-3.5 text-[14px] font-medium text-slate-900 outline-none transition-all"
               />
             </div>
 
             <div className="space-y-2">
-              <label className="text-[11px] font-bold text-neutral-400 uppercase tracking-widest flex items-center gap-2">
-                <Tag className="w-3.5 h-3.5" />
+              <label className="text-[11px] font-bold text-slate-500 uppercase tracking-[0.14em] flex items-center gap-2">
+                <Tag className="w-3.5 h-3.5 text-slate-400" />
                 Category
               </label>
               <div className="space-y-2">
                 <div className="relative">
-                  <select 
-                    value={showNewCategoryInput ? 'ADD_NEW' : formData.category}
+                  <GlassSelect 
+                    value={showNewCategoryInput ? 'ADD_NEW' : formData.category || ''}
                     onChange={handleCategoryChange}
-                    className="w-full bg-[#f8f9fa] border border-[#c4c6cd] rounded-xl px-4 py-3.5 text-[15px] font-medium outline-none focus:ring-2 focus:ring-[#5cb8fd] transition-all appearance-none pr-10"
                   >
                     {categories.map(c => <option key={c} value={c}>{c}</option>)}
                     <option value="ADD_NEW">+ Add New Category...</option>
-                  </select>
-                  <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 w-4 h-4 text-neutral-400 pointer-events-none" />
+                  </GlassSelect>
                 </div>
                 {showNewCategoryInput && (
                   <input 
@@ -129,7 +140,7 @@ export default function AddSupplier() {
                     value={newCategory}
                     onChange={e => setNewCategory(e.target.value)}
                     placeholder="Enter supplier category"
-                    className="w-full bg-white border-2 border-[#5cb8fd] rounded-xl px-4 py-3.5 text-[15px] font-bold outline-none animate-in slide-in-from-top-2 duration-300"
+                    className="w-full border-2 border-sky-400 rounded-2xl px-4 py-3 text-[14px] font-bold outline-none animate-in slide-in-from-top-2 duration-300"
                     autoFocus
                   />
                 )}
@@ -137,8 +148,8 @@ export default function AddSupplier() {
             </div>
 
             <div className="space-y-2">
-              <label className="text-[11px] font-bold text-neutral-400 uppercase tracking-widest flex items-center gap-2">
-                <User className="w-3.5 h-3.5" />
+              <label className="text-[11px] font-bold text-slate-500 uppercase tracking-[0.14em] flex items-center gap-2">
+                <User className="w-3.5 h-3.5 text-slate-400" />
                 Contact Person
               </label>
               <input 
@@ -146,31 +157,31 @@ export default function AddSupplier() {
                 value={formData.contact_person}
                 onChange={e => setFormData({ ...formData, contact_person: e.target.value })}
                 placeholder="Name of primary contact"
-                className="w-full bg-[#f8f9fa] border border-[#c4c6cd] rounded-xl px-4 py-3.5 text-[15px] font-medium outline-none focus:ring-2 focus:ring-[#5cb8fd] transition-all"
+                className="w-full rounded-2xl px-4 py-3.5 text-[14px] font-medium text-slate-900 outline-none transition-all"
               />
             </div>
 
             <div className="space-y-2">
-              <label className="text-[11px] font-bold text-neutral-400 uppercase tracking-widest flex items-center gap-2">
-                <DollarSign className="w-3.5 h-3.5" />
+              <label className="text-[11px] font-bold text-slate-500 uppercase tracking-[0.14em] flex items-center gap-2">
+                <DollarSign className="w-3.5 h-3.5 text-slate-400" />
                 Opening Balance
               </label>
               <div className="relative">
-                <span className="absolute left-4 top-1/2 -translate-y-1/2 text-neutral-400 font-bold">{currency}</span>
+                <span className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 font-bold text-sm">{currency}</span>
                 <input 
                   type="number" 
                   value={formData.opening_balance}
                   onChange={e => setFormData({ ...formData, opening_balance: Number(e.target.value) })}
                   placeholder="0.00"
-                  className="w-full bg-[#f8f9fa] border border-[#c4c6cd] rounded-xl pl-8 pr-4 py-3.5 text-[15px] font-medium outline-none focus:ring-2 focus:ring-[#5cb8fd] transition-all"
+                  className="w-full rounded-2xl pl-12 pr-4 py-3.5 text-[14px] font-medium text-slate-900 outline-none transition-all"
                 />
               </div>
-              <p className="text-[11px] text-neutral-400 italic">Positive for credit, negative for debit.</p>
+              <p className="text-[11px] text-slate-500 font-medium italic">Positive for credit, negative for debit.</p>
             </div>
 
             <div className="space-y-2">
-              <label className="text-[11px] font-bold text-neutral-400 uppercase tracking-widest flex items-center gap-2">
-                <Mail className="w-3.5 h-3.5" />
+              <label className="text-[11px] font-bold text-slate-500 uppercase tracking-[0.14em] flex items-center gap-2">
+                <Mail className="w-3.5 h-3.5 text-slate-400" />
                 Email Address
               </label>
               <input 
@@ -178,13 +189,13 @@ export default function AddSupplier() {
                 value={formData.email}
                 onChange={e => setFormData({ ...formData, email: e.target.value })}
                 placeholder="supplier@email.com"
-                className="w-full bg-[#f8f9fa] border border-[#c4c6cd] rounded-xl px-4 py-3.5 text-[15px] font-medium outline-none focus:ring-2 focus:ring-[#5cb8fd] transition-all"
+                className="w-full rounded-2xl px-4 py-3.5 text-[14px] font-medium text-slate-900 outline-none transition-all"
               />
             </div>
 
             <div className="space-y-2">
-              <label className="text-[11px] font-bold text-neutral-400 uppercase tracking-widest flex items-center gap-2">
-                <Phone className="w-3.5 h-3.5" />
+              <label className="text-[11px] font-bold text-slate-500 uppercase tracking-[0.14em] flex items-center gap-2">
+                <Phone className="w-3.5 h-3.5 text-slate-400" />
                 Phone Number
               </label>
               <input 
@@ -192,13 +203,13 @@ export default function AddSupplier() {
                 value={formData.phone}
                 onChange={e => setFormData({ ...formData, phone: e.target.value })}
                 placeholder="+1 (555) 000-0000"
-                className="w-full bg-[#f8f9fa] border border-[#c4c6cd] rounded-xl px-4 py-3.5 text-[15px] font-medium outline-none focus:ring-2 focus:ring-[#5cb8fd] transition-all"
+                className="w-full rounded-2xl px-4 py-3.5 text-[14px] font-medium text-slate-900 outline-none transition-all"
               />
             </div>
 
             <div className="md:col-span-2 space-y-2">
-              <label className="text-[11px] font-bold text-neutral-400 uppercase tracking-widest flex items-center gap-2">
-                <MapPin className="w-3.5 h-3.5" />
+              <label className="text-[11px] font-bold text-slate-500 uppercase tracking-[0.14em] flex items-center gap-2">
+                <MapPin className="w-3.5 h-3.5 text-slate-400" />
                 Office/Warehouse Address
               </label>
               <textarea 
@@ -206,23 +217,23 @@ export default function AddSupplier() {
                 value={formData.address}
                 onChange={e => setFormData({ ...formData, address: e.target.value })}
                 placeholder="Full physical address..."
-                className="w-full bg-[#f8f9fa] border border-[#c4c6cd] rounded-xl px-4 py-3.5 text-[15px] font-medium outline-none focus:ring-2 focus:ring-[#5cb8fd] transition-all resize-none"
+                className="w-full rounded-2xl px-4 py-3.5 text-[14px] font-medium text-slate-900 outline-none transition-all resize-none"
               />
             </div>
           </div>
 
-          <div className="pt-8 border-t border-[#edeeef] flex justify-end">
+          <div className="pt-8 border-t border-slate-200/60 flex justify-end">
             <button 
               disabled={loading}
               type="submit" 
-              className="flex items-center gap-2 px-10 py-4 bg-[#162839] text-white font-black rounded-xl hover:brightness-110 active:scale-95 transition-all text-[15px] shadow-lg shadow-black/10 disabled:opacity-50"
+              className="flex items-center gap-2 px-8 py-3 bg-gradient-to-r from-[#0284c7] to-sky-500 text-white font-semibold rounded-full hover:brightness-105 transition-all text-[14px] shadow-[0_6px_20px_rgba(2,132,199,0.28)] disabled:opacity-50 cursor-pointer"
             >
               {loading ? (
                 <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
               ) : (
                 <>
-                  <Save className="w-5 h-5" />
-                  SAVE SUPPLIER
+                  <Save className="w-4 h-4" />
+                  <span>Save Supplier</span>
                 </>
               )}
             </button>
