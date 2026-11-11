@@ -70,6 +70,9 @@ export type FactoryBatch = {
   output: number;
 };
 
+export type ThemeMode = 'light' | 'dark' | 'system';
+export type ResolvedTheme = 'light' | 'dark';
+
 type AppContextType = {
   inventory: InventoryItem[];
   addInventory: (item: Omit<InventoryItem, 'id'>) => void;
@@ -96,7 +99,10 @@ type AppContextType = {
   setCompanyEmail: (email: string) => void;
   companyPhone: string;
   setCompanyPhone: (phone: string) => void;
-  toast?: { message: string, type: 'success' | 'error' | null };
+  themeMode: ThemeMode;
+  setThemeMode: (mode: ThemeMode) => void;
+  resolvedTheme: ResolvedTheme;
+  toast?: { message: string, type: 'success' | 'error' | 'info' | null };
   showToast?: (message: string, type: 'success' | 'error' | 'info') => void;
   currentUser: any | null; 
   authLoading: boolean;
@@ -151,6 +157,86 @@ export function AppProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     localStorage.setItem('app_currency', 'PKR');
   }, []);
+
+  // iOS 26 Theme System: Light Mode, Dark Mode, and System Default
+  const [themeMode, setThemeModeState] = useState<ThemeMode>(() => {
+    try {
+      const saved = localStorage.getItem('ios26_theme_mode');
+      if (saved === 'light' || saved === 'dark' || saved === 'system') {
+        return saved;
+      }
+    } catch {
+      // ignore
+    }
+    return 'system';
+  });
+
+  const [systemPrefersDark, setSystemPrefersDark] = useState<boolean>(() => {
+    if (typeof window !== 'undefined' && window.matchMedia) {
+      return window.matchMedia('(prefers-color-scheme: dark)').matches;
+    }
+    return false;
+  });
+
+  useEffect(() => {
+    if (typeof window === 'undefined' || !window.matchMedia) return;
+    const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
+    const handleChange = (e: MediaQueryListEvent) => {
+      setSystemPrefersDark(e.matches);
+    };
+    setSystemPrefersDark(mediaQuery.matches);
+    if (mediaQuery.addEventListener) {
+      mediaQuery.addEventListener('change', handleChange);
+      return () => mediaQuery.removeEventListener('change', handleChange);
+    } else {
+      mediaQuery.addListener(handleChange);
+      return () => mediaQuery.removeListener(handleChange);
+    }
+  }, []);
+
+  const resolvedTheme: ResolvedTheme =
+    themeMode === 'system' ? (systemPrefersDark ? 'dark' : 'light') : themeMode;
+
+  const setThemeMode = (mode: ThemeMode) => {
+    setThemeModeState(mode);
+    try {
+      localStorage.setItem('ios26_theme_mode', mode);
+    } catch {
+      // ignore
+    }
+  };
+
+  useEffect(() => {
+    try {
+      localStorage.setItem('ios26_theme_mode', themeMode);
+      localStorage.setItem('dashboard_top_selling_theme', resolvedTheme === 'dark' ? 'black' : 'frosted');
+      localStorage.setItem('ios26_gauge_dark_theme', String(resolvedTheme === 'dark'));
+      localStorage.setItem('ios26_geo_dark_theme', String(resolvedTheme === 'dark'));
+    } catch {
+      // ignore
+    }
+    if (typeof document !== 'undefined') {
+      const root = document.documentElement;
+      const body = document.body;
+      root.classList.remove('light', 'dark');
+      root.classList.add(resolvedTheme);
+      root.setAttribute('data-theme', resolvedTheme);
+      root.setAttribute('data-theme-mode', themeMode);
+      root.style.colorScheme = resolvedTheme;
+
+      if (body) {
+        body.classList.remove('light', 'dark');
+        body.classList.add(resolvedTheme);
+        body.setAttribute('data-theme', resolvedTheme);
+      }
+
+      const metaThemeColor = document.getElementById('app-theme-color');
+      if (metaThemeColor) {
+        metaThemeColor.setAttribute('content', resolvedTheme === 'dark' ? '#000000' : '#f6f8fc');
+      }
+    }
+  }, [themeMode, resolvedTheme]);
+
   const DEFAULT_LOGO = '/assets/aistudio/image_6670885d.png?v=2';
   const [logoUrl, setLogoUrl] = useState<string | null>(() => {
     const saved = localStorage.getItem('app_logo');
@@ -321,6 +407,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
         setCompanyEmail,
         companyPhone,
         setCompanyPhone,
+        themeMode,
+        setThemeMode,
+        resolvedTheme,
         toast,
         showToast,
         currentUser,

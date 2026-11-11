@@ -1,5 +1,5 @@
 import { formatCurrency } from '../lib/currency';
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { GlossyChartCard, GlassSelect, GlassCapsuleBar } from '../components/GlassUI';
 import { 
   BarChart, 
@@ -54,7 +54,7 @@ import { motion } from 'motion/react';
 type ReportView = 'main' | 'sales' | 'city-sales' | 'outstanding' | 'inventory-valuation' | 'production-summary' | 'profit-loss';
 
 export default function Reports() {
-  const { showToast, currency } = useAppContext();
+  const { showToast, currency, resolvedTheme } = useAppContext();
   const [activeReport, setActiveReport] = useState<ReportView>('main');
   const [reportData, setReportData] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(false);
@@ -67,8 +67,13 @@ export default function Reports() {
     } catch {
       // ignore
     }
-    return true;
+    return resolvedTheme === 'dark';
   });
+
+  useEffect(() => {
+    setGeoDarkState(resolvedTheme === 'dark');
+  }, [resolvedTheme]);
+
   const toggleGeoTheme = () => {
     setGeoDarkState(prev => {
       const next = !prev;

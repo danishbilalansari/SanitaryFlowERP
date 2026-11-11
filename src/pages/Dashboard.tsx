@@ -25,7 +25,8 @@ import { GlassEmptyState, GlossyChartCard, GlassCapsuleBar, GlossyGlassBar } fro
 import { cachedJsonFetch, peekApiCache, invalidateApiCache } from '../lib/apiCache';
 
 export default function Dashboard() {
-  const { currency } = useAppContext();
+  const { currency, resolvedTheme } = useAppContext();
+  const isDark = resolvedTheme === 'dark';
   const navigate = useNavigate();
   const cachedStats = peekApiCache<any>('/api/analytics/dashboard', 60_000);
   const [stats, setStats] = useState<any>(() => cachedStats ?? null);
@@ -37,11 +38,16 @@ export default function Dashboard() {
   const [topSellingTheme, setTopSellingTheme] = useState<'frosted' | 'black'>(() => {
     try {
       const saved = localStorage.getItem('dashboard_top_selling_theme');
-      return saved === 'black' ? 'black' : 'frosted';
+      if (saved === 'black' || saved === 'frosted') return saved;
     } catch {
-      return 'frosted';
+      // ignore
     }
+    return resolvedTheme === 'dark' ? 'black' : 'frosted';
   });
+
+  useEffect(() => {
+    setTopSellingTheme(resolvedTheme === 'dark' ? 'black' : 'frosted');
+  }, [resolvedTheme]);
 
   const handleTopSellingThemeChange = (theme: 'frosted' | 'black') => {
     setTopSellingTheme(theme);
@@ -524,27 +530,42 @@ export default function Dashboard() {
                         dataKey="name"
                         axisLine={false}
                         tickLine={false}
-                        tick={{ fill: '#64748b', fontSize: 11.5, fontWeight: 600 }}
+                        tick={{ fill: isDark ? '#94a3b8' : '#64748b', fontSize: 11.5, fontWeight: 600 }}
                         dy={6}
                       />
                       <YAxis
                         axisLine={false}
                         tickLine={false}
-                        tick={{ fill: '#64748b', fontSize: 11, fontWeight: 600 }}
+                        tick={{ fill: isDark ? '#94a3b8' : '#64748b', fontSize: 11, fontWeight: 600 }}
                         width={42}
                       />
                       <Tooltip
-                        cursor={{ fill: 'rgba(14,165,233,0.04)', radius: 14 }}
-                        contentStyle={{
-                              backgroundColor: 'rgba(255, 255, 255, 0.94)',
-                          backdropFilter: 'blur(20px)',
-                          borderRadius: '16px',
-                          border: '1px solid rgba(255, 255, 255, 1)',
-                          boxShadow: '0 12px 30px rgba(15, 23, 42, 0.12)',
-                          fontSize: '12.5px',
-                          fontWeight: 600,
-                          color: '#0f172a'
-                        }}
+                        cursor={{ fill: isDark ? 'rgba(255,255,255,0.06)' : 'rgba(14,165,233,0.04)', radius: 14 }}
+                        contentStyle={
+                          isDark
+                            ? {
+                                backgroundColor: 'rgba(18, 18, 22, 0.94)',
+                                backdropFilter: 'blur(24px)',
+                                borderRadius: '16px',
+                                border: '1px solid rgba(255, 255, 255, 0.16)',
+                                boxShadow: '0 16px 36px rgba(0, 0, 0, 0.7)',
+                                fontSize: '12.5px',
+                                fontWeight: 600,
+                                color: '#f8fafc'
+                              }
+                            : {
+                                backgroundColor: 'rgba(255, 255, 255, 0.94)',
+                                backdropFilter: 'blur(20px)',
+                                borderRadius: '16px',
+                                border: '1px solid rgba(255, 255, 255, 1)',
+                                boxShadow: '0 12px 30px rgba(15, 23, 42, 0.12)',
+                                fontSize: '12.5px',
+                                fontWeight: 600,
+                                color: '#0f172a'
+                              }
+                        }
+                        itemStyle={{ color: isDark ? '#38bdf8' : '#0284c7' }}
+                        labelStyle={{ color: isDark ? '#f8fafc' : '#0f172a' }}
                         formatter={(val: any) => [`${Number(val).toLocaleString()} units`, 'Stock Volume']}
                       />
                       <Bar
@@ -559,7 +580,7 @@ export default function Dashboard() {
                     <AreaChart data={summaryGraphData} margin={{ top: 14, right: 8, left: -14, bottom: 4 }}>
                       <defs>
                         <linearGradient id={`${summaryUid}-areaGradient`} x1="0" y1="0" x2="0" y2="1">
-                          <stop offset="0%" stopColor="#0284c7" stopOpacity={0.38} />
+                          <stop offset="0%" stopColor={isDark ? '#38bdf8' : '#0284c7'} stopOpacity={0.38} />
                           <stop offset="65%" stopColor="#38bdf8" stopOpacity={0.14} />
                           <stop offset="100%" stopColor="#38bdf8" stopOpacity={0.0} />
                         </linearGradient>
@@ -568,36 +589,51 @@ export default function Dashboard() {
                         dataKey="name"
                         axisLine={false}
                         tickLine={false}
-                        tick={{ fill: '#64748b', fontSize: 11.5, fontWeight: 600 }}
+                        tick={{ fill: isDark ? '#94a3b8' : '#64748b', fontSize: 11.5, fontWeight: 600 }}
                         dy={6}
                       />
                       <YAxis
                         axisLine={false}
                         tickLine={false}
-                        tick={{ fill: '#64748b', fontSize: 11, fontWeight: 600 }}
+                        tick={{ fill: isDark ? '#94a3b8' : '#64748b', fontSize: 11, fontWeight: 600 }}
                         width={42}
                       />
                       <Tooltip
-                        contentStyle={{
-                          backgroundColor: 'rgba(255, 255, 255, 0.94)',
-                          backdropFilter: 'blur(20px)',
-                          borderRadius: '16px',
-                          border: '1px solid rgba(255, 255, 255, 1)',
-                          boxShadow: '0 12px 30px rgba(15, 23, 42, 0.12)',
-                          fontSize: '12.5px',
-                          fontWeight: 600,
-                          color: '#0f172a'
-                        }}
+                        contentStyle={
+                          isDark
+                            ? {
+                                backgroundColor: 'rgba(18, 18, 22, 0.94)',
+                                backdropFilter: 'blur(24px)',
+                                borderRadius: '16px',
+                                border: '1px solid rgba(255, 255, 255, 0.16)',
+                                boxShadow: '0 16px 36px rgba(0, 0, 0, 0.7)',
+                                fontSize: '12.5px',
+                                fontWeight: 600,
+                                color: '#f8fafc'
+                              }
+                            : {
+                                backgroundColor: 'rgba(255, 255, 255, 0.94)',
+                                backdropFilter: 'blur(20px)',
+                                borderRadius: '16px',
+                                border: '1px solid rgba(255, 255, 255, 1)',
+                                boxShadow: '0 12px 30px rgba(15, 23, 42, 0.12)',
+                                fontSize: '12.5px',
+                                fontWeight: 600,
+                                color: '#0f172a'
+                              }
+                        }
+                        itemStyle={{ color: isDark ? '#38bdf8' : '#0284c7' }}
+                        labelStyle={{ color: isDark ? '#f8fafc' : '#0f172a' }}
                         formatter={(val: any) => [`${Number(val).toLocaleString()} units`, 'Stock Volume']}
                       />
                       <Area
                         type="monotone"
                         dataKey="units"
-                        stroke="#0284c7"
+                        stroke={isDark ? '#38bdf8' : '#0284c7'}
                         strokeWidth={3}
                         fill={`url(#${summaryUid}-areaGradient)`}
-                        dot={{ r: 4.5, fill: '#0284c7', stroke: '#ffffff', strokeWidth: 2 }}
-                        activeDot={{ r: 6.5, fill: '#0284c7', stroke: '#ffffff', strokeWidth: 2 }}
+                        dot={{ r: 4.5, fill: isDark ? '#38bdf8' : '#0284c7', stroke: isDark ? '#09090b' : '#ffffff', strokeWidth: 2 }}
+                        activeDot={{ r: 6.5, fill: isDark ? '#38bdf8' : '#0284c7', stroke: isDark ? '#09090b' : '#ffffff', strokeWidth: 2 }}
                       />
                     </AreaChart>
                   )}

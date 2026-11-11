@@ -4,29 +4,38 @@ import { useAppContext } from '../store';
 import { motion, AnimatePresence } from 'motion/react';
 
 export default function Toast() {
-  const { toast } = useAppContext();
+  const { toast, resolvedTheme } = useAppContext();
+  const isDark = resolvedTheme === 'dark';
 
   const getStyles = () => {
     switch (toast.type) {
       case 'success':
-        return 'bg-emerald-500/15 border-emerald-400/30 text-emerald-950 shadow-emerald-500/10';
+        return isDark
+          ? 'bg-emerald-950/85 border-emerald-500/40 text-emerald-100 shadow-[0_14px_34px_rgba(0,0,0,0.65)]'
+          : 'bg-emerald-500/15 border-emerald-400/30 text-emerald-950 shadow-emerald-500/10';
       case 'error':
-        return 'bg-rose-500/15 border-rose-400/30 text-rose-950 shadow-rose-500/10';
+        return isDark
+          ? 'bg-rose-950/85 border-rose-500/40 text-rose-100 shadow-[0_14px_34px_rgba(0,0,0,0.65)]'
+          : 'bg-rose-500/15 border-rose-400/30 text-rose-950 shadow-rose-500/10';
       case 'info':
-        return 'bg-blue-500/15 border-blue-400/30 text-blue-950 shadow-blue-500/10';
+        return isDark
+          ? 'bg-sky-950/85 border-sky-500/40 text-sky-100 shadow-[0_14px_34px_rgba(0,0,0,0.65)]'
+          : 'bg-blue-500/15 border-blue-400/30 text-blue-950 shadow-blue-500/10';
       default:
-        return 'bg-white/80 border-white/60 text-slate-800 shadow-slate-900/10';
+        return isDark
+          ? 'bg-zinc-900/90 border-white/15 text-slate-100 shadow-[0_14px_34px_rgba(0,0,0,0.65)]'
+          : 'bg-white/80 border-white/60 text-slate-800 shadow-slate-900/10';
     }
   };
 
   const getIcon = () => {
     switch (toast.type) {
       case 'success':
-        return <CheckCircle className="w-5 h-5 text-emerald-600 flex-shrink-0" />;
+        return <CheckCircle className={`w-5 h-5 flex-shrink-0 ${isDark ? 'text-emerald-400' : 'text-emerald-600'}`} />;
       case 'error':
-        return <XCircle className="w-5 h-5 text-rose-600 flex-shrink-0" />;
+        return <XCircle className={`w-5 h-5 flex-shrink-0 ${isDark ? 'text-rose-400' : 'text-rose-600'}`} />;
       case 'info':
-        return <Info className="w-5 h-5 text-blue-600 flex-shrink-0" />;
+        return <Info className={`w-5 h-5 flex-shrink-0 ${isDark ? 'text-sky-400' : 'text-blue-600'}`} />;
       default:
         return null;
     }

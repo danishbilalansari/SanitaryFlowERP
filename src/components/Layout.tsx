@@ -31,7 +31,8 @@ export default function Layout() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [isChangePasswordOpen, setIsChangePasswordOpen] = useState(false);
   const [profileMenuOpen, setProfileMenuOpen] = useState(false);
-  const { logoUrl, companyName, currentUser, logout } = useAppContext();
+  const { logoUrl, companyName, currentUser, logout, resolvedTheme } = useAppContext();
+  const isDark = resolvedTheme === 'dark';
   const location = useLocation();
 
   const [expandedMenus, setExpandedMenus] = useState<Record<string, boolean>>({});
@@ -124,20 +125,44 @@ export default function Layout() {
     .toUpperCase();
 
   return (
-    <div className="relative flex print:block h-screen print:h-auto bg-[#f6f8fc] print:bg-white text-slate-900 font-sans tracking-normal overflow-hidden print:overflow-visible selection:bg-sky-500/15 selection:text-sky-900">
-      {/* iOS 26 Liquid Glass Ambient Pastel Canvas & Floating Color Blobs */}
+    <div className={`relative flex print:block h-screen print:h-auto ${isDark ? 'bg-black text-slate-100' : 'bg-[#f6f8fc] text-slate-900'} print:bg-white font-sans tracking-normal overflow-hidden print:overflow-visible selection:bg-sky-500/20 selection:text-sky-400 transition-colors duration-300`}>
+      {/* iOS 26 Liquid Glass Ambient Canvas & Floating Color Blobs */}
       <div className="fixed inset-0 pointer-events-none z-0 overflow-hidden print:hidden">
-        {/* Soft luminous base gradient */}
-        <div className="absolute inset-0 bg-gradient-to-br from-[#eef6ff] via-[#f8f9fc] to-[#f3f5fb]" />
+        {/* Base canvas: Soft luminous pastel in Light Mode, True Black (#000000) in Dark Mode */}
+        <div
+          className={`absolute inset-0 transition-colors duration-500 ${
+            isDark
+              ? 'bg-black'
+              : 'bg-gradient-to-br from-[#eef6ff] via-[#f8f9fc] to-[#f3f5fb]'
+          }`}
+        />
         
-        {/* Top-left sky/cyan pastel blob */}
-        <div className="absolute -top-[14%] -left-[8%] w-[52vw] h-[52vw] rounded-full bg-gradient-to-br from-sky-300/45 via-cyan-200/35 to-transparent blur-[115px] animate-liquid-1" />
+        {/* Top-left sky/cyan blob */}
+        <div
+          className={`absolute -top-[14%] -left-[8%] w-[52vw] h-[52vw] rounded-full blur-[115px] animate-liquid-1 transition-opacity duration-500 ${
+            isDark
+              ? 'bg-gradient-to-br from-sky-500/12 via-cyan-500/08 to-transparent'
+              : 'bg-gradient-to-br from-sky-300/45 via-cyan-200/35 to-transparent'
+          }`}
+        />
         
-        {/* Right lavender/pink pastel blob */}
-        <div className="absolute top-[12%] -right-[10%] w-[48vw] h-[52vw] rounded-full bg-gradient-to-bl from-fuchsia-200/45 via-pink-200/35 to-indigo-200/25 blur-[125px] animate-liquid-2" />
+        {/* Right lavender/indigo blob */}
+        <div
+          className={`absolute top-[12%] -right-[10%] w-[48vw] h-[52vw] rounded-full blur-[125px] animate-liquid-2 transition-opacity duration-500 ${
+            isDark
+              ? 'bg-gradient-to-bl from-indigo-500/12 via-purple-500/08 to-transparent'
+              : 'bg-gradient-to-bl from-fuchsia-200/45 via-pink-200/35 to-indigo-200/25'
+          }`}
+        />
         
-        {/* Bottom-left mint/aqua pastel blob */}
-        <div className="absolute -bottom-[16%] left-[12%] w-[46vw] h-[46vw] rounded-full bg-gradient-to-tr from-emerald-200/40 via-teal-200/30 to-cyan-100/20 blur-[120px] animate-liquid-3" />
+        {/* Bottom-left mint/aqua blob */}
+        <div
+          className={`absolute -bottom-[16%] left-[12%] w-[46vw] h-[46vw] rounded-full blur-[120px] animate-liquid-3 transition-opacity duration-500 ${
+            isDark
+              ? 'bg-gradient-to-tr from-emerald-500/10 via-teal-500/06 to-transparent'
+              : 'bg-gradient-to-tr from-emerald-200/40 via-teal-200/30 to-cyan-100/20'
+          }`}
+        />
       </div>
 
       {/* Desktop iOS 26 Liquid Glass Sidebar (Modeled after Lumen Glass Reference) */}

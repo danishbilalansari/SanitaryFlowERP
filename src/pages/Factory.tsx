@@ -69,7 +69,12 @@ export default function Factory() {
     notes: ''
   });
 
-  const { showToast } = useAppContext();
+  const { showToast, resolvedTheme } = useAppContext();
+  const isDark = resolvedTheme === 'dark';
+
+  useEffect(() => {
+    setGaugeDarkThemeState(resolvedTheme === 'dark');
+  }, [resolvedTheme]);
 
   const fetchData = async (isManual = false) => {
     if (isManual) {
@@ -498,16 +503,31 @@ export default function Factory() {
                       </Pie>
 
                       <Tooltip
-                        contentStyle={{
-                          backgroundColor: 'rgba(255, 255, 255, 0.94)',
-                          backdropFilter: 'blur(20px)',
-                          borderRadius: '18px',
-                          border: '1px solid rgba(255, 255, 255, 1)',
-                          boxShadow: '0 12px 30px rgba(15, 23, 42, 0.12)',
-                          fontSize: '13px',
-                          fontWeight: 600,
-                          color: '#0f172a'
-                        }}
+                        contentStyle={
+                          isDark
+                            ? {
+                                backgroundColor: 'rgba(18, 18, 22, 0.94)',
+                                backdropFilter: 'blur(24px)',
+                                borderRadius: '18px',
+                                border: '1px solid rgba(255, 255, 255, 0.16)',
+                                boxShadow: '0 16px 36px rgba(0, 0, 0, 0.7)',
+                                fontSize: '13px',
+                                fontWeight: 600,
+                                color: '#f8fafc'
+                              }
+                            : {
+                                backgroundColor: 'rgba(255, 255, 255, 0.94)',
+                                backdropFilter: 'blur(20px)',
+                                borderRadius: '18px',
+                                border: '1px solid rgba(255, 255, 255, 1)',
+                                boxShadow: '0 12px 30px rgba(15, 23, 42, 0.12)',
+                                fontSize: '13px',
+                                fontWeight: 600,
+                                color: '#0f172a'
+                              }
+                        }
+                        itemStyle={{ color: isDark ? '#38bdf8' : '#0284c7' }}
+                        labelStyle={{ color: isDark ? '#f8fafc' : '#0f172a' }}
                         formatter={(value: any) => [`${Number(value).toLocaleString()} units`, 'Produced']}
                       />
                     </PieChart>
@@ -601,7 +621,7 @@ export default function Factory() {
                             {report.quantity} units
                           </span>
                         </div>
-                        <GlassCapsuleBar percentage={pct} darkMode={false} heightClass="h-4" />
+                        <GlassCapsuleBar percentage={pct} darkMode={isDark} heightClass="h-4" />
                       </div>
                     );
                   })

@@ -37,11 +37,16 @@ import {
   ShieldCheck as ShieldIcon, 
   Activity,
   KeyRound,
-  Trash2
+  Trash2,
+  Sun,
+  Moon,
+  Smartphone,
+  Sparkles,
+  CheckCircle2
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { useNavigate, Link } from 'react-router-dom';
-import { useAppContext } from '../store';
+import { useAppContext, ThemeMode } from '../store';
 import { CURRENCIES } from '../constants';
 import { GlassSelect, GlassCapsuleBar, TableSkeletonRows } from '../components/GlassUI';
 import { cachedJsonFetch, peekApiCache, invalidateApiCache } from '../lib/apiCache';
@@ -91,11 +96,18 @@ export default function Settings() {
     companyName, setCompanyName,
     companyAddress, setCompanyAddress,
     companyEmail, setCompanyEmail,
-    companyPhone, setCompanyPhone
+    companyPhone, setCompanyPhone,
+    themeMode, setThemeMode, resolvedTheme
   } = useAppContext();
   const fileInputRef = React.useRef<HTMLInputElement>(null);
   const backupFileInputRef = React.useRef<HTMLInputElement>(null);
   const [activeTab, setActiveTab] = useState('General');
+
+  const handleThemeSelect = (mode: ThemeMode) => {
+    setThemeMode(mode);
+    const label = mode === 'light' ? 'Light Mode' : mode === 'dark' ? 'Dark Mode' : 'System Default';
+    showToast?.(`Appearance set to ${label}`, 'info');
+  };
 
   const handleSaveGeneral = () => {
     showToast?.('General settings saved!', 'success');
@@ -588,14 +600,41 @@ export default function Settings() {
         );
       default:
         return (
-          <div>
-            <nav className="flex items-center gap-2 text-[13px] font-medium text-neutral-400 mb-2">
-              <Link to="/" className="hover:text-[#006397] transition-colors">Dashboard</Link>
-              <ChevronRight className="w-3.5 h-3.5" />
-              <span className="text-[#006397] font-bold">Settings</span>
-            </nav>
-            <h1 className="text-[32px] font-black text-[#001d31] tracking-tight leading-none">System Settings</h1>
-            <p className="text-[15px] text-neutral-500 mt-2 font-medium">Manage your factory global configuration and operational parameters.</p>
+          <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
+            <div>
+              <nav className="flex items-center gap-2 text-[13px] font-medium text-neutral-400 mb-2">
+                <Link to="/" className="hover:text-[#006397] transition-colors">Dashboard</Link>
+                <ChevronRight className="w-3.5 h-3.5" />
+                <span className="text-[#006397] font-bold">Settings</span>
+              </nav>
+              <h1 className="text-[32px] font-black text-[#001d31] tracking-tight leading-none">System Settings</h1>
+              <p className="text-[15px] text-neutral-500 mt-2 font-medium">Manage your factory global configuration and operational parameters.</p>
+            </div>
+            <div className="inline-flex items-center p-1 rounded-full glass-panel self-start md:self-auto">
+              {([
+                { id: 'light', label: 'Light', icon: Sun },
+                { id: 'dark', label: 'Dark', icon: Moon },
+                { id: 'system', label: 'System', icon: Smartphone }
+              ] as const).map(opt => {
+                const Icon = opt.icon;
+                const active = themeMode === opt.id;
+                return (
+                  <button
+                    key={opt.id}
+                    type="button"
+                    onClick={() => handleThemeSelect(opt.id)}
+                    className={`px-3.5 py-1.5 rounded-full text-[12px] font-semibold flex items-center gap-1.5 transition-all cursor-pointer ${
+                      active
+                        ? 'bg-[#0284c7] text-white shadow-[0_4px_12px_rgba(2,132,199,0.35)]'
+                        : 'text-slate-600 hover:text-slate-900'
+                    }`}
+                  >
+                    <Icon className="w-3.5 h-3.5" />
+                    <span>{opt.label}</span>
+                  </button>
+                );
+              })}
+            </div>
           </div>
         );
     }
@@ -706,31 +745,243 @@ export default function Settings() {
               </div>
             </section>
 
-            <section className="col-span-12 lg:col-span-5 glass-card p-8 rounded-[30px]">
-              <div className="flex items-center gap-3 mb-8">
-                <div className="w-10 h-10 rounded-2xl bg-white/95 border border-white flex items-center justify-center shadow-[0_4px_12px_rgba(15,23,42,0.05)]">
-                  <Globe className="w-5 h-5 text-[#0284c7]" />
+            <div className="col-span-12 lg:col-span-5 flex flex-col gap-8">
+              {/* iOS 26 Appearance & Liquid Glass Theme Card */}
+              <section className="glass-card p-8 rounded-[30px] relative overflow-hidden">
+                <div className="flex items-center justify-between gap-3 mb-6">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-2xl bg-white/95 border border-white flex items-center justify-center shadow-[0_4px_12px_rgba(15,23,42,0.05)]">
+                      <Sparkles className="w-5 h-5 text-[#0284c7]" />
+                    </div>
+                    <div>
+                      <h3 className="text-[20px] font-bold text-slate-900 leading-tight">Appearance</h3>
+                      <p className="text-[12.5px] text-slate-500 font-medium">
+                        iOS 26 Liquid Glass Theme System
+                      </p>
+                    </div>
+                  </div>
+                  <span className="px-3 py-1 rounded-full bg-sky-50 border border-sky-200/80 text-[11px] font-bold text-[#0284c7] uppercase tracking-wider">
+                    {themeMode === 'system' ? `System (${resolvedTheme})` : themeMode}
+                  </span>
                 </div>
-                <h3 className="text-[20px] font-bold text-slate-900">Regional Settings</h3>
-              </div>
 
-              <div className="space-y-6">
-                <div className="space-y-2">
-                  <label className="text-[11px] font-bold text-slate-500 uppercase tracking-[0.14em] block">System Currency</label>
-                  <GlassSelect 
-                    value={currency} 
-                    onChange={(e) => setCurrency(e.target.value)}
+                {/* Visual Miniature Theme Cards (Light / Dark / System Default) */}
+                <div className="grid grid-cols-3 gap-3.5 mb-6">
+                  {/* Light Mode Option */}
+                  <button
+                    type="button"
+                    onClick={() => handleThemeSelect('light')}
+                    className={`group relative rounded-2xl p-3 border text-left transition-all cursor-pointer flex flex-col items-center gap-2.5 ${
+                      themeMode === 'light'
+                        ? 'border-[#0284c7] ring-2 ring-[#0284c7]/25 bg-sky-50/40'
+                        : 'border-slate-200/80 hover:border-slate-300 bg-white/50'
+                    }`}
                   >
-                    {CURRENCIES.map(curr => (
-                      <option key={curr.code} value={curr.code}>{curr.code} ({curr.symbol}) - {curr.name}</option>
-                    ))}
-                  </GlassSelect>
+                    {/* Miniature iOS 26 Light Mode Device Preview */}
+                    <div className="theme-preview-light w-full h-24 rounded-xl bg-[#f6f8fc] border border-slate-200/90 p-2 flex flex-col justify-between overflow-hidden shadow-inner relative">
+                      <div className="theme-preview-light flex items-center gap-1 px-1.5 py-1 rounded-md bg-white border border-slate-200/60 shadow-2xs">
+                        <span className="w-1.5 h-1.5 rounded-full bg-[#0284c7]" />
+                        <span className="h-1.5 w-10 rounded-full bg-slate-300" />
+                      </div>
+                      <div className="grid grid-cols-2 gap-1.5">
+                        <div className="theme-preview-light h-9 rounded-lg bg-white border border-slate-200/70 p-1.5 flex flex-col justify-between">
+                          <span className="w-3 h-1 rounded-full bg-sky-400" />
+                          <span className="w-6 h-1.5 rounded-full bg-slate-700" />
+                        </div>
+                        <div className="theme-preview-light h-9 rounded-lg bg-white border border-slate-200/70 p-1.5 flex flex-col justify-between">
+                          <span className="w-3 h-1 rounded-full bg-indigo-400" />
+                          <span className="w-5 h-1.5 rounded-full bg-slate-700" />
+                        </div>
+                      </div>
+                      <div className="theme-preview-light h-2.5 rounded-full bg-white/90 border border-slate-200/60 flex items-center justify-around px-2">
+                        <span className="w-2 h-1 rounded-full bg-[#0284c7]" />
+                        <span className="w-2 h-1 rounded-full bg-slate-300" />
+                        <span className="w-2 h-1 rounded-full bg-slate-300" />
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-1.5">
+                      <Sun className={`w-3.5 h-3.5 ${themeMode === 'light' ? 'text-[#0284c7]' : 'text-slate-500'}`} />
+                      <span className="text-[12.5px] font-bold text-slate-900">Light</span>
+                    </div>
+
+                    {themeMode === 'light' && (
+                      <div className="w-4 h-4 rounded-full bg-[#0284c7] text-white flex items-center justify-center shadow-xs">
+                        <CheckCircle2 className="w-3 h-3" />
+                      </div>
+                    )}
+                  </button>
+
+                  {/* Dark Mode Option (True Black #000000) */}
+                  <button
+                    type="button"
+                    onClick={() => handleThemeSelect('dark')}
+                    className={`group relative rounded-2xl p-3 border text-left transition-all cursor-pointer flex flex-col items-center gap-2.5 ${
+                      themeMode === 'dark'
+                        ? 'border-[#38bdf8] ring-2 ring-[#38bdf8]/30 bg-sky-50/40'
+                        : 'border-slate-200/80 hover:border-slate-300 bg-white/50'
+                    }`}
+                  >
+                    {/* Miniature iOS 26 True Black (#000000) Device Preview */}
+                    <div
+                      style={{ backgroundColor: '#000000' }}
+                      className="w-full h-24 rounded-xl border border-white/15 p-2 flex flex-col justify-between overflow-hidden shadow-inner relative"
+                    >
+                      <div
+                        style={{ backgroundColor: 'rgba(24,24,28,0.9)' }}
+                        className="flex items-center gap-1 px-1.5 py-1 rounded-md border border-white/15"
+                      >
+                        <span className="w-1.5 h-1.5 rounded-full bg-[#38bdf8]" />
+                        <span className="h-1.5 w-10 rounded-full bg-white/40" />
+                      </div>
+                      <div className="grid grid-cols-2 gap-1.5">
+                        <div
+                          style={{ backgroundColor: 'rgba(24,24,28,0.88)' }}
+                          className="h-9 rounded-lg border border-white/15 p-1.5 flex flex-col justify-between"
+                        >
+                          <span className="w-3 h-1 rounded-full bg-[#38bdf8]" />
+                          <span className="w-6 h-1.5 rounded-full bg-white/90" />
+                        </div>
+                        <div
+                          style={{ backgroundColor: 'rgba(24,24,28,0.88)' }}
+                          className="h-9 rounded-lg border border-white/15 p-1.5 flex flex-col justify-between"
+                        >
+                          <span className="w-3 h-1 rounded-full bg-purple-400" />
+                          <span className="w-5 h-1.5 rounded-full bg-white/90" />
+                        </div>
+                      </div>
+                      <div
+                        style={{ backgroundColor: 'rgba(24,24,28,0.92)' }}
+                        className="h-2.5 rounded-full border border-white/15 flex items-center justify-around px-2"
+                      >
+                        <span className="w-2 h-1 rounded-full bg-[#38bdf8]" />
+                        <span className="w-2 h-1 rounded-full bg-white/30" />
+                        <span className="w-2 h-1 rounded-full bg-white/30" />
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-1.5">
+                      <Moon className={`w-3.5 h-3.5 ${themeMode === 'dark' ? 'text-[#0284c7]' : 'text-slate-500'}`} />
+                      <span className="text-[12.5px] font-bold text-slate-900">Dark</span>
+                    </div>
+
+                    {themeMode === 'dark' && (
+                      <div className="w-4 h-4 rounded-full bg-[#0284c7] text-white flex items-center justify-center shadow-xs">
+                        <CheckCircle2 className="w-3 h-3" />
+                      </div>
+                    )}
+                  </button>
+
+                  {/* System Default Option */}
+                  <button
+                    type="button"
+                    onClick={() => handleThemeSelect('system')}
+                    className={`group relative rounded-2xl p-3 border text-left transition-all cursor-pointer flex flex-col items-center gap-2.5 ${
+                      themeMode === 'system'
+                        ? 'border-[#0284c7] ring-2 ring-[#0284c7]/25 bg-sky-50/40'
+                        : 'border-slate-200/80 hover:border-slate-300 bg-white/50'
+                    }`}
+                  >
+                    {/* Split Light / True Black Preview */}
+                    <div className="w-full h-24 rounded-xl border border-slate-200/80 overflow-hidden grid grid-cols-2 shadow-inner">
+                      <div className="theme-preview-light bg-[#f6f8fc] p-1.5 flex flex-col justify-between border-r border-slate-200/80">
+                        <div className="theme-preview-light h-2.5 rounded bg-white border border-slate-200/70" />
+                        <div className="theme-preview-light h-9 rounded-md bg-white border border-slate-200/70 p-1 flex flex-col justify-between">
+                          <span className="w-2.5 h-1 rounded-full bg-[#0284c7]" />
+                          <span className="w-4 h-1 rounded-full bg-slate-700" />
+                        </div>
+                        <div className="theme-preview-light h-2 rounded-full bg-white border border-slate-200/70" />
+                      </div>
+                      <div
+                        style={{ backgroundColor: '#000000' }}
+                        className="p-1.5 flex flex-col justify-between"
+                      >
+                        <div
+                          style={{ backgroundColor: 'rgba(24,24,28,0.9)' }}
+                          className="h-2.5 rounded border border-white/15"
+                        />
+                        <div
+                          style={{ backgroundColor: 'rgba(24,24,28,0.88)' }}
+                          className="h-9 rounded-md border border-white/15 p-1 flex flex-col justify-between"
+                        >
+                          <span className="w-2.5 h-1 rounded-full bg-[#38bdf8]" />
+                          <span className="w-4 h-1 rounded-full bg-white/90" />
+                        </div>
+                        <div
+                          style={{ backgroundColor: 'rgba(24,24,28,0.9)' }}
+                          className="h-2 rounded-full border border-white/15"
+                        />
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-1.5">
+                      <Smartphone className={`w-3.5 h-3.5 ${themeMode === 'system' ? 'text-[#0284c7]' : 'text-slate-500'}`} />
+                      <span className="text-[12.5px] font-bold text-slate-900">System</span>
+                    </div>
+
+                    {themeMode === 'system' && (
+                      <div className="w-4 h-4 rounded-full bg-[#0284c7] text-white flex items-center justify-center shadow-xs">
+                        <CheckCircle2 className="w-3 h-3" />
+                      </div>
+                    )}
+                  </button>
                 </div>
 
-                <div className="pt-6 border-t border-slate-200/60 space-y-6">
+                {/* Native iOS 26 Segmented Control Bar */}
+                <div className="p-1.5 rounded-2xl bg-slate-100/90 border border-slate-200/70 grid grid-cols-3 gap-1.5">
+                  {([
+                    { id: 'light', label: 'Light Mode', icon: Sun },
+                    { id: 'dark', label: 'Dark Mode', icon: Moon },
+                    { id: 'system', label: 'System Default', icon: Smartphone }
+                  ] as const).map(item => {
+                    const Icon = item.icon;
+                    const isSelected = themeMode === item.id;
+                    return (
+                      <button
+                        key={item.id}
+                        type="button"
+                        onClick={() => handleThemeSelect(item.id)}
+                        className={`py-2.5 px-3 rounded-xl text-[12px] font-bold flex items-center justify-center gap-1.5 transition-all cursor-pointer ${
+                          isSelected
+                            ? 'bg-[#0284c7] text-white shadow-[0_4px_12px_rgba(2,132,199,0.3)]'
+                            : 'text-slate-600 hover:text-slate-900'
+                        }`}
+                      >
+                        <Icon className="w-3.5 h-3.5 shrink-0" />
+                        <span className="truncate">{item.label}</span>
+                      </button>
+                    );
+                  })}
                 </div>
-              </div>
-            </section>
+
+                <p className="text-[11.5px] text-slate-400 mt-4 font-medium leading-relaxed">
+                  Dark Mode uses a true black (<span className="font-mono font-semibold">#000000</span>) OLED canvas with translucent iOS 26 Liquid Glass surfaces. System Default automatically adapts to your device appearance settings.
+                </p>
+              </section>
+
+              <section className="glass-card p-8 rounded-[30px]">
+                <div className="flex items-center gap-3 mb-8">
+                  <div className="w-10 h-10 rounded-2xl bg-white/95 border border-white flex items-center justify-center shadow-[0_4px_12px_rgba(15,23,42,0.05)]">
+                    <Globe className="w-5 h-5 text-[#0284c7]" />
+                  </div>
+                  <h3 className="text-[20px] font-bold text-slate-900">Regional Settings</h3>
+                </div>
+
+                <div className="space-y-6">
+                  <div className="space-y-2">
+                    <label className="text-[11px] font-bold text-slate-500 uppercase tracking-[0.14em] block">System Currency</label>
+                    <GlassSelect 
+                      value={currency} 
+                      onChange={(e) => setCurrency(e.target.value)}
+                    >
+                      {CURRENCIES.map(curr => (
+                        <option key={curr.code} value={curr.code}>{curr.code} ({curr.symbol}) - {curr.name}</option>
+                      ))}
+                    </GlassSelect>
+                  </div>
+                </div>
+              </section>
+            </div>
           </div>
         );
       case 'User Rules':

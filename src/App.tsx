@@ -45,13 +45,13 @@ import Reports from './pages/Reports';
 import Settings from './pages/Settings';
 
 function AuthGuard({ children }: { children: React.ReactNode }) {
-  const { currentUser, authLoading } = useAppContext();
+  const { currentUser, authLoading, resolvedTheme } = useAppContext();
   const location = useLocation();
 
   if (authLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-[#f8f9fa]">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#162839]"></div>
+      <div className={`min-h-screen flex items-center justify-center ${resolvedTheme === 'dark' ? 'bg-black' : 'bg-[#f6f8fc]'}`}>
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#0284c7]"></div>
       </div>
     );
   }

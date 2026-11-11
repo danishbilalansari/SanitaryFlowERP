@@ -10,6 +10,7 @@ import {
   Tooltip,
   ResponsiveContainer
 } from 'recharts';
+import { useAppContext } from '../../store';
 
 export type GlossTheme = 'frosted' | 'sky' | 'midnight';
 export type ChartStyle = 'glossy-bars' | 'area';
@@ -177,12 +178,16 @@ export function GlossyChartCard({
     });
   };
 
-  const isDarkGraph = glossTheme === 'midnight' || glossTheme === 'sky';
+  const { resolvedTheme } = useAppContext();
+  const isGlobalDark = resolvedTheme === 'dark';
+  const isDarkGraph = glossTheme === 'midnight' || glossTheme === 'sky' || (glossTheme === 'frosted' && isGlobalDark);
   const graphCardSurfaceClass =
     glossTheme === 'midnight'
       ? 'bg-gradient-to-b from-[#111556] via-[#191f78] to-[#1e1b6e] border-indigo-300/35 shadow-[0_24px_60px_-12px_rgba(17,21,86,0.55),inset_0_1.5px_2px_rgba(255,255,255,0.25)]'
       : glossTheme === 'sky'
-      ? 'bg-gradient-to-b from-[#1d9bf0] via-[#4eb8f7] to-[#b8dcf8] border-white/80 shadow-[0_24px_54px_-12px_rgba(29,155,240,0.32),inset_0_1.5px_2px_rgba(255,255,255,0.85)]'
+      ? 'bg-gradient-to-b from-[#1d9bf0] via-[#4eb8f7] to-[#b8dcf8] border-white/80 shadow-[0_24px_54px_-12px_rgba(29,155,240,0.32),inset_0_1.5px_2px_rgba(255,255,245,0.85)]'
+      : isGlobalDark
+      ? 'bg-gradient-to-b from-[#0c0d14] via-[#11131c] to-[#08090e] backdrop-blur-3xl border-white/15 shadow-[0_24px_60px_-12px_rgba(0,0,0,0.85),inset_0_1px_1.5px_rgba(255,255,255,0.12)]'
       : 'bg-gradient-to-b from-white/[0.90] via-slate-50/[0.84] to-white/[0.78] backdrop-blur-3xl border-white/95 shadow-[0_20px_50px_-10px_rgba(15,23,42,0.06),inset_0_1.5px_2px_rgba(255,255,255,1)]';
 
   return (
@@ -196,6 +201,8 @@ export function GlossyChartCard({
             ? 'bg-indigo-500/35 opacity-90'
             : glossTheme === 'sky'
             ? 'bg-white/55 opacity-95'
+            : isGlobalDark
+            ? 'bg-gradient-to-r from-sky-500/15 via-indigo-500/15 to-purple-500/15 opacity-80'
             : 'bg-gradient-to-r from-sky-300/30 via-pink-300/25 to-indigo-300/25 opacity-90'
         }`}
       />
@@ -243,7 +250,9 @@ export function GlossyChartCard({
               onClick={() => setGlossTheme('frosted')}
               className={`px-2.5 py-1 rounded-full text-[11px] font-semibold flex items-center gap-1.5 transition-all cursor-pointer ${
                 glossTheme === 'frosted'
-                  ? 'bg-white text-slate-900 shadow-xs'
+                  ? isGlobalDark
+                    ? 'bg-white/20 text-white border border-white/25 shadow-xs'
+                    : 'bg-white text-slate-900 shadow-xs'
                   : isDarkGraph
                   ? 'text-white/80 hover:text-white'
                   : 'text-slate-500 hover:text-slate-900'
@@ -443,16 +452,31 @@ export function GlossyChartCard({
                   fill: isDarkGraph ? 'rgba(255,255,255,0.06)' : 'rgba(14,165,233,0.04)',
                   radius: 16
                 }}
-                contentStyle={{
-                  backgroundColor: 'rgba(255, 255, 255, 0.94)',
-                  backdropFilter: 'blur(20px)',
-                  borderRadius: '18px',
-                  border: '1px solid rgba(255, 255, 255, 1)',
-                  boxShadow: '0 12px 30px rgba(15, 23, 42, 0.12)',
-                  fontSize: '13px',
-                  fontWeight: 600,
-                  color: '#0f172a'
-                }}
+                contentStyle={
+                  isGlobalDark || isDarkGraph
+                    ? {
+                        backgroundColor: 'rgba(18, 18, 22, 0.94)',
+                        backdropFilter: 'blur(24px)',
+                        borderRadius: '18px',
+                        border: '1px solid rgba(255, 255, 255, 0.16)',
+                        boxShadow: '0 16px 36px rgba(0, 0, 0, 0.7)',
+                        fontSize: '13px',
+                        fontWeight: 600,
+                        color: '#f8fafc'
+                      }
+                    : {
+                        backgroundColor: 'rgba(255, 255, 255, 0.94)',
+                        backdropFilter: 'blur(20px)',
+                        borderRadius: '18px',
+                        border: '1px solid rgba(255, 255, 255, 1)',
+                        boxShadow: '0 12px 30px rgba(15, 23, 42, 0.12)',
+                        fontSize: '13px',
+                        fontWeight: 600,
+                        color: '#0f172a'
+                      }
+                }
+                itemStyle={{ color: isGlobalDark || isDarkGraph ? '#38bdf8' : '#0284c7' }}
+                labelStyle={{ color: isGlobalDark || isDarkGraph ? '#f8fafc' : '#0f172a' }}
                 formatter={(value: any) => [
                   valueFormatter ? valueFormatter(value) : `${value}`,
                   valueLabel
@@ -506,16 +530,31 @@ export function GlossyChartCard({
                 width={52}
               />
               <Tooltip
-                contentStyle={{
-                  backgroundColor: 'rgba(255, 255, 255, 0.94)',
-                  backdropFilter: 'blur(20px)',
-                  borderRadius: '18px',
-                  border: '1px solid rgba(255, 255, 255, 1)',
-                  boxShadow: '0 12px 30px rgba(15, 23, 42, 0.12)',
-                  fontSize: '13px',
-                  fontWeight: 600,
-                  color: '#0f172a'
-                }}
+                contentStyle={
+                  isGlobalDark || isDarkGraph
+                    ? {
+                        backgroundColor: 'rgba(18, 18, 22, 0.94)',
+                        backdropFilter: 'blur(24px)',
+                        borderRadius: '18px',
+                        border: '1px solid rgba(255, 255, 255, 0.16)',
+                        boxShadow: '0 16px 36px rgba(0, 0, 0, 0.7)',
+                        fontSize: '13px',
+                        fontWeight: 600,
+                        color: '#f8fafc'
+                      }
+                    : {
+                        backgroundColor: 'rgba(255, 255, 255, 0.94)',
+                        backdropFilter: 'blur(20px)',
+                        borderRadius: '18px',
+                        border: '1px solid rgba(255, 255, 255, 1)',
+                        boxShadow: '0 12px 30px rgba(15, 23, 42, 0.12)',
+                        fontSize: '13px',
+                        fontWeight: 600,
+                        color: '#0f172a'
+                      }
+                }
+                itemStyle={{ color: isGlobalDark || isDarkGraph ? '#38bdf8' : '#0284c7' }}
+                labelStyle={{ color: isGlobalDark || isDarkGraph ? '#f8fafc' : '#0f172a' }}
                 formatter={(value: any) => [
                   valueFormatter ? valueFormatter(value) : `${value}`,
                   valueLabel
@@ -568,9 +607,15 @@ export function GlassCapsuleBar({
   heightClass = 'h-3.5',
   className = ''
 }: GlassCapsuleBarProps) {
+  const { resolvedTheme } = useAppContext();
   const rawPct = percentage !== undefined ? percentage : pct !== undefined ? pct : 0;
   const clamped = Math.min(100, Math.max(8, Number(rawPct) || 0));
-  const isDark = darkMode !== undefined ? darkMode : mode === 'dark';
+  const isDark =
+    darkMode !== undefined
+      ? darkMode
+      : resolvedTheme === 'dark'
+      ? true
+      : mode === 'dark';
 
   return (
     <div
