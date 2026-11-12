@@ -247,16 +247,16 @@ export default function ForgotPassword() {
   };
 
   return (
-    <div className={`relative font-sans flex flex-col min-h-screen overflow-hidden ${isDark ? 'bg-black text-slate-100' : 'bg-[#f6f8fc] text-slate-900'} selection:bg-sky-500/20 selection:text-sky-400 transition-colors duration-300`}>
+    <div className={`relative font-sans flex flex-col min-h-screen overflow-hidden ${isDark ? 'bg-[#2b2c30] text-slate-100' : 'bg-[#f6f8fc] text-slate-900'} selection:bg-sky-500/20 selection:text-sky-400 transition-colors duration-300`}>
       {/* iOS 26 Liquid Glass Gradient Background & Floating Blobs */}
       <div className="fixed inset-0 pointer-events-none z-0 overflow-hidden">
-        <div className={`absolute inset-0 transition-colors duration-500 ${isDark ? 'bg-black' : 'bg-gradient-to-br from-[#eef6ff] via-[#f8f9fc] to-[#fcf5fe]'}`} />
+        <div className={`absolute inset-0 transition-colors duration-500 ${isDark ? 'bg-[#2b2c30]' : 'bg-gradient-to-br from-[#eef6ff] via-[#f8f9fc] to-[#fcf5fe]'}`} />
         {/* Top-left Cyan / Sky Floating Blob */}
-        <div className={`absolute -top-[12%] -left-[8%] w-[52vw] h-[52vw] rounded-full blur-[115px] animate-liquid-1 ${isDark ? 'bg-gradient-to-br from-sky-500/12 via-cyan-500/08 to-transparent' : 'bg-gradient-to-br from-cyan-300/45 via-sky-200/35 to-transparent'}`} />
+        <div className={`absolute -top-[12%] -left-[8%] w-[52vw] h-[52vw] rounded-full blur-[115px] animate-liquid-1 ${isDark ? 'bg-gradient-to-br from-sky-500/08 via-cyan-500/05 to-transparent' : 'bg-gradient-to-br from-cyan-300/45 via-sky-200/35 to-transparent'}`} />
         {/* Center-right Lavender / Rose Floating Blob */}
-        <div className={`absolute top-[18%] -right-[10%] w-[48vw] h-[48vw] rounded-full blur-[125px] animate-liquid-2 ${isDark ? 'bg-gradient-to-bl from-indigo-500/12 via-purple-500/08 to-transparent' : 'bg-gradient-to-bl from-fuchsia-300/40 via-pink-200/35 to-transparent'}`} />
+        <div className={`absolute top-[18%] -right-[10%] w-[48vw] h-[48vw] rounded-full blur-[125px] animate-liquid-2 ${isDark ? 'bg-gradient-to-bl from-indigo-500/08 via-purple-500/05 to-transparent' : 'bg-gradient-to-bl from-fuchsia-300/40 via-pink-200/35 to-transparent'}`} />
         {/* Bottom-left Mint / Aqua Floating Blob */}
-        <div className={`absolute -bottom-[15%] left-[18%] w-[50vw] h-[50vw] rounded-full blur-[120px] animate-liquid-3 ${isDark ? 'bg-gradient-to-tr from-emerald-500/10 via-teal-500/06 to-transparent' : 'bg-gradient-to-tr from-emerald-200/45 via-teal-100/35 to-transparent'}`} />
+        <div className={`absolute -bottom-[15%] left-[18%] w-[50vw] h-[50vw] rounded-full blur-[120px] animate-liquid-3 ${isDark ? 'bg-gradient-to-tr from-emerald-500/08 via-teal-500/05 to-transparent' : 'bg-gradient-to-tr from-emerald-200/45 via-teal-100/35 to-transparent'}`} />
       </div>
 
       <main className="relative z-10 flex-grow flex items-center justify-center px-4 sm:px-6 py-12">

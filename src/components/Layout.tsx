@@ -125,14 +125,14 @@ export default function Layout() {
     .toUpperCase();
 
   return (
-    <div className={`relative flex print:block h-screen print:h-auto ${isDark ? 'bg-black text-slate-100' : 'bg-[#f6f8fc] text-slate-900'} print:bg-white font-sans tracking-normal overflow-hidden print:overflow-visible selection:bg-sky-500/20 selection:text-sky-400 transition-colors duration-300`}>
+    <div className={`relative flex print:block h-screen print:h-auto ${isDark ? 'bg-[#2b2c30] text-slate-100' : 'bg-[#f6f8fc] text-slate-900'} print:bg-white font-sans tracking-normal overflow-hidden print:overflow-visible selection:bg-sky-500/20 selection:text-sky-400 transition-colors duration-300`}>
       {/* iOS 26 Liquid Glass Ambient Canvas & Floating Color Blobs */}
       <div className="fixed inset-0 pointer-events-none z-0 overflow-hidden print:hidden">
-        {/* Base canvas: Soft luminous pastel in Light Mode, True Black (#000000) in Dark Mode */}
+        {/* Base canvas: Soft luminous pastel in Light Mode, Matte Charcoal (#2b2c30) in Dark Mode */}
         <div
           className={`absolute inset-0 transition-colors duration-500 ${
             isDark
-              ? 'bg-black'
+              ? 'bg-[#2b2c30]'
               : 'bg-gradient-to-br from-[#eef6ff] via-[#f8f9fc] to-[#f3f5fb]'
           }`}
         />
@@ -141,7 +141,7 @@ export default function Layout() {
         <div
           className={`absolute -top-[14%] -left-[8%] w-[52vw] h-[52vw] rounded-full blur-[115px] animate-liquid-1 transition-opacity duration-500 ${
             isDark
-              ? 'bg-gradient-to-br from-sky-500/12 via-cyan-500/08 to-transparent'
+              ? 'bg-gradient-to-br from-sky-500/06 via-cyan-500/04 to-transparent'
               : 'bg-gradient-to-br from-sky-300/45 via-cyan-200/35 to-transparent'
           }`}
         />
@@ -150,7 +150,7 @@ export default function Layout() {
         <div
           className={`absolute top-[12%] -right-[10%] w-[48vw] h-[52vw] rounded-full blur-[125px] animate-liquid-2 transition-opacity duration-500 ${
             isDark
-              ? 'bg-gradient-to-bl from-indigo-500/12 via-purple-500/08 to-transparent'
+              ? 'bg-gradient-to-bl from-indigo-500/06 via-purple-500/04 to-transparent'
               : 'bg-gradient-to-bl from-fuchsia-200/45 via-pink-200/35 to-indigo-200/25'
           }`}
         />
@@ -159,14 +159,18 @@ export default function Layout() {
         <div
           className={`absolute -bottom-[16%] left-[12%] w-[46vw] h-[46vw] rounded-full blur-[120px] animate-liquid-3 transition-opacity duration-500 ${
             isDark
-              ? 'bg-gradient-to-tr from-emerald-500/10 via-teal-500/06 to-transparent'
+              ? 'bg-gradient-to-tr from-emerald-500/06 via-teal-500/04 to-transparent'
               : 'bg-gradient-to-tr from-emerald-200/40 via-teal-200/30 to-cyan-100/20'
           }`}
         />
       </div>
 
-      {/* Desktop iOS 26 Liquid Glass Sidebar (Modeled after Lumen Glass Reference) */}
-      <aside className="hidden md:flex w-[252px] flex-col z-20 print:hidden m-4 mr-0 rounded-[32px] bg-white/[0.68] backdrop-blur-3xl border-[1.5px] border-white/95 shadow-[0_12px_40px_-8px_rgba(15,23,42,0.06),0_4px_14px_rgba(15,23,42,0.03),inset_0_1px_2px_rgba(255,255,255,1)] transition-all">
+      {/* Desktop iOS 26 Liquid Glass Sidebar */}
+      <aside className={`hidden md:flex w-[252px] flex-col z-20 print:hidden m-4 mr-0 rounded-[32px] transition-all ${
+        isDark
+          ? 'bg-[#141518] border border-white/[0.08] shadow-[0_18px_42px_-8px_rgba(0,0,0,0.45),inset_0_1px_1px_rgba(255,255,255,0.06)]'
+          : 'bg-white/[0.68] backdrop-blur-3xl border-[1.5px] border-white/95 shadow-[0_12px_40px_-8px_rgba(15,23,42,0.06),0_4px_14px_rgba(15,23,42,0.03),inset_0_1px_2px_rgba(255,255,255,1)]'
+      }`}>
         {/* Brand Header */}
         <div className="p-6 pb-5">
           <NavLink to="/dashboard" className="flex items-center gap-3.5 group">

@@ -187,7 +187,7 @@ export function GlossyChartCard({
       : glossTheme === 'sky'
       ? 'bg-gradient-to-b from-[#1d9bf0] via-[#4eb8f7] to-[#b8dcf8] border-white/80 shadow-[0_24px_54px_-12px_rgba(29,155,240,0.32),inset_0_1.5px_2px_rgba(255,255,245,0.85)]'
       : isGlobalDark
-      ? 'bg-gradient-to-b from-[#0c0d14] via-[#11131c] to-[#08090e] backdrop-blur-3xl border-white/15 shadow-[0_24px_60px_-12px_rgba(0,0,0,0.85),inset_0_1px_1.5px_rgba(255,255,255,0.12)]'
+      ? 'bg-gradient-to-b from-[#131417] via-[#16181c] to-[#121316] border-white/[0.08] shadow-[0_20px_50px_-12px_rgba(0,0,0,0.45),inset_0_1px_1px_rgba(255,255,255,0.07)]'
       : 'bg-gradient-to-b from-white/[0.90] via-slate-50/[0.84] to-white/[0.78] backdrop-blur-3xl border-white/95 shadow-[0_20px_50px_-10px_rgba(15,23,42,0.06),inset_0_1.5px_2px_rgba(255,255,255,1)]';
 
   return (
@@ -202,7 +202,7 @@ export function GlossyChartCard({
             : glossTheme === 'sky'
             ? 'bg-white/55 opacity-95'
             : isGlobalDark
-            ? 'bg-gradient-to-r from-sky-500/15 via-indigo-500/15 to-purple-500/15 opacity-80'
+            ? 'bg-gradient-to-r from-sky-500/10 via-emerald-500/08 to-indigo-500/10 opacity-75'
             : 'bg-gradient-to-r from-sky-300/30 via-pink-300/25 to-indigo-300/25 opacity-90'
         }`}
       />
@@ -212,7 +212,7 @@ export function GlossyChartCard({
           <div
             className={`w-11 h-11 rounded-2xl flex items-center justify-center shrink-0 transition-all ${
               isDarkGraph
-                ? 'bg-white/15 border border-white/35 text-white shadow-[inset_0_1px_1px_rgba(255,255,255,0.4)]'
+                ? 'bg-[#26282e] border border-white/10 text-white shadow-[inset_0_1px_1px_rgba(255,255,255,0.12)]'
                 : 'bg-white/95 border border-white text-slate-900 shadow-[0_4px_12px_rgba(15,23,42,0.06),inset_0_1px_1px_rgba(255,255,255,1)]'
             }`}
           >
@@ -684,7 +684,7 @@ export function GlassCircularGauge({
     <div
       className={`relative rounded-[32px] p-6 sm:p-7 flex flex-col justify-between h-full transition-all duration-500 overflow-hidden border ${
         darkMode
-          ? 'bg-[#12131a] border-white/15 text-white shadow-[0_24px_60px_rgba(0,0,0,0.55),inset_0_1px_1px_rgba(255,255,255,0.12)]'
+          ? 'bg-[#18191d] border-white/[0.09] text-white shadow-[0_20px_50px_rgba(0,0,0,0.42),inset_0_1px_1px_rgba(255,255,255,0.08)]'
           : 'bg-white/[0.85] backdrop-blur-3xl border-white text-slate-900 shadow-[0_20px_50px_-10px_rgba(15,23,42,0.07),inset_0_1.5px_2px_rgba(255,255,255,1)]'
       }`}
     >

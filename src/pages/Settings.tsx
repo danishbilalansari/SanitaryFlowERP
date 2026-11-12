@@ -822,39 +822,39 @@ export default function Settings() {
                         : 'border-slate-200/80 hover:border-slate-300 bg-white/50'
                     }`}
                   >
-                    {/* Miniature iOS 26 True Black (#000000) Device Preview */}
+                    {/* Miniature iOS 26 Charcoal & Carbon Device Preview */}
                     <div
-                      style={{ backgroundColor: '#000000' }}
+                      style={{ backgroundColor: '#2b2c30' }}
                       className="w-full h-24 rounded-xl border border-white/15 p-2 flex flex-col justify-between overflow-hidden shadow-inner relative"
                     >
                       <div
-                        style={{ backgroundColor: 'rgba(24,24,28,0.9)' }}
-                        className="flex items-center gap-1 px-1.5 py-1 rounded-md border border-white/15"
+                        style={{ backgroundColor: '#18191d' }}
+                        className="flex items-center gap-1 px-1.5 py-1 rounded-md border border-white/10"
                       >
-                        <span className="w-1.5 h-1.5 rounded-full bg-[#38bdf8]" />
-                        <span className="h-1.5 w-10 rounded-full bg-white/40" />
+                        <span className="w-1.5 h-1.5 rounded-full bg-[#a3e635]" />
+                        <span className="h-1.5 w-10 rounded-full bg-white/50" />
                       </div>
                       <div className="grid grid-cols-2 gap-1.5">
                         <div
-                          style={{ backgroundColor: 'rgba(24,24,28,0.88)' }}
-                          className="h-9 rounded-lg border border-white/15 p-1.5 flex flex-col justify-between"
+                          style={{ backgroundColor: '#25272d' }}
+                          className="h-9 rounded-lg border border-white/10 p-1.5 flex flex-col justify-between"
                         >
                           <span className="w-3 h-1 rounded-full bg-[#38bdf8]" />
                           <span className="w-6 h-1.5 rounded-full bg-white/90" />
                         </div>
                         <div
-                          style={{ backgroundColor: 'rgba(24,24,28,0.88)' }}
-                          className="h-9 rounded-lg border border-white/15 p-1.5 flex flex-col justify-between"
+                          style={{ backgroundColor: '#25272d' }}
+                          className="h-9 rounded-lg border border-white/10 p-1.5 flex flex-col justify-between"
                         >
-                          <span className="w-3 h-1 rounded-full bg-purple-400" />
+                          <span className="w-3 h-1 rounded-full bg-[#a3e635]" />
                           <span className="w-5 h-1.5 rounded-full bg-white/90" />
                         </div>
                       </div>
                       <div
-                        style={{ backgroundColor: 'rgba(24,24,28,0.92)' }}
-                        className="h-2.5 rounded-full border border-white/15 flex items-center justify-around px-2"
+                        style={{ backgroundColor: '#18191d' }}
+                        className="h-2.5 rounded-full border border-white/10 flex items-center justify-around px-2"
                       >
-                        <span className="w-2 h-1 rounded-full bg-[#38bdf8]" />
+                        <span className="w-2 h-1 rounded-full bg-[#a3e635]" />
                         <span className="w-2 h-1 rounded-full bg-white/30" />
                         <span className="w-2 h-1 rounded-full bg-white/30" />
                       </div>
@@ -882,7 +882,7 @@ export default function Settings() {
                         : 'border-slate-200/80 hover:border-slate-300 bg-white/50'
                     }`}
                   >
-                    {/* Split Light / True Black Preview */}
+                    {/* Split Light / Charcoal Dark Preview */}
                     <div className="w-full h-24 rounded-xl border border-slate-200/80 overflow-hidden grid grid-cols-2 shadow-inner">
                       <div className="theme-preview-light bg-[#f6f8fc] p-1.5 flex flex-col justify-between border-r border-slate-200/80">
                         <div className="theme-preview-light h-2.5 rounded bg-white border border-slate-200/70" />
@@ -893,11 +893,11 @@ export default function Settings() {
                         <div className="theme-preview-light h-2 rounded-full bg-white border border-slate-200/70" />
                       </div>
                       <div
-                        style={{ backgroundColor: '#000000' }}
+                        style={{ backgroundColor: '#2b2c30' }}
                         className="p-1.5 flex flex-col justify-between"
                       >
                         <div
-                          style={{ backgroundColor: 'rgba(24,24,28,0.9)' }}
+                          style={{ backgroundColor: '#18191d' }}
                           className="h-2.5 rounded border border-white/15"
                         />
                         <div

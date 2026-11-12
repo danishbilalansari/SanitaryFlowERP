@@ -232,7 +232,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
       const metaThemeColor = document.getElementById('app-theme-color');
       if (metaThemeColor) {
-        metaThemeColor.setAttribute('content', resolvedTheme === 'dark' ? '#000000' : '#f6f8fc');
+        metaThemeColor.setAttribute('content', resolvedTheme === 'dark' ? '#2b2c30' : '#f6f8fc');
       }
     }
   }, [themeMode, resolvedTheme]);

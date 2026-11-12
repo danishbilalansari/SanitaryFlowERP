@@ -50,7 +50,7 @@ function AuthGuard({ children }: { children: React.ReactNode }) {
 
   if (authLoading) {
     return (
-      <div className={`min-h-screen flex items-center justify-center ${resolvedTheme === 'dark' ? 'bg-black' : 'bg-[#f6f8fc]'}`}>
+      <div className={`min-h-screen flex items-center justify-center ${resolvedTheme === 'dark' ? 'bg-[#2b2c30]' : 'bg-[#f6f8fc]'}`}>
         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#0284c7]"></div>
       </div>
     );

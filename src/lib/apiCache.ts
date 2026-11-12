@@ -29,8 +29,12 @@ export async function cachedJsonFetch<T = any>(
 ): Promise<T> {
   const method = (options?.method || 'GET').toUpperCase();
   if (method !== 'GET') {
-    const res = await fetch(url, options);
+    const res = await fetch(url, { credentials: 'include', ...options });
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const ct = res.headers.get('content-type') || '';
+    if (!ct.includes('application/json')) {
+      throw new Error(`Expected JSON from ${url}`);
+    }
     return res.json();
   }
 
@@ -49,6 +53,10 @@ export async function cachedJsonFetch<T = any>(
     .then(async (res) => {
       if (!res.ok) {
         throw new Error(`HTTP ${res.status}`);
+      }
+      const ct = res.headers.get('content-type') || '';
+      if (!ct.includes('application/json')) {
+        throw new Error(`Expected JSON from ${url}`);
       }
       const data = await res.json();
       responseCache.set(url, { data, timestamp: Date.now() });

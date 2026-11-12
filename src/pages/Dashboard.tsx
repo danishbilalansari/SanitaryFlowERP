@@ -254,32 +254,48 @@ export default function Dashboard() {
 
       {/* Horizontal KPI Cards Row */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        {kpis.map((kpi, i) => (
-          <motion.div
-            key={i}
-            initial={{ opacity: 0, y: 12 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.35, delay: i * 0.05 }}
-            whileHover={{ y: -2 }}
-            className="rounded-[28px] bg-white/[0.74] backdrop-blur-3xl border border-white/95 p-5 shadow-[0_10px_30px_-6px_rgba(15,23,42,0.05),inset_0_1px_2px_rgba(255,255,255,1)] flex items-center gap-4"
-          >
-            <div className="w-12 h-12 rounded-2xl bg-white/90 border border-white shadow-[0_4px_12px_rgba(15,23,42,0.05),inset_0_1px_1px_rgba(255,255,255,1)] flex items-center justify-center shrink-0">
-              <kpi.icon className={`w-5 h-5 ${kpi.iconColor} stroke-[1.9]`} />
-            </div>
-            <div className="min-w-0 flex-1">
-              <p className="text-[10.5px] font-semibold tracking-[0.09em] text-slate-500 uppercase truncate">
-                {kpi.label}
-              </p>
-              {loading ? (
-                <div className="h-7 w-28 rounded-full bg-slate-200/80 animate-pulse mt-1" />
-              ) : (
-                <h3 className="text-[22px] sm:text-[24px] font-bold text-slate-900 tracking-tight leading-tight mt-0.5 tabular-nums truncate">
-                  {kpi.value}
-                </h3>
-              )}
-            </div>
-          </motion.div>
-        ))}
+        {kpis.map((kpi, i) => {
+          const darkKpiGradients = [
+            'bg-gradient-to-br from-[#2d334a] via-[#262936] to-[#23252b] border-white/10 shadow-[0_14px_34px_-6px_rgba(0,0,0,0.38),inset_0_1px_1px_rgba(255,255,255,0.09)]',
+            'bg-gradient-to-br from-[#353b2c] via-[#2b2e26] to-[#23252b] border-white/10 shadow-[0_14px_34px_-6px_rgba(0,0,0,0.38),inset_0_1px_1px_rgba(255,255,255,0.09)]',
+            'bg-gradient-to-br from-[#263a3e] via-[#232f33] to-[#23252b] border-white/10 shadow-[0_14px_34px_-6px_rgba(0,0,0,0.38),inset_0_1px_1px_rgba(255,255,255,0.09)]',
+            'bg-gradient-to-br from-[#2b3c2e] via-[#253028] to-[#23252b] border-white/10 shadow-[0_14px_34px_-6px_rgba(0,0,0,0.38),inset_0_1px_1px_rgba(255,255,255,0.09)]'
+          ];
+          return (
+            <motion.div
+              key={i}
+              initial={{ opacity: 0, y: 12 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.35, delay: i * 0.05 }}
+              whileHover={{ y: -2 }}
+              className={`rounded-[28px] border p-5 flex items-center gap-4 transition-all ${
+                isDark
+                  ? darkKpiGradients[i % darkKpiGradients.length]
+                  : 'bg-white/[0.74] backdrop-blur-3xl border-white/95 shadow-[0_10px_30px_-6px_rgba(15,23,42,0.05),inset_0_1px_2px_rgba(255,255,255,1)]'
+              }`}
+            >
+              <div className={`w-12 h-12 rounded-2xl border flex items-center justify-center shrink-0 ${
+                isDark
+                  ? '!bg-[#16171b] !border-white/10 shadow-[0_4px_12px_rgba(0,0,0,0.35)]'
+                  : 'bg-white/90 border-white shadow-[0_4px_12px_rgba(15,23,42,0.05),inset_0_1px_1px_rgba(255,255,255,1)]'
+              }`}>
+                <kpi.icon className={`w-5 h-5 ${kpi.iconColor} stroke-[1.9]`} />
+              </div>
+              <div className="min-w-0 flex-1">
+                <p className="text-[10.5px] font-semibold tracking-[0.09em] text-slate-500 uppercase truncate">
+                  {kpi.label}
+                </p>
+                {loading ? (
+                  <div className="h-7 w-28 rounded-full bg-slate-200/80 animate-pulse mt-1" />
+                ) : (
+                  <h3 className="text-[22px] sm:text-[24px] font-bold text-slate-900 tracking-tight leading-tight mt-0.5 tabular-nums truncate">
+                    {kpi.value}
+                  </h3>
+                )}
+              </div>
+            </motion.div>
+          );
+        })}
       </div>
 
       {/* Main Glossy Graph Card */}
@@ -663,7 +679,7 @@ export default function Dashboard() {
           transition={{ duration: 0.4, delay: 0.24 }}
           className={`lg:col-span-4 rounded-[32px] p-6 sm:p-7 transition-colors duration-500 flex flex-col justify-between relative overflow-hidden ${
             isTopSellingBlack
-              ? 'bg-gradient-to-b from-[#0b0f19] via-[#111827] to-[#030712] border border-slate-800/80 shadow-[0_20px_50px_-10px_rgba(0,0,0,0.7),inset_0_1.5px_2px_rgba(255,255,255,0.12)] text-white'
+              ? 'bg-[#18191d] border border-white/[0.09] shadow-[0_18px_46px_-10px_rgba(0,0,0,0.45),inset_0_1px_1px_rgba(255,255,255,0.07)] text-white'
               : 'bg-white/[0.74] backdrop-blur-3xl border border-white/95 shadow-[0_14px_40px_-8px_rgba(15,23,42,0.05),inset_0_1px_2px_rgba(255,255,255,1)] text-slate-900'
           }`}
         >
@@ -671,7 +687,7 @@ export default function Dashboard() {
           <div
             className={`pointer-events-none absolute -bottom-20 right-0 w-64 h-64 rounded-full blur-3xl transition-opacity duration-500 ${
               isTopSellingBlack
-                ? 'bg-indigo-600/20 opacity-80'
+                ? 'bg-emerald-500/10 opacity-70'
                 : 'bg-sky-400/15 opacity-70'
             }`}
           />
@@ -682,7 +698,7 @@ export default function Dashboard() {
                 <div
                   className={`w-10 h-10 rounded-2xl flex items-center justify-center shrink-0 transition-all ${
                     isTopSellingBlack
-                      ? 'bg-white/10 border border-white/20 text-sky-400 shadow-[inset_0_1px_1px_rgba(255,255,255,0.2)]'
+                      ? 'bg-[#282a30] border border-white/10 text-sky-400 shadow-[inset_0_1px_1px_rgba(255,255,255,0.12)]'
                       : 'bg-white/90 border border-white shadow-[0_4px_12px_rgba(15,23,42,0.05)] text-[#0284c7]'
                   }`}
                 >
@@ -714,7 +730,7 @@ export default function Dashboard() {
                 aria-label={isTopSellingBlack ? "Switch to Light Theme" : "Switch to Black Theme"}
                 className={`w-8 h-8 rounded-full border backdrop-blur-xl flex items-center justify-center shrink-0 transition-all cursor-pointer ${
                   isTopSellingBlack
-                    ? 'bg-white/10 hover:bg-white/20 border-white/20 text-amber-300 shadow-[inset_0_1px_1px_rgba(255,255,255,0.15)]'
+                    ? 'bg-[#282a30] hover:bg-[#32353d] border-white/15 text-amber-300 shadow-[inset_0_1px_1px_rgba(255,255,255,0.12)]'
                     : 'bg-white/85 hover:bg-white border-white text-slate-700 shadow-[0_2px_8px_rgba(15,23,42,0.06)]'
                 }`}
               >
@@ -732,7 +748,7 @@ export default function Dashboard() {
                   <div
                     key={i}
                     className={`p-3.5 rounded-2xl space-y-2.5 ${
-                      isTopSellingBlack ? 'bg-white/5 border border-white/10' : 'bg-white/65 border border-white/85'
+                      isTopSellingBlack ? 'bg-[#282a30] border border-white/10' : 'bg-white/65 border border-white/85'
                     }`}
                   >
                     <div className="flex items-center justify-between gap-2">
@@ -756,7 +772,7 @@ export default function Dashboard() {
                         key={i}
                         className={`p-3.5 rounded-2xl transition-all space-y-2.5 ${
                           isTopSellingBlack
-                            ? 'bg-white/[0.05] hover:bg-white/[0.08] border border-white/10 shadow-[0_2px_8px_rgba(0,0,0,0.3)]'
+                            ? 'bg-[#282a30] hover:bg-[#31333b] border border-white/[0.08] shadow-[0_4px_12px_rgba(0,0,0,0.22)]'
                             : 'bg-white/65 hover:bg-white/85 border border-white/85 shadow-[0_2px_8px_rgba(15,23,42,0.02)]'
                         }`}
                       >
